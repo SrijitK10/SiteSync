@@ -16,9 +16,15 @@ export class TasksController {
   }
 
   @Get()
-  findAll(@Query('projectId') projectId: string) {
+  @Roles('admin', 'super_admin', 'site_manager')
+  findAll(
+    @Query('projectId') projectId: string,
+    @Query('range') range?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
     if (!projectId) return [];
-    return this.tasksService.findAllByProject(projectId);
+    return this.tasksService.findAllByProject(projectId, range, startDate, endDate);
   }
 
   @Get(':id')

@@ -3,17 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import 'attendance_screen.dart';
 import 'calendar_screen.dart';
-
-// TasksTab implementation logic securely scoped to projectId
-class TasksTab extends StatelessWidget {
-  final String projectId;
-  const TasksTab({super.key, required this.projectId});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Live Tasks for this Project will appear here.'));
-  }
-}
+import 'tasks_tab.dart';
 
 class ProjectDashboardScreen extends StatefulWidget {
   final String projectId;

@@ -37,8 +37,11 @@ export class Task {
   @JoinColumn({ name: 'assigned_to' })
   assignee: User;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'date' })
   created_at: Date;
+
+  @Column({ type: 'date', nullable: true })
+  completed_at: Date;
 
   @UpdateDateColumn()
   updated_at: Date;
