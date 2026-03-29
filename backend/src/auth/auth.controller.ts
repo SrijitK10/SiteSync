@@ -1,7 +1,6 @@
-import { Controller, Post, Body, UnauthorizedException, BadRequestException, Get } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import * as bcrypt from 'bcrypt';
 
 @Controller('auth')
 export class AuthController {
@@ -10,34 +9,42 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
-  @Post('login')
-  async login(@Body() body: any) {
-    const user = await this.authService.validateUser(body.email, body.password);
-    if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+  @Post('firebase-login')
+  async firebaseLogin(@Body() body: { idToken: string }) {
+    if (!body.idToken) {
+      throw new BadRequestException('Firebase ID token is required');
     }
-    return this.authService.login(user);
+
+    // Verify the Firebase ID token
+    const decoded = await this.authService.verifyFirebaseToken(body.idToken);
+    const phone = decoded.phone_number;
+
+    if (!phone) {
+      throw new UnauthorizedException('Phone number not found in Firebase token');
+    }
+
+    // Login or auto-register the user
+    return this.authService.loginOrRegister(phone, decoded.uid);
   }
 
   @Post('setup')
-  async setup(@Body() body: any) {
-    // SECURITY: This endpoint explicitly only functions if the database is natively empty
+  async setup(@Body() body: { phone: string; name?: string }) {
+    // SECURITY: Only works if the database is empty
     const users = await this.usersService.findAll();
     if (users.length > 0) {
-      throw new BadRequestException('Setup rejected. Security constraint: User database is not empty.');
+      throw new BadRequestException('Setup rejected. User database is not empty.');
     }
 
-    if (!body.email || !body.password) {
-      throw new BadRequestException('Email and password required for setup.');
-    } // No need to hash here, the UsersService automatically salts and hashes it
+    if (!body.phone) {
+      throw new BadRequestException('Phone number required for setup.');
+    }
 
     const adminUser = await this.usersService.create({
-      email: body.email,
-      password_hash: body.password,
+      phone: body.phone,
       name: body.name || 'Super Admin',
       role: 'super_admin',
     });
 
-    return { message: 'Master setup complete', email: adminUser.email };
+    return { message: 'Master setup complete', phone: adminUser.phone };
   }
 }

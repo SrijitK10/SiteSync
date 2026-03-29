@@ -7,7 +7,6 @@ enum UserRole {
   final String value;
   const UserRole(this.value);
 
-  /// Helper methods requested in the original spec
   bool get canEdit => this == UserRole.superAdmin || this == UserRole.admin || this == UserRole.siteManager;
   bool get canDelete => this == UserRole.superAdmin || this == UserRole.admin;
   bool get isAdmin => this == UserRole.superAdmin || this == UserRole.admin;
@@ -20,8 +19,8 @@ enum UserRole {
 class User {
   final String id;
   final String name;
-  final String email;
+  final String phone;
   final UserRole role;
 
-  User({required this.id, required this.name, required this.email, required this.role});
+  User({required this.id, required this.name, required this.phone, required this.role});
 }

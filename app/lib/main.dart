@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
 import 'screens/login_screen.dart';
-import 'screens/forgot_password_screen.dart';
 import 'screens/project_dashboard_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/projects_screen.dart';
 
-// Provide router dependency on AuthState so redirects can happen reactively
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
 
   return GoRouter(
     initialLocation: '/projects',
     redirect: (context, state) {
-      final isLoggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/forgot-password';
+      final isLoggingIn = state.matchedLocation == '/login';
       
       if (!authState.isAuthenticated) {
         return isLoggingIn ? null : '/login';
@@ -27,16 +27,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/projects';
       }
 
-      return null; // No redirect needed
+      return null;
     },
     routes: [
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/forgot-password',
-        builder: (context, state) => const ForgotPasswordScreen(),
       ),
 
       GoRoute(
@@ -44,9 +40,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const UserManagementScreen(),
         redirect: (context, state) {
           final user = ref.read(authProvider).currentUser;
-          // Only admins and super admins can access user management
           if (user == null || !user.role.isAdmin) {
-            return '/projects'; // Redirect back
+            return '/projects';
           }
           return null;
         },
@@ -67,12 +62,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-
     ],
   );
 });
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(
     const ProviderScope(
       child: SiteSyncApp(),

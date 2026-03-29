@@ -9,10 +9,10 @@ export class User {
   name: string;
 
   @Column({ unique: true })
-  email: string;
+  phone: string; // E.164 format: +919876543210
 
-  @Column()
-  password_hash: string;
+  @Column({ unique: true, nullable: true })
+  firebase_uid: string;
 
   @Column({ default: 'viewer' })
   role: string; // super_admin, admin, site_manager, viewer

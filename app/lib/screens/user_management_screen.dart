@@ -11,8 +11,8 @@ class UserManagementScreen extends ConsumerWidget {
 
   void _showAddUserBottomSheet(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
+    final phoneController = TextEditingController();
+    String selectedRole = 'site_manager';
 
     showModalBottomSheet(
       context: context,
@@ -38,25 +38,51 @@ class UserManagementScreen extends ConsumerWidget {
                 children: [
                   Text('Add New Teammate', style: AppTheme.heading),
                   const SizedBox(height: 16),
-                  AppTextField(label: 'NAME', hint: 'Jane Doe', controller: nameController),
+                  AppTextField(label: 'NAME', hint: 'Rajesh Kumar', controller: nameController),
                   const SizedBox(height: 12),
-                  AppTextField(label: 'EMAIL', hint: 'jane@sitesync.com', controller: emailController),
+                  AppTextField(
+                    label: 'PHONE NUMBER',
+                    hint: '9876543210',
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                  ),
                   const SizedBox(height: 12),
-                  AppTextField(label: 'TEMPORARY PASSWORD', hint: 'secure123', controller: passwordController, isPassword: true),
+                  // Role selector dropdown
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: 'ROLE',
+                      labelStyle: AppTheme.label,
+                      filled: true,
+                      fillColor: AppTheme.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                      DropdownMenuItem(value: 'site_manager', child: Text('Site Manager')),
+                      DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) selectedRole = val;
+                    },
+                  ),
                   const SizedBox(height: 24),
                   isSubmitting
                       ? const CircularProgressIndicator()
                       : AppButton(
                           text: 'Create User',
                           onPressed: () async {
-                            if (nameController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) return;
+                            if (nameController.text.isEmpty || phoneController.text.isEmpty) return;
                             setState(() => isSubmitting = true);
                             try {
+                              final phone = '+91${phoneController.text.trim()}';
                               await apiClient.post('/users', data: {
                                 'name': nameController.text.trim(),
-                                'email': emailController.text.trim(),
-                                'password_hash': passwordController.text,
-                                'role': 'site_manager' // Default for UI sim
+                                'phone': phone,
+                                'role': selectedRole,
                               });
                               if (context.mounted) {
                                 Navigator.pop(context);
@@ -119,7 +145,7 @@ class UserManagementScreen extends ConsumerWidget {
                   child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?', style: const TextStyle(color: AppTheme.surface)),
                 ),
                 title: Text(user.name, style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
-                subtitle: Text(user.email, style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic)),
+                subtitle: Text(user.phone, style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic)),
                 trailing: Chip(
                   label: Text(user.role.value.toUpperCase()),
                   labelStyle: AppTheme.label,

@@ -17,11 +17,10 @@ class AuthNotifier extends Notifier<AuthState> {
     return AuthState();
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> loginWithFirebaseToken(String idToken) async {
     try {
-      final res = await apiClient.post('/auth/login', data: {
-        'email': email,
-        'password': password,
+      final res = await apiClient.post('/auth/firebase-login', data: {
+        'idToken': idToken,
       });
       final token = res.data['accessToken'];
       final userData = res.data['user'];
@@ -29,7 +28,6 @@ class AuthNotifier extends Notifier<AuthState> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('jwt', token);
       
-      // Parse precise Role Enum from backend string representation
       UserRole fetchedRole = UserRole.values.firstWhere(
         (r) => r.value == userData['role'],
         orElse: () => UserRole.viewer,
@@ -40,21 +38,14 @@ class AuthNotifier extends Notifier<AuthState> {
         currentUser: User(
           id: userData['id'], 
           name: userData['name'], 
-          email: userData['email'], 
+          phone: userData['phone'], 
           role: fetchedRole
         ),
       );
     } catch (e) {
-      print('DioError inside Login pipeline: $e');
-      throw Exception('Connection/Login Error: $e');
+      print('Error during Firebase login: $e');
+      throw Exception('Login Error: $e');
     }
-  }
-
-  void loginFakeUser(UserRole role) {
-    state = AuthState(
-      isAuthenticated: true,
-      currentUser: User(id: '1', name: 'Test User', email: 'test@sitesync.com', role: role),
-    );
   }
 
   Future<void> logout() async {

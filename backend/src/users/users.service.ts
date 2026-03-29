@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 
 @Injectable()
@@ -12,14 +11,11 @@ export class UsersService {
   ) {}
 
   async create(userData: Partial<User>): Promise<User> {
-    const existing = await this.usersRepository.findOne({ where: { email: userData.email } });
-    if (existing) {
-      throw new ConflictException('Email already exists');
-    }
-
-    if (userData.password_hash) {
-      const salt = await bcrypt.genSalt(10);
-      userData.password_hash = await bcrypt.hash(userData.password_hash, salt);
+    if (userData.phone) {
+      const existing = await this.usersRepository.findOne({ where: { phone: userData.phone } });
+      if (existing) {
+        throw new ConflictException('Phone number already registered');
+      }
     }
 
     const newUser = this.usersRepository.create(userData);
@@ -27,27 +23,25 @@ export class UsersService {
   }
 
   async findAll(): Promise<User[]> {
-    // Purposefully omitting password_hash visually
-    return this.usersRepository.find({ select: ['id', 'name', 'email', 'role', 'created_at'] });
+    return this.usersRepository.find({ select: ['id', 'name', 'phone', 'role', 'created_at'] });
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id }, select: ['id', 'name', 'email', 'role', 'created_at'] });
+    const user = await this.usersRepository.findOne({ where: { id }, select: ['id', 'name', 'phone', 'role', 'created_at'] });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
-  async findByEmailForAuth(email: string): Promise<User | null> {
-    // This strictly pulls the password_hash needed for auth validators
-    return this.usersRepository.findOne({ where: { email } });
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { phone } });
+  }
+
+  async findByFirebaseUid(uid: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { firebase_uid: uid } });
   }
 
   async update(id: string, updateData: Partial<User>): Promise<User> {
     const user = await this.findOne(id);
-    if (updateData.password_hash) {
-      const salt = await bcrypt.genSalt(10);
-      updateData.password_hash = await bcrypt.hash(updateData.password_hash, salt);
-    }
     Object.assign(user, updateData);
     return this.usersRepository.save(user);
   }

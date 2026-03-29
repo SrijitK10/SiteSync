@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "648404388408",
+    "project_id": "rupayan-81953",
+    "storage_bucket": "rupayan-81953.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:648404388408:android:0c4f6e635f44544ad634cd",
+        "android_client_info": {
+          "package_name": "com.sitesync.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHG51RGnIDD-16jpgyBY38eU3WnTxdpeY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

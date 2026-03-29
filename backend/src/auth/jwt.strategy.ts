@@ -14,7 +14,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // This payload securely attaches to req.user for native NestJS Guards
-    return { userId: payload.sub, email: payload.email, role: payload.role };
+    return { userId: payload.sub, phone: payload.phone, role: payload.role };
   }
 }

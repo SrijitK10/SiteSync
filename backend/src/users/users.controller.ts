@@ -17,6 +17,7 @@ export class UsersController {
   @Post()
   @Roles('admin', 'super_admin')
   create(@Body() createUserDto: any) {
+    // Admin can pre-register users with phone + role (no password needed)
     return this.usersService.create(createUserDto);
   }
 
@@ -35,6 +36,7 @@ export class UsersController {
   @Patch(':id')
   @Roles('admin', 'super_admin')
   update(@Param('id') id: string, @Body() updateUserDto: any) {
+    // This is how super_admin/admin assigns roles to users
     return this.usersService.update(id, updateUserDto);
   }
 
