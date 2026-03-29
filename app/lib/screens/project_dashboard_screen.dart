@@ -36,10 +36,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
+      body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (idx) => setState(() => _currentIndex = idx),
