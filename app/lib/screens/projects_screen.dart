@@ -161,7 +161,10 @@ class ProjectsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final p = projects[index];
               return GestureDetector(
-                onTap: () => context.push('/projects/${p['id']}'),
+                onTap: () => context.push(
+                  '/projects/${p['id']}', 
+                  extra: {'name': p['name'], 'location': p['location']},
+                ),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(

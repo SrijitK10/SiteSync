@@ -59,7 +59,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/projects/:id',
         builder: (context, state) {
           final projectId = state.pathParameters['id']!;
-          return ProjectDashboardScreen(projectId: projectId);
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return ProjectDashboardScreen(
+            projectId: projectId,
+            projectName: extra['name'] as String?,
+            projectLocation: extra['location'] as String?,
+          );
         },
       ),
 

@@ -238,13 +238,22 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _isExporting 
-              ? const Center(child: CircularProgressIndicator(color: AppTheme.accent))
-              : AppButton(
-                  text: '⬇️ Download Task Reports',
+            if (_isExporting)
+              const Center(child: Padding(padding: EdgeInsets.only(bottom: 16), child: CircularProgressIndicator(color: AppTheme.accent)))
+            else
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
                   onPressed: () => _showExportOptions(context),
+                  icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
+                  label: const Text('Download Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
-            const SizedBox(height: 16),
+              ),
+            const SizedBox(height: 8),
             Expanded(
               child: _tasks.isEmpty
                 ? const Center(child: Text('No tasks created yet.'))

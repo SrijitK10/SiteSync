@@ -7,8 +7,15 @@ import 'tasks_tab.dart';
 
 class ProjectDashboardScreen extends StatefulWidget {
   final String projectId;
+  final String? projectName;
+  final String? projectLocation;
   
-  const ProjectDashboardScreen({super.key, required this.projectId});
+  const ProjectDashboardScreen({
+    super.key, 
+    required this.projectId,
+    this.projectName,
+    this.projectLocation,
+  });
 
   @override
   State<ProjectDashboardScreen> createState() => _ProjectDashboardScreenState();
@@ -29,7 +36,15 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Active Workspace'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.projectName ?? 'Active Workspace', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            if (widget.projectLocation != null && widget.projectLocation!.isNotEmpty)
+              Text(widget.projectLocation!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           // Pops out of the specific Project Workspace entirely back to Global Projects Landing

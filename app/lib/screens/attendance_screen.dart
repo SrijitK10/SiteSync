@@ -225,13 +225,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _isExporting 
-                  ? const Center(child: CircularProgressIndicator(color: AppTheme.accent))
-                  : AppButton(
-                      text: '⬇️ Download Excel Reports',
+                if (_isExporting)
+                  const Center(child: Padding(padding: EdgeInsets.only(bottom: 16), child: CircularProgressIndicator(color: AppTheme.accent)))
+                else
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
                       onPressed: () => _showExportOptions(context),
+                      icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
+                      label: const Text('Download Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
-                const SizedBox(height: 16),
+                  ),
+                const SizedBox(height: 8),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Container(
@@ -243,23 +252,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('ACTIVE WORKSPACE', style: AppTheme.label),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.background,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.business, color: AppTheme.primary),
-                                const SizedBox(width: 8),
-                                Expanded(child: Text(_projectName, style: AppTheme.body.copyWith(fontWeight: FontWeight.bold))),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+
                           AppTextField(
                             label: 'WORKER NAME',
                             hint: 'Type worker name',
