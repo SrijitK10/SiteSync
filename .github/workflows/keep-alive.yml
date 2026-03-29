@@ -2,8 +2,9 @@ name: Keep Render Server Alive
 
 on:
   schedule:
-    # Runs every 14 minutes to prevent Render's 15-minute inactivity spin-down
-    - cron: '*/14 * * * *'
+    # Runs every 8 minutes to prevent Render's 15-minute inactivity spin-down
+    # (GitHub Actions scheduling is often delayed by a few minutes, so 8 mins is safer)
+    - cron: '*/8 * * * *'
   workflow_dispatch: # Allows you to run this manually from the Actions tab
 
 jobs:
