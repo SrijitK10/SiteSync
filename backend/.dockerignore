@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+README.md
+test
+eslint.config.mjs
+.prettierrc
+Dockerfile
+.dockerignore
+npm-debug.log*

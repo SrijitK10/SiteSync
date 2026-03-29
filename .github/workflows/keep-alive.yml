@@ -1,0 +1,15 @@
+name: Keep Render Server Alive
+
+on:
+  schedule:
+    # Runs every 14 minutes to prevent Render's 15-minute inactivity spin-down
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows you to run this manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend API
+        run: |
+          curl -sSf https://rupayan.onrender.com || echo "Ping returned non-200, but still woke up the server."

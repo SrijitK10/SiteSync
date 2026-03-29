@@ -1,0 +1,48 @@
+# --- Root ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.log
+.env
+.env.*
+
+# --- Backend (Node.js/NestJS) ---
+backend/node_modules/
+backend/dist/
+backend/coverage/
+backend/.nyc_output/
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/pnpm-debug.log*
+backend/report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+backend/pids
+backend/*.pid
+backend/*.seed
+backend/*.pid.lock
+
+# --- App (Flutter/Dart) ---
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.pub-cache/
+app/.pub/
+app/build/
+app/coverage/
+app/app.*.symbols
+app/app.*.map.json
+app/android/app/debug/
+app/android/app/profile/
+app/android/app/release/
+app/ios/Flutter/.last_build_id
+app/linux/build/
+app/macos/build/
+app/windows/build/
+
+# --- Artifacts & Brain ---
+.gemini/
+brain/
+plan.md
+task.md
+implementation_plan.md
+walkthrough.md
