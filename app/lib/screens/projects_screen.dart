@@ -11,6 +11,41 @@ import '../services/api_client.dart';
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
 
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String projectId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: Text('Delete Project', style: AppTheme.heading),
+        content: const Text('Are you sure you want to permanently delete this project? All associated tasks, calendars, and attendance records will be completely erased.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await apiClient.delete('/projects/$projectId');
+        ref.invalidate(projectsProvider);
+        if (context.mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project structure fully deleted.')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete project: $e')));
+        }
+      }
+    }
+  }
+
   void _showAddProjectBottomSheet(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
@@ -145,11 +180,31 @@ class ProjectsScreen extends ConsumerWidget {
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(p['name'] ?? 'Unnamed', style: AppTheme.heading.copyWith(fontSize: 18)),
-                          Chip(
-                            label: Text((p['status'] ?? 'Draft').toString().toUpperCase(), style: AppTheme.label.copyWith(fontSize: 10)),
-                            backgroundColor: AppTheme.accent.withAlpha(50),
+                          Expanded(
+                            child: Text(p['name'] ?? 'Unnamed', style: AppTheme.heading.copyWith(fontSize: 18), overflow: TextOverflow.ellipsis),
+                          ),
+                          Row(
+                            children: [
+                              Chip(
+                                label: Text((p['status'] ?? 'Draft').toString().toUpperCase(), style: AppTheme.label.copyWith(fontSize: 10)),
+                                backgroundColor: AppTheme.accent.withAlpha(50),
+                              ),
+                              PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  if (value == 'delete') {
+                                    _confirmDelete(context, ref, p['id'].toString());
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete Project', style: TextStyle(color: Colors.red)),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ],
                       ),

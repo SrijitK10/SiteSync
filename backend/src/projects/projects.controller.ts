@@ -32,7 +32,7 @@ export class ProjectsController {
   }
 
   @Delete(':id')
-  @Roles('super_admin')
+  @Roles('super_admin', 'admin', 'site_manager')
   remove(@Param('id') id: string) {
     return this.projectsService.remove(id);
   }
