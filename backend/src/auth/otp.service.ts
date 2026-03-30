@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 interface OTPEntry {
   code: string;
@@ -11,35 +11,14 @@ interface OTPEntry {
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   private otpStore = new Map<string, OTPEntry>();
-  private transporter: nodemailer.Transporter | null = null;
+  private resend: Resend;
 
   constructor() {
+    this.resend = new Resend(process.env.RESEND_API_KEY);
+    this.logger.log(`Resend API key configured: ${!!process.env.RESEND_API_KEY}`);
+
     // Clean expired OTPs every 5 minutes
     setInterval(() => this.cleanExpired(), 5 * 60 * 1000);
-  }
-
-  private getTransporter(): nodemailer.Transporter {
-    if (!this.transporter) {
-      const smtpEmail = process.env.SMTP_EMAIL;
-      const smtpPass = process.env.SMTP_PASSWORD;
-
-      this.logger.log(`SMTP_EMAIL configured: ${!!smtpEmail}`);
-      this.logger.log(`SMTP_PASSWORD configured: ${!!smtpPass}`);
-
-      this.transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // use SSL
-        auth: {
-          user: smtpEmail,
-          pass: smtpPass,
-        },
-        connectionTimeout: 10000, // 10 sec to establish connection
-        greetingTimeout: 10000,   // 10 sec for SMTP greeting
-        socketTimeout: 15000,     // 15 sec for socket inactivity
-      });
-    }
-    return this.transporter;
   }
 
   generateOTP(): string {
@@ -54,12 +33,11 @@ export class OtpService {
     this.logger.log(`OTP generated for ${email}: ${code}`);
 
     try {
-      const transport = this.getTransporter();
-      this.logger.log('Attempting to send email via SMTP...');
+      this.logger.log('Sending email via Resend API...');
 
-      const info = await transport.sendMail({
-        from: `"SiteSync" <${process.env.SMTP_EMAIL}>`,
-        to: email,
+      const { data, error } = await this.resend.emails.send({
+        from: 'SiteSync <onboarding@resend.dev>',
+        to: [email],
         subject: 'SiteSync - Your Login Code',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px;">
@@ -75,10 +53,15 @@ export class OtpService {
           </div>
         `,
       });
-      this.logger.log(`Email sent successfully: ${info.messageId}`);
+
+      if (error) {
+        this.logger.error(`Resend API error: ${JSON.stringify(error)}`);
+        throw new Error(error.message);
+      }
+
+      this.logger.log(`Email sent successfully via Resend: ${data?.id}`);
     } catch (error) {
-      this.logger.error(`SMTP send failed: ${error.message}`);
-      // Don't remove the OTP - let the user try again
+      this.logger.error(`Email send failed: ${error.message}`);
       throw error;
     }
   }
