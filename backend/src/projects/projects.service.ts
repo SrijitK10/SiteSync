@@ -21,15 +21,7 @@ export class ProjectsService {
   }
 
   async findAll(userId: string, role: string): Promise<Project[]> {
-    if (role === 'super_admin' || role === 'admin') {
-      return this.projectsRepository.find();
-    }
-    // Return only assigned projects for non-admin
-    const members = await this.membersRepository.find({
-      where: { user: { id: userId } },
-      relations: ['project'],
-    });
-    return members.map(m => m.project);
+    return this.projectsRepository.find();
   }
 
   async findOne(id: string): Promise<Project> {

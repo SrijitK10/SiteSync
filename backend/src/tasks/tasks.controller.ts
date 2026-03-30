@@ -16,7 +16,7 @@ export class TasksController {
   }
 
   @Get()
-  @Roles('admin', 'super_admin', 'site_manager')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findAll(
     @Query('projectId') projectId: string,
     @Query('range') range?: string,
@@ -39,7 +39,7 @@ export class TasksController {
   }
 
   @Delete(':id')
-  @Roles('admin', 'super_admin', 'site_manager')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   remove(@Param('id') id: string) {
     return this.tasksService.remove(id);
   }

@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../state/users_provider.dart';
+import '../state/auth_provider.dart';
 import '../services/api_client.dart';
 
 class UserManagementScreen extends ConsumerWidget {
@@ -109,6 +110,8 @@ class UserManagementScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(usersProvider);
+    final currentUser = ref.watch(authProvider).currentUser;
+    final canEditRoles = currentUser != null && currentUser.role.isAdmin;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -146,11 +149,39 @@ class UserManagementScreen extends ConsumerWidget {
                 ),
                 title: Text(user.name, style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
                 subtitle: Text(user.phone ?? user.email ?? '', style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic)),
-                trailing: Chip(
-                  label: Text(user.role.value.toUpperCase()),
-                  labelStyle: AppTheme.label,
-                  backgroundColor: AppTheme.background,
-                ),
+                trailing: canEditRoles && user.id != currentUser.id
+                    ? DropdownButton<String>(
+                        value: user.role.value,
+                        style: AppTheme.label.copyWith(color: AppTheme.primary, fontSize: 10),
+                        underline: const SizedBox(),
+                        icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primary, size: 20),
+                        items: const [
+                          DropdownMenuItem(value: 'super_admin', child: Text('SUPER ADMIN')),
+                          DropdownMenuItem(value: 'admin', child: Text('ADMIN')),
+                          DropdownMenuItem(value: 'site_manager', child: Text('SITE MANAGER')),
+                          DropdownMenuItem(value: 'viewer', child: Text('VIEWER')),
+                        ],
+                        onChanged: (newRole) async {
+                          if (newRole != null && newRole != user.role.value) {
+                            try {
+                              await apiClient.patch('/users/${user.id}', data: {'role': newRole});
+                              ref.invalidate(usersProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Role updated successfully.')));
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update role: $e', style: const TextStyle(color: Colors.red))));
+                              }
+                            }
+                          }
+                        },
+                      )
+                    : Chip(
+                        label: Text(user.role.value.toUpperCase()),
+                        labelStyle: AppTheme.label,
+                        backgroundColor: AppTheme.background,
+                      ),
               );
             },
           );
