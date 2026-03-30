@@ -126,9 +126,23 @@ class ProjectsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Live Projects'),
         actions: [
+          if (canManageProjects)
+            IconButton(
+              icon: const Icon(Icons.people),
+              tooltip: 'Manage Users',
+              onPressed: () => context.push('/users'),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Projects',
             onPressed: () => ref.invalidate(projectsProvider),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Log Out',
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+            },
           ),
         ],
       ),
