@@ -23,11 +23,9 @@ class DefaultFirebaseOptions {
     storageBucket: 'rupayan-81953.firebasestorage.app',
   );
 
-  // iOS and macOS use the same Firebase project — update these values
-  // once you add GoogleService-Info.plist from Firebase Console
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAHG51RGnIDD-16jpgyBY38eU3WnTxdpeY',
-    appId: '1:648404388408:android:0c4f6e635f44544ad634cd',
+    apiKey: 'AIzaSyDK-J4JlVaRQFQvO2bqKoBNPEluC652J7E',
+    appId: '1:648404388408:ios:ccd834623157cbf5d634cd',
     messagingSenderId: '648404388408',
     projectId: 'rupayan-81953',
     storageBucket: 'rupayan-81953.firebasestorage.app',
@@ -35,8 +33,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAHG51RGnIDD-16jpgyBY38eU3WnTxdpeY',
-    appId: '1:648404388408:android:0c4f6e635f44544ad634cd',
+    apiKey: 'AIzaSyDK-J4JlVaRQFQvO2bqKoBNPEluC652J7E',
+    appId: '1:648404388408:ios:ccd834623157cbf5d634cd',
     messagingSenderId: '648404388408',
     projectId: 'rupayan-81953',
     storageBucket: 'rupayan-81953.firebasestorage.app',
