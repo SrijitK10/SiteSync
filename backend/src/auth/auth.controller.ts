@@ -16,7 +16,7 @@ export class AuthController {
   // ── Firebase Phone Auth (Android) ─────────────────────────────
 
   @Post('firebase-login')
-  async firebaseLogin(@Body() body: { idToken: string }) {
+  async firebaseLogin(@Body() body: { idToken: string; name?: string }) {
     if (!body.idToken) {
       throw new BadRequestException('Firebase ID token is required');
     }
@@ -29,7 +29,7 @@ export class AuthController {
       throw new UnauthorizedException('No phone or email found in Firebase token');
     }
 
-    return this.authService.loginOrRegister({ phone, email }, decoded.uid);
+    return this.authService.loginOrRegister({ phone, email }, decoded.uid, body.name);
   }
 
   // ── Custom Email OTP (iOS) ────────────────────────────────────
@@ -49,7 +49,7 @@ export class AuthController {
   }
 
   @Post('verify-otp')
-  async verifyOtp(@Body() body: { email: string; code: string }) {
+  async verifyOtp(@Body() body: { email: string; code: string; name?: string }) {
     if (!body.email || !body.code) {
       throw new BadRequestException('Email and OTP code are required');
     }
@@ -65,7 +65,7 @@ export class AuthController {
     if (!user) {
       user = await this.usersService.create({
         email: body.email,
-        name: body.email.split('@')[0],
+        name: body.name || body.email.split('@')[0],
         role: 'viewer',
       });
     }

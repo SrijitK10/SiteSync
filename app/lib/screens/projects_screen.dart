@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../state/projects_provider.dart';
+import '../state/auth_provider.dart';
+import '../models/user_role.dart';
 
 import '../services/api_client.dart';
 
@@ -116,6 +118,8 @@ class ProjectsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(projectsProvider);
+    final user = ref.watch(authProvider).currentUser;
+    final canManageProjects = user?.role == UserRole.superAdmin || user?.role == UserRole.admin;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -128,11 +132,11 @@ class ProjectsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: canManageProjects ? FloatingActionButton(
         backgroundColor: AppTheme.primary,
         onPressed: () => _showAddProjectBottomSheet(context, ref),
         child: const Icon(Icons.add, color: AppTheme.surface),
-      ),
+      ) : null,
       body: projectsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
@@ -194,7 +198,7 @@ class ProjectsScreen extends ConsumerWidget {
                                 label: Text((p['status'] ?? 'Draft').toString().toUpperCase(), style: AppTheme.label.copyWith(fontSize: 10)),
                                 backgroundColor: AppTheme.accent.withAlpha(50),
                               ),
-                              PopupMenuButton<String>(
+                              if (canManageProjects) PopupMenuButton<String>(
                                 onSelected: (value) {
                                   if (value == 'delete') {
                                     _confirmDelete(context, ref, p['id'].toString());

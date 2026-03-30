@@ -17,10 +17,11 @@ class AuthNotifier extends Notifier<AuthState> {
     return AuthState();
   }
 
-  Future<void> loginWithFirebaseToken(String idToken) async {
+  Future<void> loginWithFirebaseToken(String idToken, {String? name}) async {
     try {
       final res = await apiClient.post('/auth/firebase-login', data: {
         'idToken': idToken,
+        if (name != null && name.isNotEmpty) 'name': name,
       });
       final token = res.data['accessToken'];
       final userData = res.data['user'];

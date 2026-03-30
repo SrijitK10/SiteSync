@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
@@ -321,6 +322,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           isLoading: _isLoading,
           onPressed: _sendOTP,
         ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Don't have an account? "),
+            TextButton(
+              onPressed: () => context.go('/signup'),
+              child: const Text('Sign Up'),
+            ),
+          ],
+        ),
       ];
     } else {
       return [
@@ -416,6 +428,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           'A 6-digit code will be sent to your email.',
           textAlign: TextAlign.center,
           style: AppTheme.label.copyWith(color: AppTheme.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Don't have an account? "),
+            TextButton(
+              onPressed: () => context.go('/signup'),
+              child: const Text('Sign Up'),
+            ),
+          ],
         ),
       ];
     } else {

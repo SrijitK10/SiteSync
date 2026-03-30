@@ -21,7 +21,7 @@ export class ProjectsService {
   }
 
   async findAll(userId: string, role: string): Promise<Project[]> {
-    if (role === 'super_admin') {
+    if (role === 'super_admin' || role === 'admin') {
       return this.projectsRepository.find();
     }
     // Return only assigned projects for non-admin

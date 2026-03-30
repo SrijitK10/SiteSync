@@ -10,7 +10,7 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post()
-  @Roles('admin', 'super_admin', 'site_manager')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   create(@Body() createTaskDto: any) {
     return this.tasksService.create(createTaskDto);
   }

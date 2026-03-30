@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
 import 'screens/project_dashboard_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/projects_screen.dart';
@@ -17,13 +18,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/projects',
     redirect: (context, state) {
-      final isLoggingIn = state.matchedLocation == '/login';
+      final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/signup';
       
       if (!authState.isAuthenticated) {
-        return isLoggingIn ? null : '/login';
+        return isAuthRoute ? null : '/login';
       }
 
-      if (isLoggingIn) {
+      if (isAuthRoute) {
         return '/projects';
       }
 
@@ -33,6 +34,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignupScreen(),
       ),
 
       GoRoute(
