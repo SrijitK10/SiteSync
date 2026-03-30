@@ -28,8 +28,8 @@ export class OtpService {
 
       this.transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // use STARTTLS
+        port: 465,
+        secure: true, // use SSL
         auth: {
           user: smtpEmail,
           pass: smtpPass,
