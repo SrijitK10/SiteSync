@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
+import '../state/auth_provider.dart';
 
 class TasksTab extends ConsumerStatefulWidget {
   final String projectId;
@@ -226,6 +227,9 @@ class _TasksTabState extends ConsumerState<TasksTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
+    final currentUser = ref.watch(authProvider).currentUser;
+    final isViewer = currentUser?.role.value == 'viewer';
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       floatingActionButton: FloatingActionButton(
@@ -238,21 +242,23 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_isExporting)
-              const Center(child: Padding(padding: EdgeInsets.only(bottom: 16), child: CircularProgressIndicator(color: AppTheme.accent)))
-            else
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () => _showExportOptions(context),
-                  icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
-                  label: const Text('Download Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            if (!isViewer) ...[
+              if (_isExporting)
+                const Center(child: Padding(padding: EdgeInsets.only(bottom: 16), child: CircularProgressIndicator(color: AppTheme.accent)))
+              else
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => _showExportOptions(context),
+                    icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
+                    label: const Text('Download Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
                   ),
                 ),
-              ),
+            ],
             const SizedBox(height: 8),
             Expanded(
               child: _tasks.isEmpty
