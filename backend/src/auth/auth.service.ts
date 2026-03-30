@@ -28,16 +28,24 @@ export class AuthService {
     }
   }
 
-  async loginOrRegister(phone: string, firebaseUid: string, name?: string) {
-    // Try to find existing user by phone
-    let user = await this.usersService.findByPhone(phone);
+  async loginOrRegister(identifier: { phone?: string; email?: string }, firebaseUid: string, name?: string) {
+    // Try to find existing user by Firebase UID first, then phone/email
+    let user = await this.usersService.findByFirebaseUid(firebaseUid);
+
+    if (!user && identifier.phone) {
+      user = await this.usersService.findByPhone(identifier.phone);
+    }
+    if (!user && identifier.email) {
+      user = await this.usersService.findByEmail(identifier.email);
+    }
 
     if (!user) {
       // Auto-register new users as 'viewer'
       user = await this.usersService.create({
-        phone,
+        phone: identifier.phone || undefined,
+        email: identifier.email || undefined,
         firebase_uid: firebaseUid,
-        name: name || phone,
+        name: name || identifier.phone || identifier.email || 'User',
         role: 'viewer',
       });
     } else if (!user.firebase_uid) {
@@ -46,12 +54,18 @@ export class AuthService {
     }
 
     // Issue app JWT with role from PostgreSQL
-    const payload = { phone: user.phone, sub: user.id, role: user.role };
+    const payload = {
+      phone: user.phone,
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+    };
     return {
       accessToken: this.jwtService.sign(payload),
       user: {
         id: user.id,
         phone: user.phone,
+        email: user.email,
         name: user.name,
         role: user.role,
       },

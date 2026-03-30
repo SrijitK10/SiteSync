@@ -17,23 +17,33 @@ export class UsersService {
         throw new ConflictException('Phone number already registered');
       }
     }
+    if (userData.email) {
+      const existing = await this.usersRepository.findOne({ where: { email: userData.email } });
+      if (existing) {
+        throw new ConflictException('Email already registered');
+      }
+    }
 
     const newUser = this.usersRepository.create(userData);
     return this.usersRepository.save(newUser);
   }
 
   async findAll(): Promise<User[]> {
-    return this.usersRepository.find({ select: ['id', 'name', 'phone', 'role', 'created_at'] });
+    return this.usersRepository.find({ select: ['id', 'name', 'phone', 'email', 'role', 'created_at'] });
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id }, select: ['id', 'name', 'phone', 'role', 'created_at'] });
+    const user = await this.usersRepository.findOne({ where: { id }, select: ['id', 'name', 'phone', 'email', 'role', 'created_at'] });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   async findByPhone(phone: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { phone } });
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
   }
 
   async findByFirebaseUid(uid: string): Promise<User | null> {

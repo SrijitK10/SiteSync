@@ -17,34 +17,36 @@ export class AuthController {
 
     // Verify the Firebase ID token
     const decoded = await this.authService.verifyFirebaseToken(body.idToken);
-    const phone = decoded.phone_number;
+    const phone = decoded.phone_number || undefined;
+    const email = decoded.email || undefined;
 
-    if (!phone) {
-      throw new UnauthorizedException('Phone number not found in Firebase token');
+    if (!phone && !email) {
+      throw new UnauthorizedException('No phone or email found in Firebase token');
     }
 
     // Login or auto-register the user
-    return this.authService.loginOrRegister(phone, decoded.uid);
+    return this.authService.loginOrRegister({ phone, email }, decoded.uid);
   }
 
   @Post('setup')
-  async setup(@Body() body: { phone: string; name?: string }) {
+  async setup(@Body() body: { phone?: string; email?: string; name?: string }) {
     // SECURITY: Only works if the database is empty
     const users = await this.usersService.findAll();
     if (users.length > 0) {
       throw new BadRequestException('Setup rejected. User database is not empty.');
     }
 
-    if (!body.phone) {
-      throw new BadRequestException('Phone number required for setup.');
+    if (!body.phone && !body.email) {
+      throw new BadRequestException('Phone or email required for setup.');
     }
 
     const adminUser = await this.usersService.create({
-      phone: body.phone,
+      phone: body.phone || undefined,
+      email: body.email || undefined,
       name: body.name || 'Super Admin',
       role: 'super_admin',
     });
 
-    return { message: 'Master setup complete', phone: adminUser.phone };
+    return { message: 'Master setup complete', phone: adminUser.phone, email: adminUser.email };
   }
 }

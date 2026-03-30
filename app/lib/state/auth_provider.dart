@@ -38,7 +38,8 @@ class AuthNotifier extends Notifier<AuthState> {
         currentUser: User(
           id: userData['id'], 
           name: userData['name'], 
-          phone: userData['phone'], 
+          phone: userData['phone'],
+          email: userData['email'],
           role: fetchedRole
         ),
       );

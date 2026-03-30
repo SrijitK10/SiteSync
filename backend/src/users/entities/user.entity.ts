@@ -8,8 +8,11 @@ export class User {
   @Column()
   name: string;
 
-  @Column({ unique: true })
-  phone: string; // E.164 format: +919876543210
+  @Column({ unique: true, nullable: true })
+  phone: string; // E.164 format: +919876543210 (Android users)
+
+  @Column({ unique: true, nullable: true })
+  email: string; // For iOS email-link auth users
 
   @Column({ unique: true, nullable: true })
   firebase_uid: string;

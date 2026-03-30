@@ -19,8 +19,11 @@ enum UserRole {
 class User {
   final String id;
   final String name;
-  final String phone;
+  final String? phone;
+  final String? email;
   final UserRole role;
 
-  User({required this.id, required this.name, required this.phone, required this.role});
+  User({required this.id, required this.name, this.phone, this.email, required this.role});
+
+  String get displayIdentifier => phone ?? email ?? 'Unknown';
 }

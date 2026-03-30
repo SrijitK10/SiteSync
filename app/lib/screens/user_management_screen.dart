@@ -145,7 +145,7 @@ class UserManagementScreen extends ConsumerWidget {
                   child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?', style: const TextStyle(color: AppTheme.surface)),
                 ),
                 title: Text(user.name, style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
-                subtitle: Text(user.phone, style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic)),
+                subtitle: Text(user.phone ?? user.email ?? '', style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic)),
                 trailing: Chip(
                   label: Text(user.role.value.toUpperCase()),
                   labelStyle: AppTheme.label,
