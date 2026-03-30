@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../state/auth_provider.dart';
+import '../models/user_role.dart';
+import '../services/api_client.dart';
 
 bool get _isApplePlatform {
   if (kIsWeb) return false;
@@ -25,10 +28,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _emailController = TextEditingController();
+  final _emailOtpController = TextEditingController();
   
   bool _isLoading = false;
-  bool _otpSent = false;
-  bool _emailLinkSent = false;
+  bool _otpSent = false;        // Phone OTP sent (Android)
+  bool _emailOtpSent = false;   // Email OTP sent (iOS)
   String? _verificationId;
   int? _resendToken;
   int _resendCountdown = 0;
@@ -125,54 +129,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // ── EMAIL LINK FLOW (iOS / macOS) ─────────────────────────────
-
-  void _sendEmailLink() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid email address')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final actionCodeSettings = fb.ActionCodeSettings(
-        url: 'https://rupayan-81953.firebaseapp.com/finishSignIn?email=$email',
-        handleCodeInApp: true,
-        iOSBundleId: 'com.sitesync.app',
-        androidPackageName: 'com.sitesync.app',
-        androidInstallApp: true,
-        androidMinimumVersion: '23',
-      );
-
-      await fb.FirebaseAuth.instance.sendSignInLinkToEmail(
-        email: email,
-        actionCodeSettings: actionCodeSettings,
-      );
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _emailLinkSent = true;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send email link: $e')),
-        );
-      }
-    }
-  }
-
-
-
-  // ── SHARED ────────────────────────────────────────────────────
-
   Future<void> _signInWithCredential(fb.PhoneAuthCredential credential) async {
     try {
       final userCredential = await fb.FirebaseAuth.instance.signInWithCredential(credential);
@@ -191,11 +147,99 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  // ── EMAIL OTP FLOW (iOS / macOS) ──────────────────────────────
+
+  void _sendEmailOTP() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await apiClient.post('/auth/send-otp', data: {'email': email});
+      
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _emailOtpSent = true;
+          _resendCountdown = 30;
+        });
+        _startResendTimer();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send OTP: $e')),
+        );
+      }
+    }
+  }
+
+  void _verifyEmailOTP() async {
+    final code = _emailOtpController.text.trim();
+    if (code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the 6-digit OTP')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final email = _emailController.text.trim();
+      final res = await apiClient.post('/auth/verify-otp', data: {
+        'email': email,
+        'code': code,
+      });
+
+      final token = res.data['accessToken'];
+      final userData = res.data['user'];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('jwt', token);
+
+      final fetchedRole = UserRole.values.firstWhere(
+        (r) => r.value == userData['role'],
+        orElse: () => UserRole.viewer,
+      );
+
+      if (mounted) {
+        ref.read(authProvider.notifier).setAuth(AuthState(
+          isAuthenticated: true,
+          currentUser: User(
+            id: userData['id'],
+            name: userData['name'],
+            phone: userData['phone'],
+            email: userData['email'],
+            role: fetchedRole,
+          ),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid OTP: $e')),
+        );
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+
   @override
   void dispose() {
     _phoneController.dispose();
     _otpController.dispose();
     _emailController.dispose();
+    _emailOtpController.dispose();
     super.dispose();
   }
 
@@ -233,7 +277,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 40),
                   
                   if (_isApplePlatform)
-                    ..._buildEmailLinkFlow()
+                    ..._buildEmailOTPFlow()
                   else
                     ..._buildPhoneOTPFlow(),
                 ],
@@ -339,10 +383,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // ── EMAIL LINK UI (iOS / macOS) ───────────────────────────────
+  // ── EMAIL OTP UI (iOS / macOS) ────────────────────────────────
 
-  List<Widget> _buildEmailLinkFlow() {
-    if (!_emailLinkSent) {
+  List<Widget> _buildEmailOTPFlow() {
+    if (!_emailOtpSent) {
       return [
         Text('EMAIL ADDRESS', style: AppTheme.label),
         const SizedBox(height: 8),
@@ -363,51 +407,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: 24),
         AppButton(
-          text: 'Send Sign-In Link',
+          text: 'Send OTP',
           isLoading: _isLoading,
-          onPressed: _sendEmailLink,
+          onPressed: _sendEmailOTP,
         ),
         const SizedBox(height: 12),
         Text(
-          'A magic link will be sent to your email.\nTap it to sign in — no password needed.',
+          'A 6-digit code will be sent to your email.',
           textAlign: TextAlign.center,
           style: AppTheme.label.copyWith(color: AppTheme.textSecondary, fontSize: 12),
         ),
       ];
     } else {
       return [
-        const Icon(Icons.mark_email_read_outlined, size: 48, color: AppTheme.accent),
-        const SizedBox(height: 16),
         Text(
-          'Sign-in link sent!',
-          textAlign: TextAlign.center,
-          style: AppTheme.heading.copyWith(fontSize: 20),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Check your email at\n${_emailController.text}',
+          'OTP sent to ${_emailController.text}',
           textAlign: TextAlign.center,
           style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
         ),
+        const SizedBox(height: 20),
+        Text('ENTER OTP', style: AppTheme.label),
         const SizedBox(height: 8),
-        Text(
-          'Tap the link in the email to sign in.\nThe app will open automatically.',
+        TextField(
+          controller: _emailOtpController,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
           textAlign: TextAlign.center,
-          style: AppTheme.label.copyWith(color: AppTheme.textSecondary, fontSize: 12),
+          style: AppTheme.heading.copyWith(fontSize: 24, letterSpacing: 8),
+          decoration: InputDecoration(
+            counterText: '',
+            filled: true,
+            fillColor: AppTheme.background,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
         ),
         const SizedBox(height: 24),
-        TextButton(
-          onPressed: () {
-            setState(() {
-              _emailLinkSent = false;
-              _emailController.clear();
-            });
-          },
-          child: const Text('Use a different email'),
+        AppButton(
+          text: 'Verify & Sign In',
+          isLoading: _isLoading,
+          onPressed: _verifyEmailOTP,
         ),
-        TextButton(
-          onPressed: _isLoading ? null : _sendEmailLink,
-          child: const Text('Resend link'),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _emailOtpSent = false;
+                  _emailOtpController.clear();
+                });
+              },
+              child: const Text('Change Email'),
+            ),
+            const SizedBox(width: 16),
+            TextButton(
+              onPressed: _resendCountdown > 0 ? null : _sendEmailOTP,
+              child: Text(
+                _resendCountdown > 0 
+                  ? 'Resend in ${_resendCountdown}s' 
+                  : 'Resend OTP',
+              ),
+            ),
+          ],
         ),
       ];
     }

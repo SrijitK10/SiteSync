@@ -54,6 +54,10 @@ class AuthNotifier extends Notifier<AuthState> {
     await prefs.remove('jwt');
     state = AuthState();
   }
+
+  void setAuth(AuthState newState) {
+    state = newState;
+  }
 }
 
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {
