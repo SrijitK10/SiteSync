@@ -1,16 +1,13 @@
-import { Controller, Post, Body, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, BadRequestException, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { OtpService } from './otp.service';
-import { JwtService } from '@nestjs/jwt';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-    private readonly otpService: OtpService,
-    private readonly jwtService: JwtService,
   ) {}
 
   // ── Firebase Phone Auth (Android) ─────────────────────────────
@@ -32,61 +29,62 @@ export class AuthController {
     return this.authService.loginOrRegister({ phone, email }, decoded.uid, body.name);
   }
 
-  // ── Custom Email OTP (iOS) ────────────────────────────────────
+  // ── Email + Password Auth (iOS) ───────────────────────────────
 
-  @Post('send-otp')
-  async sendOtp(@Body() body: { email: string }) {
+  @Post('register')
+  async register(@Body() body: { email: string; password: string; name: string }) {
     if (!body.email || !body.email.includes('@')) {
       throw new BadRequestException('Valid email is required');
     }
-
-    try {
-      await this.otpService.sendOTP(body.email);
-      return { message: 'OTP sent successfully', email: body.email };
-    } catch (error) {
-      throw new BadRequestException('Failed to send OTP email. Check SMTP configuration.');
+    if (!body.password || body.password.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters');
     }
+    if (!body.name || body.name.trim().length < 2) {
+      throw new BadRequestException('Name must be at least 2 characters');
+    }
+
+    return this.authService.register(
+      body.email.trim().toLowerCase(),
+      body.password,
+      body.name.trim(),
+    );
   }
 
-  @Post('verify-otp')
-  async verifyOtp(@Body() body: { email: string; code: string; name?: string }) {
-    if (!body.email || !body.code) {
-      throw new BadRequestException('Email and OTP code are required');
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    if (!body.email || !body.password) {
+      throw new BadRequestException('Email and password are required');
     }
 
-    const valid = this.otpService.verifyOTP(body.email, body.code);
-    if (!valid) {
-      throw new UnauthorizedException('Invalid or expired OTP');
+    return this.authService.loginWithPassword(
+      body.email.trim().toLowerCase(),
+      body.password,
+    );
+  }
+
+  @Post('change-password')
+  @UseGuards(AuthGuard('jwt'))
+  async changePassword(@Request() req: any, @Body() body: { oldPassword: string; newPassword: string }) {
+    if (!body.oldPassword || !body.newPassword) {
+      throw new BadRequestException('Old password and new password are required');
+    }
+    if (body.newPassword.length < 6) {
+      throw new BadRequestException('New password must be at least 6 characters');
     }
 
-    // OTP verified — find or create user, issue JWT
-    let user = await this.usersService.findByEmail(body.email);
+    return this.authService.changePassword(req.user.sub, body.oldPassword, body.newPassword);
+  }
 
-    if (!user) {
-      user = await this.usersService.create({
-        email: body.email,
-        name: body.name || body.email.split('@')[0],
-        role: 'viewer',
-      });
+  @Post('reset-password')
+  async resetPassword(@Body() body: { firebaseIdToken: string; newPassword: string }) {
+    if (!body.firebaseIdToken || !body.newPassword) {
+      throw new BadRequestException('Firebase ID token and new password are required');
+    }
+    if (body.newPassword.length < 6) {
+      throw new BadRequestException('New password must be at least 6 characters');
     }
 
-    const payload = {
-      phone: user.phone,
-      email: user.email,
-      sub: user.id,
-      role: user.role,
-    };
-
-    return {
-      accessToken: this.jwtService.sign(payload),
-      user: {
-        id: user.id,
-        phone: user.phone,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    };
+    return this.authService.resetPassword(body.firebaseIdToken, body.newPassword);
   }
 
   // ── Initial Setup ─────────────────────────────────────────────

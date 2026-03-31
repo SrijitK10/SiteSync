@@ -17,6 +17,9 @@ export class User {
   @Column({ unique: true, nullable: true })
   firebase_uid: string;
 
+  @Column({ nullable: true, select: false })
+  password_hash: string;
+
   @Column({ default: 'viewer' })
   role: string; // super_admin, admin, site_manager, viewer
 

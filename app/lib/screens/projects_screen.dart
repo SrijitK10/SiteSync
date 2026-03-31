@@ -7,8 +7,8 @@ import '../widgets/app_text_field.dart';
 import '../state/projects_provider.dart';
 import '../state/auth_provider.dart';
 import '../models/user_role.dart';
-
 import '../services/api_client.dart';
+import '../services/platform_utils.dart';
 
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
@@ -46,6 +46,135 @@ class ProjectsScreen extends ConsumerWidget {
         }
       }
     }
+  }
+
+  void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Change Password', style: AppTheme.heading),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: oldPasswordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      filled: true,
+                      fillColor: AppTheme.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'New Password',
+                      hintText: 'Min. 6 characters',
+                      filled: true,
+                      fillColor: AppTheme.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: confirmPasswordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm New Password',
+                      filled: true,
+                      fillColor: AppTheme.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  isSubmitting
+                    ? const CircularProgressIndicator()
+                    : AppButton(
+                        text: 'Update Password',
+                        onPressed: () async {
+                          final oldPw = oldPasswordController.text;
+                          final newPw = newPasswordController.text;
+                          final confirmPw = confirmPasswordController.text;
+
+                          if (oldPw.isEmpty || newPw.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please fill in all fields')),
+                            );
+                            return;
+                          }
+                          if (newPw.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('New password must be at least 6 characters')),
+                            );
+                            return;
+                          }
+                          if (newPw != confirmPw) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Passwords do not match')),
+                            );
+                            return;
+                          }
+
+                          setState(() => isSubmitting = true);
+                          try {
+                            await ref.read(authProvider.notifier).changePassword(oldPw, newPw);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Password changed successfully')),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(extractErrorMessage(e))),
+                              );
+                            }
+                          } finally {
+                            if (context.mounted) setState(() => isSubmitting = false);
+                          }
+                        },
+                      ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showAddProjectBottomSheet(BuildContext context, WidgetRef ref) {
@@ -137,12 +266,37 @@ class ProjectsScreen extends ConsumerWidget {
             tooltip: 'Refresh Projects',
             onPressed: () => ref.invalidate(projectsProvider),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Log Out',
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'change_password') {
+                _showChangePasswordDialog(context, ref);
+              } else if (value == 'logout') {
+                await ref.read(authProvider.notifier).logout();
+              }
             },
+            itemBuilder: (context) => [
+              if (isApplePlatform)
+                const PopupMenuItem(
+                  value: 'change_password',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline, size: 20),
+                      SizedBox(width: 8),
+                      Text('Change Password'),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 20),
+                    SizedBox(width: 8),
+                    Text('Log Out'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

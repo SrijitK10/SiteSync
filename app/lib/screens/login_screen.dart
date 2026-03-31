@@ -1,22 +1,12 @@
-
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../state/auth_provider.dart';
-import '../models/user_role.dart';
-import '../services/api_client.dart';
-
-bool get _isApplePlatform {
-  if (kIsWeb) return false;
-  return defaultTargetPlatform == TargetPlatform.iOS ||
-         defaultTargetPlatform == TargetPlatform.macOS;
-}
+import '../services/platform_utils.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -26,17 +16,21 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  // Shared
+  bool _isLoading = false;
+
+  // Phone OTP (Android)
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _emailOtpController = TextEditingController();
-  
-  bool _isLoading = false;
-  bool _otpSent = false;        // Phone OTP sent (Android)
-  bool _emailOtpSent = false;   // Email OTP sent (iOS)
+  bool _otpSent = false;
   String? _verificationId;
   int? _resendToken;
   int _resendCountdown = 0;
+
+  // Email + Password (iOS)
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   // ── PHONE OTP FLOW (Android) ──────────────────────────────────
 
@@ -134,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final userCredential = await fb.FirebaseAuth.instance.signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
-      
+
       if (idToken != null && mounted) {
         await ref.read(authProvider.notifier).loginWithFirebaseToken(idToken);
       }
@@ -148,45 +142,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // ── EMAIL OTP FLOW (iOS / macOS) ──────────────────────────────
+  // ── EMAIL + PASSWORD FLOW (iOS) ───────────────────────────────
 
-  void _sendEmailOTP() async {
+  void _loginWithPassword() async {
     final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid email address')),
       );
       return;
     }
-
-    setState(() => _isLoading = true);
-
-    try {
-      await apiClient.post('/auth/send-otp', data: {'email': email});
-      
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _emailOtpSent = true;
-          _resendCountdown = 30;
-        });
-        _startResendTimer();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send OTP: $e')),
-        );
-      }
-    }
-  }
-
-  void _verifyEmailOTP() async {
-    final code = _emailOtpController.text.trim();
-    if (code.length != 6) {
+    if (password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the 6-digit OTP')),
+        const SnackBar(content: Text('Please enter your password')),
       );
       return;
     }
@@ -194,40 +164,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final email = _emailController.text.trim();
-      final res = await apiClient.post('/auth/verify-otp', data: {
-        'email': email,
-        'code': code,
-      });
-
-      final token = res.data['accessToken'];
-      final userData = res.data['user'];
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('jwt', token);
-
-      final fetchedRole = UserRole.values.firstWhere(
-        (r) => r.value == userData['role'],
-        orElse: () => UserRole.viewer,
-      );
-
-      if (mounted) {
-        ref.read(authProvider.notifier).setAuth(AuthState(
-          isAuthenticated: true,
-          currentUser: User(
-            id: userData['id'],
-            name: userData['name'],
-            phone: userData['phone'],
-            email: userData['email'],
-            role: fetchedRole,
-          ),
-        ));
-      }
+      await ref.read(authProvider.notifier).loginWithPassword(email, password);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid OTP: $e')),
+          SnackBar(content: Text(extractErrorMessage(e))),
         );
       }
     }
@@ -240,7 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _phoneController.dispose();
     _otpController.dispose();
     _emailController.dispose();
-    _emailOtpController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -276,9 +218,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: 40),
-                  
-                  if (_isApplePlatform)
-                    ..._buildEmailOTPFlow()
+
+                  if (isApplePlatform)
+                    ..._buildEmailPasswordFlow()
                   else
                     ..._buildPhoneOTPFlow(),
                 ],
@@ -384,8 +326,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             TextButton(
               onPressed: _resendCountdown > 0 ? null : _sendOTP,
               child: Text(
-                _resendCountdown > 0 
-                  ? 'Resend in ${_resendCountdown}s' 
+                _resendCountdown > 0
+                  ? 'Resend in ${_resendCountdown}s'
                   : 'Resend OTP',
               ),
             ),
@@ -395,110 +337,74 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // ── EMAIL OTP UI (iOS / macOS) ────────────────────────────────
+  // ── EMAIL + PASSWORD UI (iOS) ─────────────────────────────────
 
-  List<Widget> _buildEmailOTPFlow() {
-    if (!_emailOtpSent) {
-      return [
-        Text('EMAIL ADDRESS', style: AppTheme.label),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          style: AppTheme.body,
-          decoration: InputDecoration(
-            hintText: 'you@example.com',
-            filled: true,
-            fillColor: AppTheme.background,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  List<Widget> _buildEmailPasswordFlow() {
+    return [
+      Text('EMAIL ADDRESS', style: AppTheme.label),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        style: AppTheme.body,
+        decoration: InputDecoration(
+          hintText: 'you@example.com',
+          filled: true,
+          fillColor: AppTheme.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+      const SizedBox(height: 20),
+      Text('PASSWORD', style: AppTheme.label),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _passwordController,
+        obscureText: _obscurePassword,
+        style: AppTheme.body,
+        decoration: InputDecoration(
+          hintText: 'Enter your password',
+          filled: true,
+          fillColor: AppTheme.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          suffixIcon: IconButton(
+            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
-        const SizedBox(height: 24),
-        AppButton(
-          text: 'Send OTP',
-          isLoading: _isLoading,
-          onPressed: _sendEmailOTP,
+      ),
+      const SizedBox(height: 8),
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(
+          onPressed: () => context.push('/forgot-password'),
+          child: const Text('Forgot Password?'),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'A 6-digit code will be sent to your email.',
-          textAlign: TextAlign.center,
-          style: AppTheme.label.copyWith(color: AppTheme.textSecondary, fontSize: 12),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text("Don't have an account? "),
-            TextButton(
-              onPressed: () => context.go('/signup'),
-              child: const Text('Sign Up'),
-            ),
-          ],
-        ),
-      ];
-    } else {
-      return [
-        Text(
-          'OTP sent to ${_emailController.text}',
-          textAlign: TextAlign.center,
-          style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
-        ),
-        const SizedBox(height: 20),
-        Text('ENTER OTP', style: AppTheme.label),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _emailOtpController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          textAlign: TextAlign.center,
-          style: AppTheme.heading.copyWith(fontSize: 24, letterSpacing: 8),
-          decoration: InputDecoration(
-            counterText: '',
-            filled: true,
-            fillColor: AppTheme.background,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      const SizedBox(height: 16),
+      AppButton(
+        text: 'Sign In',
+        isLoading: _isLoading,
+        onPressed: _loginWithPassword,
+      ),
+      const SizedBox(height: 20),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text("Don't have an account? "),
+          TextButton(
+            onPressed: () => context.go('/signup'),
+            child: const Text('Sign Up'),
           ),
-        ),
-        const SizedBox(height: 24),
-        AppButton(
-          text: 'Verify & Sign In',
-          isLoading: _isLoading,
-          onPressed: _verifyEmailOTP,
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _emailOtpSent = false;
-                  _emailOtpController.clear();
-                });
-              },
-              child: const Text('Change Email'),
-            ),
-            const SizedBox(width: 16),
-            TextButton(
-              onPressed: _resendCountdown > 0 ? null : _sendEmailOTP,
-              child: Text(
-                _resendCountdown > 0 
-                  ? 'Resend in ${_resendCountdown}s' 
-                  : 'Resend OTP',
-              ),
-            ),
-          ],
-        ),
-      ];
-    }
+        ],
+      ),
+    ];
   }
 }

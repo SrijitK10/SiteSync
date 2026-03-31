@@ -46,6 +46,20 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
+  async findByEmailWithPassword(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { email },
+      select: ['id', 'name', 'phone', 'email', 'role', 'password_hash', 'firebase_uid'],
+    });
+  }
+
+  async findByIdWithPassword(id: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'name', 'phone', 'email', 'role', 'password_hash', 'firebase_uid'],
+    });
+  }
+
   async findByFirebaseUid(uid: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { firebase_uid: uid } });
   }

@@ -1,21 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../state/auth_provider.dart';
-import '../models/user_role.dart';
-import '../services/api_client.dart';
-
-bool get _isApplePlatform {
-  if (kIsWeb) return false;
-  return defaultTargetPlatform == TargetPlatform.iOS ||
-         defaultTargetPlatform == TargetPlatform.macOS;
-}
+import '../services/platform_utils.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -25,18 +16,24 @@ class SignupScreen extends ConsumerStatefulWidget {
 }
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
+  // Shared
   final _nameController = TextEditingController();
+  bool _isLoading = false;
+
+  // Phone OTP (Android)
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _emailOtpController = TextEditingController();
-  
-  bool _isLoading = false;
-  bool _otpSent = false;        // Phone OTP sent (Android)
-  bool _emailOtpSent = false;   // Email OTP sent (iOS)
+  bool _otpSent = false;
   String? _verificationId;
   int? _resendToken;
   int _resendCountdown = 0;
+
+  // Email + Password (iOS)
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   // ── PHONE OTP FLOW (Android) ──────────────────────────────────
 
@@ -143,7 +140,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       final userCredential = await fb.FirebaseAuth.instance.signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
       final name = _nameController.text.trim();
-      
+
       if (idToken != null && mounted) {
         await ref.read(authProvider.notifier).loginWithFirebaseToken(idToken, name: name);
       }
@@ -157,53 +154,35 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
-  // ── EMAIL OTP FLOW (iOS / macOS) ──────────────────────────────
+  // ── EMAIL + PASSWORD FLOW (iOS) ───────────────────────────────
 
-  void _sendEmailOTP() async {
+  void _registerWithPassword() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty) {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirm = _confirmPasswordController.text;
+
+    if (name.isEmpty || name.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your full name')),
       );
       return;
     }
-
-    final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid email address')),
       );
       return;
     }
-
-    setState(() => _isLoading = true);
-
-    try {
-      await apiClient.post('/auth/send-otp', data: {'email': email});
-      
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _emailOtpSent = true;
-          _resendCountdown = 30;
-        });
-        _startResendTimer();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send OTP: $e')),
-        );
-      }
-    }
-  }
-
-  void _verifyEmailOTP() async {
-    final code = _emailOtpController.text.trim();
-    if (code.length != 6) {
+    if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the 6-digit OTP')),
+        const SnackBar(content: Text('Password must be at least 6 characters')),
+      );
+      return;
+    }
+    if (password != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match')),
       );
       return;
     }
@@ -211,42 +190,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final email = _emailController.text.trim();
-      final name = _nameController.text.trim();
-      final res = await apiClient.post('/auth/verify-otp', data: {
-        'email': email,
-        'code': code,
-        'name': name,
-      });
-
-      final token = res.data['accessToken'];
-      final userData = res.data['user'];
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('jwt', token);
-
-      final fetchedRole = UserRole.values.firstWhere(
-        (r) => r.value == userData['role'],
-        orElse: () => UserRole.viewer,
-      );
-
-      if (mounted) {
-        ref.read(authProvider.notifier).setAuth(AuthState(
-          isAuthenticated: true,
-          currentUser: User(
-            id: userData['id'],
-            name: userData['name'],
-            phone: userData['phone'],
-            email: userData['email'],
-            role: fetchedRole,
-          ),
-        ));
-      }
+      await ref.read(authProvider.notifier).registerWithPassword(email, password, name);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid OTP: $e')),
+          SnackBar(content: Text(extractErrorMessage(e))),
         );
       }
     }
@@ -260,7 +209,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _phoneController.dispose();
     _otpController.dispose();
     _emailController.dispose();
-    _emailOtpController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -290,9 +240,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     style: AppTheme.heading.copyWith(fontSize: 28),
                   ),
                   const SizedBox(height: 40),
-                  
-                  if (_isApplePlatform)
-                    ..._buildEmailOTPFlow()
+
+                  if (isApplePlatform)
+                    ..._buildEmailPasswordFlow()
                   else
                     ..._buildPhoneOTPFlow(),
                 ],
@@ -415,8 +365,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             TextButton(
               onPressed: _resendCountdown > 0 ? null : _sendOTP,
               child: Text(
-                _resendCountdown > 0 
-                  ? 'Resend in ${_resendCountdown}s' 
+                _resendCountdown > 0
+                  ? 'Resend in ${_resendCountdown}s'
                   : 'Resend OTP',
               ),
             ),
@@ -426,127 +376,105 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
   }
 
-  // ── EMAIL OTP UI (iOS / macOS) ────────────────────────────────
+  // ── EMAIL + PASSWORD UI (iOS) ─────────────────────────────────
 
-  List<Widget> _buildEmailOTPFlow() {
-    if (!_emailOtpSent) {
-      return [
-        Text('FULL NAME', style: AppTheme.label),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _nameController,
-          style: AppTheme.body,
-          decoration: InputDecoration(
-            hintText: 'John Doe',
-            filled: true,
-            fillColor: AppTheme.background,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  List<Widget> _buildEmailPasswordFlow() {
+    return [
+      Text('FULL NAME', style: AppTheme.label),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _nameController,
+        style: AppTheme.body,
+        decoration: InputDecoration(
+          hintText: 'John Doe',
+          filled: true,
+          fillColor: AppTheme.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+      const SizedBox(height: 20),
+      Text('EMAIL ADDRESS', style: AppTheme.label),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        style: AppTheme.body,
+        decoration: InputDecoration(
+          hintText: 'you@example.com',
+          filled: true,
+          fillColor: AppTheme.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+      const SizedBox(height: 20),
+      Text('PASSWORD', style: AppTheme.label),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _passwordController,
+        obscureText: _obscurePassword,
+        style: AppTheme.body,
+        decoration: InputDecoration(
+          hintText: 'Min. 6 characters',
+          filled: true,
+          fillColor: AppTheme.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          suffixIcon: IconButton(
+            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
-        const SizedBox(height: 20),
-        Text('EMAIL ADDRESS', style: AppTheme.label),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          style: AppTheme.body,
-          decoration: InputDecoration(
-            hintText: 'you@example.com',
-            filled: true,
-            fillColor: AppTheme.background,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      const SizedBox(height: 20),
+      Text('CONFIRM PASSWORD', style: AppTheme.label),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _confirmPasswordController,
+        obscureText: _obscureConfirm,
+        style: AppTheme.body,
+        decoration: InputDecoration(
+          hintText: 'Re-enter your password',
+          filled: true,
+          fillColor: AppTheme.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          suffixIcon: IconButton(
+            icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
+            onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
           ),
         ),
-        const SizedBox(height: 24),
-        AppButton(
-          text: 'Send Verification Code',
-          isLoading: _isLoading,
-          onPressed: _sendEmailOTP,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'A 6-digit code will be sent to your email.',
-          textAlign: TextAlign.center,
-          style: AppTheme.label.copyWith(color: AppTheme.textSecondary, fontSize: 12),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Already have an account? '),
-            TextButton(
-              onPressed: () => context.go('/login'),
-              child: const Text('Log In'),
-            ),
-          ],
-        ),
-      ];
-    } else {
-      return [
-        Text(
-          'OTP sent to ${_emailController.text}',
-          textAlign: TextAlign.center,
-          style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
-        ),
-        const SizedBox(height: 20),
-        Text('ENTER OTP', style: AppTheme.label),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _emailOtpController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          textAlign: TextAlign.center,
-          style: AppTheme.heading.copyWith(fontSize: 24, letterSpacing: 8),
-          decoration: InputDecoration(
-            counterText: '',
-            filled: true,
-            fillColor: AppTheme.background,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      const SizedBox(height: 24),
+      AppButton(
+        text: 'Create Account',
+        isLoading: _isLoading,
+        onPressed: _registerWithPassword,
+      ),
+      const SizedBox(height: 20),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('Already have an account? '),
+          TextButton(
+            onPressed: () => context.go('/login'),
+            child: const Text('Log In'),
           ),
-        ),
-        const SizedBox(height: 24),
-        AppButton(
-          text: 'Create Account',
-          isLoading: _isLoading,
-          onPressed: _verifyEmailOTP,
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _emailOtpSent = false;
-                  _emailOtpController.clear();
-                });
-              },
-              child: const Text('Change Details'),
-            ),
-            const SizedBox(width: 16),
-            TextButton(
-              onPressed: _resendCountdown > 0 ? null : _sendEmailOTP,
-              child: Text(
-                _resendCountdown > 0 
-                  ? 'Resend in ${_resendCountdown}s' 
-                  : 'Resend OTP',
-              ),
-            ),
-          ],
-        ),
-      ];
-    }
+        ],
+      ),
+    ];
   }
 }

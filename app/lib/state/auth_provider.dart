@@ -50,6 +50,62 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<void> loginWithPassword(String email, String password) async {
+    try {
+      final res = await apiClient.post('/auth/login', data: {
+        'email': email,
+        'password': password,
+      });
+      await _handleAuthResponse(res.data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> registerWithPassword(String email, String password, String name) async {
+    try {
+      final res = await apiClient.post('/auth/register', data: {
+        'email': email,
+        'password': password,
+        'name': name,
+      });
+      await _handleAuthResponse(res.data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    await apiClient.post('/auth/change-password', data: {
+      'oldPassword': oldPassword,
+      'newPassword': newPassword,
+    });
+  }
+
+  Future<void> _handleAuthResponse(Map<String, dynamic> data) async {
+    final token = data['accessToken'];
+    final userData = data['user'];
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jwt', token);
+
+    final fetchedRole = UserRole.values.firstWhere(
+      (r) => r.value == userData['role'],
+      orElse: () => UserRole.viewer,
+    );
+
+    state = AuthState(
+      isAuthenticated: true,
+      currentUser: User(
+        id: userData['id'],
+        name: userData['name'],
+        phone: userData['phone'],
+        email: userData['email'],
+        role: fetchedRole,
+      ),
+    );
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt');
