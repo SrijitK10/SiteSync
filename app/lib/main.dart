@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
+import 'services/keep_alive_service.dart';
 import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
 import 'screens/login_screen.dart';
@@ -19,8 +20,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/projects',
     redirect: (context, state) {
+      // While restoring session, don't redirect anywhere
+      if (authState.isLoading) return null;
+
       final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/signup' || state.matchedLocation == '/forgot-password';
-      
+
       if (!authState.isAuthenticated) {
         return isAuthRoute ? null : '/login';
       }
@@ -81,6 +85,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  KeepAliveService.start();
   runApp(
     const ProviderScope(
       child: SiteSyncApp(),
@@ -93,7 +98,20 @@ class SiteSyncApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
     final router = ref.watch(routerProvider);
+
+    if (authState.isLoading) {
+      return MaterialApp(
+        title: 'SiteSync',
+        theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
+        home: const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return MaterialApp.router(
       title: 'SiteSync',
       theme: AppTheme.lightTheme,

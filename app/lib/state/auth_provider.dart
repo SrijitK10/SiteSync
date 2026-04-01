@@ -6,15 +6,54 @@ import '../models/user_role.dart';
 
 class AuthState {
   final bool isAuthenticated;
+  final bool isLoading;
   final User? currentUser;
 
-  AuthState({this.isAuthenticated = false, this.currentUser});
+  AuthState({this.isAuthenticated = false, this.isLoading = false, this.currentUser});
 }
 
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
-    return AuthState();
+    _tryRestoreSession();
+    return AuthState(isLoading: true);
+  }
+
+  Future<void> _tryRestoreSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt');
+      if (token == null) {
+        state = AuthState();
+        return;
+      }
+
+      // Validate token by calling /auth/me
+      final res = await apiClient.get('/auth/me');
+      final userData = res.data;
+
+      final fetchedRole = UserRole.values.firstWhere(
+        (r) => r.value == userData['role'],
+        orElse: () => UserRole.viewer,
+      );
+
+      state = AuthState(
+        isAuthenticated: true,
+        currentUser: User(
+          id: userData['id'],
+          name: userData['name'],
+          phone: userData['phone'],
+          email: userData['email'],
+          role: fetchedRole,
+        ),
+      );
+    } catch (e) {
+      // Token expired or invalid — clear it
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('jwt');
+      state = AuthState();
+      print('Session restore failed: $e');
+    }
   }
 
   Future<void> loginWithFirebaseToken(String idToken, {String? name}) async {

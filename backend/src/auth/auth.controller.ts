@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, BadRequestException, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, UnauthorizedException, BadRequestException, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -85,6 +85,24 @@ export class AuthController {
     }
 
     return this.authService.resetPassword(body.firebaseIdToken, body.newPassword);
+  }
+
+  // ── Session Restore ───────────────────────────────────────────
+
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  async me(@Request() req: any) {
+    const user = await this.usersService.findOne(req.user.sub);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+    };
   }
 
   // ── Initial Setup ─────────────────────────────────────────────
