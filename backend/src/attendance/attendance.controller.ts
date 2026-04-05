@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, Request, UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import { AuthGuard } from '@nestjs/passport';
 import { AttendanceService } from './attendance.service';
 import { RolesGuard } from '../auth/roles.guard';
@@ -11,11 +12,13 @@ export class AttendanceController {
 
   @Post('bulk')
   @Roles('admin', 'super_admin', 'site_manager')
-  createBulk(@Body() body: { siteAddress: string, projectId: string, workers: string[] }, @Request() req: any) {
-    return this.attendanceService.createBulk(body, req.user.userId);
+  async createBulk(@Body() body: { siteAddress: string, projectId: string, workers: string[] }, @Request() req: any) {
+    await this.attendanceService.createBulk(body, req.user.userId);
+    return { message: 'Attendance records created successfully' };
   }
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
   @Roles('admin', 'super_admin', 'site_manager')
   findAll(
     @Query('projectId') projectId: string, 

@@ -78,13 +78,13 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       }
 
       final directory = await getApplicationDocumentsDirectory();
-      final String filePath = '${directory.path}/SiteSync_Tasks_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final String filePath = '${directory.path}/Rupayan_Tasks_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final List<int>? fileBytes = excel.save();
       
       if (fileBytes != null) {
         File dataFile = File(filePath);
         await dataFile.writeAsBytes(fileBytes);
-        await Share.shareXFiles([XFile(filePath)], text: 'SiteSync $range Tasks Export');
+        await Share.shareXFiles([XFile(filePath)], text: 'Rupayan $range Tasks Export');
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));

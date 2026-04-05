@@ -253,7 +253,7 @@ class ProjectsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Live Projects'),
+        title: Image.asset('assets/images/rppl.png', height: 36),
         actions: [
           if (canManageProjects)
             IconButton(

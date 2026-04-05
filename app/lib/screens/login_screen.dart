@@ -200,22 +200,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.construction,
-                    size: 64,
-                    color: AppTheme.accent,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'SiteSync',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.heading.copyWith(fontSize: 28),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Construction Management',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+                  Image.asset(
+                    'assets/images/rppl.png',
+                    height: 100,
                   ),
                   const SizedBox(height: 40),
 

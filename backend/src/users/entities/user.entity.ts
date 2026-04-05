@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -11,6 +11,7 @@ export class User {
   @Column({ unique: true, nullable: true })
   phone: string; // E.164 format: +919876543210 (Android users)
 
+  @Index()
   @Column({ unique: true, nullable: true })
   email: string; // For iOS email-link auth users
 

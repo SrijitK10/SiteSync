@@ -130,13 +130,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       }
 
       final directory = await getApplicationDocumentsDirectory();
-      final String filePath = '${directory.path}/SiteSync_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final String filePath = '${directory.path}/Rupayan_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final List<int>? fileBytes = excel.save();
       
       if (fileBytes != null) {
         File dataFile = File(filePath);
         await dataFile.writeAsBytes(fileBytes);
-        await Share.shareXFiles([XFile(filePath)], text: 'SiteSync $range Attendance Cloud Export');
+        await Share.shareXFiles([XFile(filePath)], text: 'Rupayan $range Attendance Cloud Export');
       }
 
     } catch (e) {

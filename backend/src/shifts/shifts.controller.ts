@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query, UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import { AuthGuard } from '@nestjs/passport';
 import { ShiftsService } from './shifts.service';
 import { RolesGuard } from '../auth/roles.guard';
@@ -17,12 +18,14 @@ export class ShiftsController {
 
   // Workers fetching their own shifts
   @Get('my')
+  @UseInterceptors(CacheInterceptor)
   findMyShifts(@Request() req: any) {
     return this.shiftsService.findAllByUser(req.user.userId);
   }
 
   // Managers fetching shifts for a project
   @Get()
+  @UseInterceptors(CacheInterceptor)
   @Roles('admin', 'super_admin', 'site_manager')
   findAll(@Query('projectId') projectId: string) {
     if (projectId) {

@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('projects')
@@ -15,6 +15,7 @@ export class Project {
   @Column()
   location: string;
 
+  @Index()
   @Column({ default: 'active' }) // active, archived, completed
   status: string;
 

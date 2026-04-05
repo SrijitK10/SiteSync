@@ -87,14 +87,14 @@ void main() async {
   );
   KeepAliveService.start();
   runApp(
-    const ProviderScope(
-      child: SiteSyncApp(),
+    ProviderScope(
+      child: RupayanApp(),
     ),
   );
 }
 
-class SiteSyncApp extends ConsumerWidget {
-  const SiteSyncApp({super.key});
+class RupayanApp extends ConsumerWidget {
+  const RupayanApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,7 +103,7 @@ class SiteSyncApp extends ConsumerWidget {
 
     if (authState.isLoading) {
       return MaterialApp(
-        title: 'SiteSync',
+        title: 'Rupayan',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
         home: const Scaffold(
@@ -113,7 +113,7 @@ class SiteSyncApp extends ConsumerWidget {
     }
 
     return MaterialApp.router(
-      title: 'SiteSync',
+      title: 'Rupayan',
       theme: AppTheme.lightTheme,
       routerConfig: router,
       debugShowCheckedModeBanner: false,

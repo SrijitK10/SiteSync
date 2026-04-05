@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, UseInterceptors } from '@nestjs/common';
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import { AuthGuard } from '@nestjs/passport';
 import { ProjectsService } from './projects.service';
 import { RolesGuard } from '../auth/roles.guard';
@@ -16,6 +17,7 @@ export class ProjectsController {
   }
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
   findAll(@Request() req: any) {
     return this.projectsService.findAll(req.user.userId, req.user.role);
   }
