@@ -362,24 +362,9 @@ class ProjectsScreen extends ConsumerWidget {
                             child: Text(p['name'] ?? 'Unnamed', style: AppTheme.heading.copyWith(fontSize: 18), overflow: TextOverflow.ellipsis),
                           ),
                           if (canManageProjects)
-                            SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: PopupMenuButton<String>(
-                                padding: EdgeInsets.zero,
-                                icon: const Icon(Icons.more_vert, size: 20, color: AppTheme.textSecondary),
-                                onSelected: (value) {
-                                  if (value == 'delete') {
-                                    _confirmDelete(context, ref, p['id'].toString());
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text('Delete Project', style: TextStyle(color: Colors.red)),
-                                  ),
-                                ],
-                              ),
+                            GestureDetector(
+                              onTap: () => _confirmDelete(context, ref, p['id'].toString()),
+                              child: const Icon(Icons.delete_outline, size: 20, color: AppTheme.textSecondary),
                             ),
                         ],
                       ),
