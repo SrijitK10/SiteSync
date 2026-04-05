@@ -361,9 +361,13 @@ class ProjectsScreen extends ConsumerWidget {
                           Expanded(
                             child: Text(p['name'] ?? 'Unnamed', style: AppTheme.heading.copyWith(fontSize: 18), overflow: TextOverflow.ellipsis),
                           ),
-                          Row(
-                            children: [
-                              if (canManageProjects) PopupMenuButton<String>(
+                          if (canManageProjects)
+                            SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.more_vert, size: 20, color: AppTheme.textSecondary),
                                 onSelected: (value) {
                                   if (value == 'delete') {
                                     _confirmDelete(context, ref, p['id'].toString());
@@ -376,8 +380,7 @@ class ProjectsScreen extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 8),
