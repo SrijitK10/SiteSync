@@ -253,6 +253,7 @@ class ProjectsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
+        centerTitle: false,
         title: Image.asset('assets/images/rppl.png', height: 36),
         actions: [
           if (canManageProjects)
@@ -362,10 +363,6 @@ class ProjectsScreen extends ConsumerWidget {
                           ),
                           Row(
                             children: [
-                              Chip(
-                                label: Text((p['status'] ?? 'Draft').toString().toUpperCase(), style: AppTheme.label.copyWith(fontSize: 10)),
-                                backgroundColor: AppTheme.accent.withAlpha(50),
-                              ),
                               if (canManageProjects) PopupMenuButton<String>(
                                 onSelected: (value) {
                                   if (value == 'delete') {
@@ -390,15 +387,6 @@ class ProjectsScreen extends ConsumerWidget {
                           const SizedBox(width: 4),
                           Text(p['location'] ?? 'No Location', style: AppTheme.body.copyWith(color: AppTheme.textSecondary)),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Mock progress natively for backend missing schema elements
-                      LinearProgressIndicator(
-                        value: (p['progress'] != null) ? p['progress'] as double : 0.5,
-                        backgroundColor: AppTheme.background,
-                        color: AppTheme.success,
-                        minHeight: 6,
-                        borderRadius: BorderRadius.circular(3),
                       ),
                     ],
                   ),
