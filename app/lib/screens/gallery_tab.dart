@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
@@ -53,10 +56,10 @@ class _GalleryTabState extends State<GalleryTab> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (image == null) return;
 
-    final File sourceFile = File(image.path);
+    File sourceFile = File(image.path);
 
     // Show Dialog for caption
     final captionController = TextEditingController();
@@ -66,35 +69,54 @@ class _GalleryTabState extends State<GalleryTab> {
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: AppTheme.background,
-          title: Text('Add Caption', style: AppTheme.heading),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.file(sourceFile, height: 150, fit: BoxFit.cover),
-              const SizedBox(height: 16),
-              AppTextField(
-                label: 'CAPTION', 
-                hint: 'Describe progress...', 
-                controller: captionController
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.background,
+              title: Text('Image Preview', style: AppTheme.heading),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(sourceFile, height: 200, width: double.infinity, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(height: 16),
+                  AppTextField(
+                    label: 'CAPTION', 
+                    hint: 'Describe progress...', 
+                    controller: captionController
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx), 
-              child: const Text('Cancel', style: TextStyle(color: Colors.red))
-            ),
-            AppButton(
-              text: 'Upload', 
-              onPressed: () {
-                dialogCanceled = false;
-                Navigator.pop(ctx);
-              }
-            )
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx), 
+                  child: const Text('Cancel', style: TextStyle(color: Colors.red))
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final XFile? newImg = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+                    if (newImg != null) {
+                      setDialogState(() {
+                        sourceFile = File(newImg.path);
+                      });
+                    }
+                  },
+                  child: const Text('Retake', style: TextStyle(color: AppTheme.primary))
+                ),
+                AppButton(
+                  text: 'Upload', 
+                  onPressed: () {
+                    dialogCanceled = false;
+                    Navigator.pop(ctx);
+                  }
+                )
+              ],
+            );
+          }
         );
       }
     );
@@ -134,6 +156,29 @@ class _GalleryTabState extends State<GalleryTab> {
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _shareOrDownloadImage(String url, String dateString) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final savePath = '${tempDir.path}/progress_$dateString.jpg';
+      
+      // Download to temp directory
+      await Dio().download(url, savePath);
+      
+      // Pass downloaded file to native Share sheet
+      // ignore: deprecated_member_use
+      await Share.shareXFiles(
+        [XFile(savePath)], 
+        text: 'SiteSync Progress Image - ${widget.projectName}',
+        subject: 'Project Update'
+      );
+    } catch (e) {
+      debugPrint('Error sharing/downloading image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to process image: $e')));
+      }
     }
   }
 
@@ -197,8 +242,21 @@ class _GalleryTabState extends State<GalleryTab> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('By: $uploaderName', style: AppTheme.label.copyWith(color: AppTheme.primary)),
-                                  Text(dateFormatted, style: AppTheme.label),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('By: $uploaderName', style: AppTheme.label.copyWith(color: AppTheme.primary)),
+                                        const SizedBox(height: 4),
+                                        Text(dateFormatted, style: AppTheme.label),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.share, color: AppTheme.primary),
+                                    tooltip: 'Share / Save Image',
+                                    onPressed: () => _shareOrDownloadImage(img['url'], img['date'] ?? 'unknown'),
+                                  )
                                 ],
                               )
                             ],
