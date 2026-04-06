@@ -7,7 +7,7 @@ export class Attendance {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   contractor_name: string | null;
 
   @Column({ default: 0 })
