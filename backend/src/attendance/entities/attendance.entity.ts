@@ -8,7 +8,13 @@ export class Attendance {
   id: string;
 
   @Column()
-  worker_name: string;
+  contractor_name: string;
+
+  @Column({ default: 0 })
+  labourers_count: number;
+
+  @Column({ default: 0 })
+  mistris_count: number;
 
   @Column()
   site_address: string;

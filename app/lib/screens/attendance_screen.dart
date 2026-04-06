@@ -19,8 +19,14 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 }
 
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
-  final _workerNameController = TextEditingController();
-  final List<Map<String, String>> _records = [];
+  final _labourersController = TextEditingController();
+  final _mistrisController = TextEditingController();
+  String? _selectedContractor;
+  
+  List<dynamic> _contractors = [];
+  bool _isLoadingContractors = true;
+
+  final List<Map<String, dynamic>> _records = [];
   
   bool _isExporting = false;
   bool _isSyncing = false;
@@ -33,6 +39,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   void initState() {
     super.initState();
     _loadProjectDetails();
+    _fetchContractors();
+  }
+
+  Future<void> _fetchContractors() async {
+    try {
+      final res = await apiClient.get('/contractors');
+      if (mounted) {
+        setState(() {
+          _contractors = res.data;
+          _isLoadingContractors = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load contractors: $e');
+      if (mounted) setState(() => _isLoadingContractors = false);
+    }
   }
 
   Future<void> _loadProjectDetails() async {
@@ -53,16 +75,38 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 
   void _addRecordLocal() {
-    final name = _workerNameController.text.trim();
-    if (name.isEmpty) return;
+    if (_selectedContractor == null) return;
+    
+    final labourers = int.tryParse(_labourersController.text.trim()) ?? 0;
+    final mistris = int.tryParse(_mistrisController.text.trim()) ?? 0;
 
     setState(() {
       _records.insert(0, {
-        'name': name,
+        'contractor_name': _selectedContractor,
+        'labourers_count': labourers,
+        'mistris_count': mistris,
         'date': DateTime.now().toIso8601String(),
         'project': _projectName,
       });
-      _workerNameController.clear();
+      _selectedContractor = null;
+      _labourersController.clear();
+      _mistrisController.clear();
+    });
+  }
+
+  void _editRecordLocal(int index) {
+    final record = _records[index];
+    setState(() {
+      _selectedContractor = record['contractor_name'];
+      _labourersController.text = record['labourers_count'].toString();
+      _mistrisController.text = record['mistris_count'].toString();
+      _records.removeAt(index);
+    });
+  }
+
+  void _removeRecordLocal(int index) {
+    setState(() {
+      _records.removeAt(index);
     });
   }
 
@@ -74,11 +118,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
     setState(() => _isSyncing = true);
     try {
-      final workers = _records.map((r) => r['name']!).toList();
+      final formattedRecords = _records.map((r) => {
+        'contractor_name': r['contractor_name'],
+        'labourers_count': r['labourers_count'],
+        'mistris_count': r['mistris_count'],
+      }).toList();
+      
       await apiClient.post('/attendance/bulk', data: {
         'projectId': widget.projectId,
         'siteAddress': _siteAddress,
-        'workers': workers,
+        'records': formattedRecords,
       });
       
       if (mounted) {
@@ -88,7 +137,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         ));
         setState(() {
           _records.clear();
-          _workerNameController.clear();
+          _selectedContractor = null;
+          _labourersController.clear();
+          _mistrisController.clear();
         });
       }
     } catch (e) {
@@ -114,7 +165,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       excel.setDefaultSheet('Attendance');
 
       sheetObject.appendRow([
-        TextCellValue('Worker Name'),
+        TextCellValue('Contractor'),
+        TextCellValue('Labourers'),
+        TextCellValue('Mistris'),
         TextCellValue('Mapped Project Location'),
         TextCellValue('Timestamp (Server Locked)'),
         TextCellValue('Logged By'),
@@ -122,7 +175,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
       for (var r in remoteRecords) {
         sheetObject.appendRow([
-          TextCellValue(r['worker_name'] ?? 'Unknown'),
+          TextCellValue(r['contractor_name'] ?? 'Unknown'),
+          TextCellValue(r['labourers_count']?.toString() ?? '0'),
+          TextCellValue(r['mistris_count']?.toString() ?? '0'),
           TextCellValue(r['site_address'] ?? 'No Address'),
           TextCellValue(r['date'] ?? ''),
           TextCellValue(r['recorder']?['name'] ?? 'Unknown Admin'),
@@ -169,6 +224,92 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       final end = picked.end.toIso8601String().split('T')[0];
       _fetchAndExportExcel('custom', startDate: start, endDate: end);
     }
+  }
+
+  Future<void> _addContractorConfig(String name) async {
+    try {
+      await apiClient.post('/contractors', data: {'name': name});
+      _fetchContractors();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contractor Added')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add contractor: $e')));
+    }
+  }
+
+  Future<void> _deleteContractorConfig(String id) async {
+    try {
+      await apiClient.delete('/contractors/$id');
+      _fetchContractors();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contractor Removed')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove contractor: $e')));
+    }
+  }
+
+  void _showManageContractorsDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.background,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) {
+        final localController = TextEditingController();
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 16, right: 16, top: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Manage Contractors', style: AppTheme.heading),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      label: 'NEW CONTRACTOR NAME',
+                      hint: 'Type here...',
+                      controller: localController,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle, color: AppTheme.primary, size: 36),
+                    onPressed: () {
+                      if (localController.text.trim().isNotEmpty) {
+                        _addContractorConfig(localController.text.trim());
+                        localController.clear();
+                        Navigator.pop(ctx);
+                        _fetchContractors();
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              Expanded(
+                child: _contractors.isEmpty 
+                  ? const Center(child: Text('No contractors found.'))
+                  : ListView.builder(
+                      itemCount: _contractors.length,
+                      itemBuilder: (c, i) {
+                        final contractor = _contractors[i];
+                        return ListTile(
+                          title: Text(contractor['name']),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              _deleteContractorConfig(contractor['id']);
+                              Navigator.pop(ctx);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+              )
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showExportOptions(BuildContext context) {
@@ -230,14 +371,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                 else
                   Align(
                     alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () => _showExportOptions(context),
-                      icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
-                      label: const Text('Download Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _showManageContractorsDialog(context),
+                          icon: const Icon(Icons.group, size: 18, color: AppTheme.accent),
+                          label: const Text('Contractors', style: TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w600)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _showExportOptions(context),
+                          icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
+                          label: const Text('Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
                     ),
                   ),
                 const SizedBox(height: 8),
@@ -252,13 +399,53 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-
-                          AppTextField(
-                            label: 'WORKER NAME',
-                            hint: 'Type worker name',
-                            controller: _workerNameController,
+                          _isLoadingContractors 
+                            ? const LinearProgressIndicator()
+                            : DropdownButtonFormField<String>(
+                                value: _selectedContractor,
+                                decoration: const InputDecoration(
+                                  labelText: 'CONTRACTOR',
+                                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary)),
+                                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.primary)),
+                                ),
+                                dropdownColor: AppTheme.surface,
+                                style: const TextStyle(color: AppTheme.textPrimary),
+                                items: _contractors.map((c) {
+                                  return DropdownMenuItem<String>(
+                                    value: c['name'],
+                                    child: Text(c['name']),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _selectedContractor = val;
+                                  });
+                                },
+                              ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppTextField(
+                                  label: 'LABOURERS',
+                                  hint: '0',
+                                  controller: _labourersController,
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: AppTextField(
+                                  label: 'MISTRIS',
+                                  hint: '0',
+                                  controller: _mistrisController,
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
                           AppButton(
                             text: 'Add to Temporary Roster',
                             onPressed: _addRecordLocal,
@@ -289,9 +476,22 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                               color: AppTheme.surface,
                               margin: const EdgeInsets.only(bottom: 8),
                               child: ListTile(
-                                leading: const Icon(Icons.person, color: AppTheme.accent),
-                                title: Text(r['name']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                trailing: const Icon(Icons.sync_problem, color: Colors.orange),
+                                leading: const Icon(Icons.engineering, color: AppTheme.accent),
+                                title: Text(r['contractor_name']!, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('Labourers: ${r['labourers_count']} • Mistris: ${r['mistris_count']}'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, color: AppTheme.primary),
+                                      onPressed: () => _editRecordLocal(index),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                      onPressed: () => _removeRecordLocal(index),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },

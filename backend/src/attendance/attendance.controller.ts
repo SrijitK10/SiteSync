@@ -12,7 +12,7 @@ export class AttendanceController {
 
   @Post('bulk')
   @Roles('admin', 'super_admin', 'site_manager')
-  async createBulk(@Body() body: { siteAddress: string, projectId: string, workers: string[] }, @Request() req: any) {
+  async createBulk(@Body() body: { siteAddress: string, projectId: string, records: any[] }, @Request() req: any) {
     await this.attendanceService.createBulk(body, req.user.userId);
     return { message: 'Attendance records created successfully' };
   }

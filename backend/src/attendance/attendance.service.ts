@@ -10,15 +10,17 @@ export class AttendanceService {
     private attendanceRepository: Repository<Attendance>,
   ) {}
 
-  async createBulk(createDto: { siteAddress: string, projectId: string, workers: string[] }, recorderId: string): Promise<void> {
-    const records = createDto.workers.map(name => ({
-      worker_name: name,
+  async createBulk(createDto: { siteAddress: string, projectId: string, records: any[] }, recorderId: string): Promise<void> {
+    const formattedRecords = createDto.records.map(r => ({
+      contractor_name: r.contractor_name,
+      labourers_count: r.labourers_count ?? 0,
+      mistris_count: r.mistris_count ?? 0,
       site_address: createDto.siteAddress,
       project: { id: createDto.projectId } as any,
       recorder: { id: recorderId } as any,
     }));
     
-    await this.attendanceRepository.insert(records);
+    await this.attendanceRepository.insert(formattedRecords);
   }
 
   async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string): Promise<Attendance[]> {

@@ -9,6 +9,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { ShiftsModule } from './shifts/shifts.module';
 import { TasksModule } from './tasks/tasks.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { ContractorsModule } from './contractors/contractors.module';
 import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
@@ -30,6 +31,7 @@ import { CacheModule } from '@nestjs/cache-manager';
     ShiftsModule,
     TasksModule,
     AttendanceModule,
+    ContractorsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
