@@ -11,12 +11,8 @@ import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
 import 'package:intl/intl.dart';
 
-// ==========================================
-// Cloudinary Configuration Constants
-// ==========================================
 const String cloudinaryCloudName = 'decj8mbhf';
 const String cloudinaryUploadPreset = 'rupayan';
-
 
 class GalleryTab extends StatefulWidget {
   final String projectId;
@@ -55,11 +51,30 @@ class _GalleryTabState extends State<GalleryTab> {
     }
   }
 
+  // Groups images by date, preserving insertion order (newest first)
+  Map<String, List<dynamic>> _groupByDate() {
+    final Map<String, List<dynamic>> grouped = {};
+    for (final img in _images) {
+      final date = img['date'] ?? 'Unknown';
+      grouped.putIfAbsent(date, () => []).add(img);
+    }
+    return grouped;
+  }
+
+  void _openFullscreen(List<dynamic> images, int initialIndex) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _FullscreenViewer(
+        images: images,
+        initialIndex: initialIndex,
+        projectName: widget.projectName,
+      ),
+    ));
+  }
+
   Future<void> _pickAndUploadImage() async {
     List<XFile> images = await _picker.pickMultiImage(imageQuality: 70);
     if (images.isEmpty) return;
 
-    // Show Dialog for caption
     final captionController = TextEditingController();
     bool dialogCanceled = true;
 
@@ -91,51 +106,44 @@ class _GalleryTabState extends State<GalleryTab> {
                         itemBuilder: (context, index) {
                           return ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              File(images[index].path),
-                              fit: BoxFit.cover,
-                            ),
+                            child: Image.file(File(images[index].path), fit: BoxFit.cover),
                           );
                         },
                       ),
                     ),
                     const SizedBox(height: 16),
                     AppTextField(
-                      label: 'GROUP CAPTION', 
-                      hint: 'Describe progress...', 
-                      controller: captionController
+                      label: 'GROUP CAPTION',
+                      hint: 'Describe progress...',
+                      controller: captionController,
                     ),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx), 
-                  child: const Text('Cancel', style: TextStyle(color: Colors.red))
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.red)),
                 ),
                 TextButton(
                   onPressed: () async {
                     final List<XFile> newImgs = await _picker.pickMultiImage(imageQuality: 70);
-                    if (newImgs.isNotEmpty) {
-                      setDialogState(() {
-                        images = newImgs;
-                      });
-                    }
+                    if (newImgs.isNotEmpty) setDialogState(() => images = newImgs);
                   },
-                  child: const Text('Reselect', style: TextStyle(color: AppTheme.primary))
+                  child: const Text('Reselect', style: TextStyle(color: AppTheme.primary)),
                 ),
                 AppButton(
-                  text: 'Upload', 
+                  text: 'Upload',
                   onPressed: () {
                     dialogCanceled = false;
                     Navigator.pop(ctx);
-                  }
-                )
+                  },
+                ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
 
     if (dialogCanceled) return;
@@ -143,61 +151,58 @@ class _GalleryTabState extends State<GalleryTab> {
     setState(() => _isUploading = true);
 
     try {
-      // 1. Upload to Cloudinary
-      if (cloudinaryCloudName == 'YOUR_CLOUD_NAME') {
-        throw Exception('Cloudinary configuration missing. Please update constants in gallery_tab.dart.');
-      }
-      
-      final String folderPath = widget.projectName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_'); // Sanitize folder name
+      final String folderPath = widget.projectName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
       final cloudinary = CloudinaryPublic(cloudinaryCloudName, cloudinaryUploadPreset, cache: false);
-      
-      // We perform serial uploads to prevent overwhelming limits or Memory
+
       for (var img in images) {
-        CloudinaryResponse response = await cloudinary.uploadFile(
+        final response = await cloudinary.uploadFile(
           CloudinaryFile.fromFile(img.path, resourceType: CloudinaryResourceType.Image, folder: folderPath),
         );
-
-        final imageUrl = response.secureUrl;
-
-        // 2. Transmit to backend
         await apiClient.post('/projects/${widget.projectId}/images', data: {
-          'url': imageUrl,
+          'url': response.secureUrl,
           'caption': captionController.text.trim(),
         });
       }
 
-      // 3. Refresh list
       _fetchImages();
-
     } catch (e) {
       debugPrint('Error uploading image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload Failed: $e', style: const TextStyle(color: Colors.red))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload Failed: $e', style: const TextStyle(color: Colors.red))),
+        );
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
   }
 
-  Future<void> _shareOrDownloadImage(String url, String dateString) async {
+  Future<void> _shareImages(List<dynamic> images, String caption) async {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preparing images to share...')),
+      );
+    }
     try {
       final tempDir = await getTemporaryDirectory();
-      final savePath = '${tempDir.path}/progress_$dateString.jpg';
-      
-      // Download to temp directory
-      await Dio().download(url, savePath);
-      
-      // Pass downloaded file to native Share sheet
+      final dio = Dio();
+      final List<XFile> files = [];
+
+      for (int i = 0; i < images.length; i++) {
+        final savePath = '${tempDir.path}/share_${images[i]['date'] ?? 'img'}_$i.jpg';
+        await dio.download(images[i]['url'], savePath);
+        files.add(XFile(savePath));
+      }
+
+      final shareText = caption.isNotEmpty ? caption : widget.projectName;
       // ignore: deprecated_member_use
-      await Share.shareXFiles(
-        [XFile(savePath)], 
-        text: 'SiteSync Progress Image - ${widget.projectName}',
-        subject: 'Project Update'
-      );
+      await Share.shareXFiles(files, text: shareText, subject: shareText);
     } catch (e) {
-      debugPrint('Error sharing/downloading image: $e');
+      debugPrint('Error sharing images: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to process image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share: $e')),
+        );
       }
     }
   }
@@ -206,88 +211,225 @@ class _GalleryTabState extends State<GalleryTab> {
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
+    final grouped = _groupByDate();
+    final dateKeys = grouped.keys.toList();
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primary,
         onPressed: _isUploading ? null : _pickAndUploadImage,
-        child: _isUploading 
+        child: _isUploading
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: AppTheme.surface, strokeWidth: 2))
             : const Icon(Icons.add_a_photo, color: AppTheme.surface),
       ),
       body: _images.isEmpty
-          ? Center(child: Text('No progress active images recorded.', style: AppTheme.body))
+          ? Center(child: Text('No progress images recorded.', style: AppTheme.body))
           : RefreshIndicator(
               onRefresh: _fetchImages,
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _images.length,
-                itemBuilder: (context, index) {
-                  final img = _images[index];
-                  final String dateString = img['date'] ?? '';
-                  final dateFormatted = dateString.isNotEmpty 
-                      ? DateFormat('MMM dd, yyyy').format(DateTime.parse(dateString))
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                itemCount: dateKeys.length,
+                itemBuilder: (context, groupIndex) {
+                  final dateKey = dateKeys[groupIndex];
+                  final groupImages = grouped[dateKey]!;
+                  final dateFormatted = dateKey.isNotEmpty && dateKey != 'Unknown'
+                      ? DateFormat('MMM dd, yyyy').format(DateTime.parse(dateKey))
                       : 'Unknown Date';
-                  final String uploaderName = img['uploadedBy']?['name'] ?? 'Unknown User';
+                  final uploaderName = groupImages.first['uploadedBy']?['name'] ?? 'Unknown User';
+                  final caption = groupImages.first['caption']?.toString() ?? '';
 
-                  return Card(
-                    color: AppTheme.surface,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    clipBehavior: Clip.antiAlias,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  // All images in this group flattened for full-screen navigation
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.network(
-                          img['url'],
-                          height: 250,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: 200,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                          ),
+                        // Date header
+                        Row(
+                          children: [
+                            Text(dateFormatted, style: AppTheme.label.copyWith(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            Text('· ${groupImages.length} photo${groupImages.length > 1 ? 's' : ''}',
+                                style: AppTheme.label.copyWith(color: AppTheme.textSecondary)),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () => _shareImages(groupImages, caption),
+                              child: const Icon(Icons.share, size: 18, color: AppTheme.textSecondary),
+                            ),
+                          ],
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (img['caption'] != null && img['caption'].toString().isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: Text(img['caption'], style: AppTheme.body.copyWith(fontWeight: FontWeight.bold, fontSize: 16)),
-                                ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('By: $uploaderName', style: AppTheme.label.copyWith(color: AppTheme.primary)),
-                                        const SizedBox(height: 4),
-                                        Text(dateFormatted, style: AppTheme.label),
-                                      ],
+                        const SizedBox(height: 8),
+                        // Horizontal image strip
+                        SizedBox(
+                          height: 160,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: groupImages.length,
+                            itemBuilder: (context, imgIndex) {
+                              final img = groupImages[imgIndex];
+                              return GestureDetector(
+                                onTap: () => _openFullscreen(groupImages, imgIndex),
+                                child: Container(
+                                  width: 160,
+                                  margin: EdgeInsets.only(right: imgIndex < groupImages.length - 1 ? 8 : 0),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      img['url'],
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, _) => Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                      ),
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.share, color: AppTheme.primary),
-                                    tooltip: 'Share / Save Image',
-                                    onPressed: () => _shareOrDownloadImage(img['url'], img['date'] ?? 'unknown'),
-                                  )
-                                ],
-                              )
-                            ],
+                                ),
+                              );
+                            },
                           ),
-                        )
+                        ),
+                        const SizedBox(height: 8),
+                        // Caption + uploader
+                        if (caption.isNotEmpty)
+                          Text(caption, style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text('By $uploaderName', style: AppTheme.label.copyWith(color: AppTheme.textSecondary)),
                       ],
                     ),
                   );
                 },
               ),
             ),
+    );
+  }
+}
+
+// ─── Full-Screen Viewer ───────────────────────────────────────────────────────
+
+class _FullscreenViewer extends StatefulWidget {
+  final List<dynamic> images;
+  final int initialIndex;
+  final String projectName;
+
+  const _FullscreenViewer({
+    required this.images,
+    required this.initialIndex,
+    required this.projectName,
+  });
+
+  @override
+  State<_FullscreenViewer> createState() => _FullscreenViewerState();
+}
+
+class _FullscreenViewerState extends State<_FullscreenViewer> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _shareImage(String url, String dateString, String caption) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final savePath = '${tempDir.path}/progress_$dateString.jpg';
+      await Dio().download(url, savePath);
+      final shareText = caption.isNotEmpty ? caption : widget.projectName;
+      // ignore: deprecated_member_use
+      await Share.shareXFiles([XFile(savePath)], text: shareText, subject: shareText);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to share: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final img = widget.images[_currentIndex];
+    final dateString = img['date'] ?? '';
+    final dateFormatted = dateString.isNotEmpty
+        ? DateFormat('MMM dd, yyyy').format(DateTime.parse(dateString))
+        : 'Unknown Date';
+    final caption = img['caption']?.toString() ?? '';
+    final uploader = img['uploadedBy']?['name'] ?? 'Unknown';
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          '${_currentIndex + 1} / ${widget.images.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            onPressed: () => _shareImage(img['url'], dateString, caption),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // Swipeable + zoomable images
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.images.length,
+            onPageChanged: (i) => setState(() => _currentIndex = i),
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                minScale: 0.8,
+                maxScale: 5.0,
+                child: Center(
+                  child: Image.network(
+                    widget.images[index]['url'],
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, _) => const Icon(Icons.broken_image, color: Colors.grey, size: 60),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Bottom info overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black87, Colors.transparent],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (caption.isNotEmpty)
+                    Text(caption, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('$uploader · $dateFormatted',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
