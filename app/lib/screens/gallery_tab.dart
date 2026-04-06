@@ -52,13 +52,36 @@ class _GalleryTabState extends State<GalleryTab> {
   }
 
   // Groups images by date, preserving insertion order (newest first)
-  Map<String, List<dynamic>> _groupByDate() {
-    final Map<String, List<dynamic>> grouped = {};
+  List<List<dynamic>> _groupByPost() {
+    final List<List<dynamic>> posts = [];
     for (final img in _images) {
-      final date = img['date'] ?? 'Unknown';
-      grouped.putIfAbsent(date, () => []).add(img);
+      if (posts.isEmpty) {
+        posts.add([img]);
+        continue;
+      }
+      
+      final lastPost = posts.last;
+      final lastImg = lastPost.last;
+      
+      final dt1 = DateTime.tryParse(img['date'] ?? '');
+      final dt2 = DateTime.tryParse(lastImg['date'] ?? '');
+      
+      bool sameGroup = false;
+      if (dt1 != null && dt2 != null && img['caption'] == lastImg['caption']) {
+        if (dt1.difference(dt2).inMinutes.abs() <= 5) {
+          sameGroup = true;
+        }
+      } else if (dt1 == null && dt2 == null && img['caption'] == lastImg['caption']) {
+        sameGroup = true;
+      }
+
+      if (sameGroup) {
+        lastPost.add(img);
+      } else {
+        posts.add([img]);
+      }
     }
-    return grouped;
+    return posts;
   }
 
   void _openFullscreen(List<dynamic> images, int initialIndex) {
@@ -211,8 +234,7 @@ class _GalleryTabState extends State<GalleryTab> {
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
-    final grouped = _groupByDate();
-    final dateKeys = grouped.keys.toList();
+    final posts = _groupByPost();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -229,17 +251,16 @@ class _GalleryTabState extends State<GalleryTab> {
               onRefresh: _fetchImages,
               child: ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                itemCount: dateKeys.length,
+                itemCount: posts.length,
                 itemBuilder: (context, groupIndex) {
-                  final dateKey = dateKeys[groupIndex];
-                  final groupImages = grouped[dateKey]!;
-                  final dateFormatted = dateKey.isNotEmpty && dateKey != 'Unknown'
-                      ? DateFormat('MMM dd, yyyy').format(DateTime.parse(dateKey))
+                  final groupImages = posts[groupIndex];
+                  final rawDate = groupImages.first['date'] ?? 'Unknown';
+                  final dateFormatted = rawDate != 'Unknown' && rawDate.isNotEmpty
+                      ? DateFormat('MMM dd, yyyy  h:mm a').format(DateTime.parse(rawDate).toLocal())
                       : 'Unknown Date';
                   final uploaderName = groupImages.first['uploadedBy']?['name'] ?? 'Unknown User';
                   final caption = groupImages.first['caption']?.toString() ?? '';
 
-                  // All images in this group flattened for full-screen navigation
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 20),
                     child: Column(
