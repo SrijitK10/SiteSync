@@ -56,10 +56,8 @@ class _GalleryTabState extends State<GalleryTab> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (image == null) return;
-
-    File sourceFile = File(image.path);
+    List<XFile> images = await _picker.pickMultiImage(imageQuality: 70);
+    if (images.isEmpty) return;
 
     // Show Dialog for caption
     final captionController = TextEditingController();
@@ -75,21 +73,40 @@ class _GalleryTabState extends State<GalleryTab> {
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
               backgroundColor: AppTheme.background,
-              title: Text('Image Preview', style: AppTheme.heading),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(sourceFile, height: 200, width: double.infinity, fit: BoxFit.cover),
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    label: 'CAPTION', 
-                    hint: 'Describe progress...', 
-                    controller: captionController
-                  ),
-                ],
+              title: Text('Preview (${images.length})', style: AppTheme.heading),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: images.length,
+                        itemBuilder: (context, index) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              File(images[index].path),
+                              fit: BoxFit.cover,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      label: 'GROUP CAPTION', 
+                      hint: 'Describe progress...', 
+                      controller: captionController
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -98,14 +115,14 @@ class _GalleryTabState extends State<GalleryTab> {
                 ),
                 TextButton(
                   onPressed: () async {
-                    final XFile? newImg = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-                    if (newImg != null) {
+                    final List<XFile> newImgs = await _picker.pickMultiImage(imageQuality: 70);
+                    if (newImgs.isNotEmpty) {
                       setDialogState(() {
-                        sourceFile = File(newImg.path);
+                        images = newImgs;
                       });
                     }
                   },
-                  child: const Text('Retake', style: TextStyle(color: AppTheme.primary))
+                  child: const Text('Reselect', style: TextStyle(color: AppTheme.primary))
                 ),
                 AppButton(
                   text: 'Upload', 
@@ -132,19 +149,22 @@ class _GalleryTabState extends State<GalleryTab> {
       }
       
       final String folderPath = widget.projectName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_'); // Sanitize folder name
-      
       final cloudinary = CloudinaryPublic(cloudinaryCloudName, cloudinaryUploadPreset, cache: false);
-      CloudinaryResponse response = await cloudinary.uploadFile(
-        CloudinaryFile.fromFile(sourceFile.path, resourceType: CloudinaryResourceType.Image, folder: folderPath),
-      );
+      
+      // We perform serial uploads to prevent overwhelming limits or Memory
+      for (var img in images) {
+        CloudinaryResponse response = await cloudinary.uploadFile(
+          CloudinaryFile.fromFile(img.path, resourceType: CloudinaryResourceType.Image, folder: folderPath),
+        );
 
-      final imageUrl = response.secureUrl;
+        final imageUrl = response.secureUrl;
 
-      // 2. Transmit to backend
-      await apiClient.post('/projects/${widget.projectId}/images', data: {
-        'url': imageUrl,
-        'caption': captionController.text.trim(),
-      });
+        // 2. Transmit to backend
+        await apiClient.post('/projects/${widget.projectId}/images', data: {
+          'url': imageUrl,
+          'caption': captionController.text.trim(),
+        });
+      }
 
       // 3. Refresh list
       _fetchImages();
