@@ -6,6 +6,7 @@ import '../state/auth_provider.dart';
 import 'attendance_screen.dart';
 import 'calendar_screen.dart';
 import 'tasks_tab.dart';
+import 'gallery_tab.dart';
 
 class ProjectDashboardScreen extends ConsumerStatefulWidget {
   final String projectId;
@@ -36,6 +37,7 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
       TasksTab(projectId: widget.projectId),
       CalendarScreen(projectId: widget.projectId),
       if (!isViewer) AttendanceScreen(projectId: widget.projectId),
+      if (!isViewer) GalleryTab(projectId: widget.projectId),
     ];
 
     return Scaffold(
@@ -68,6 +70,7 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
           const BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Tasks'),
           const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Calendar'),
           if (!isViewer) const BottomNavigationBarItem(icon: Icon(Icons.co_present), label: 'Attendance'),
+          if (!isViewer) const BottomNavigationBarItem(icon: Icon(Icons.photo_library), label: 'Progress'),
         ],
       ),
     );

@@ -44,4 +44,16 @@ export class ProjectsController {
   addMember(@Param('id') id: string, @Body() body: any) {
     return this.projectsService.addMember(id, body.userId, body.roleInProject);
   }
+
+  @Post(':id/images')
+  @Roles('super_admin', 'admin', 'site_manager')
+  addImage(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    return this.projectsService.addImage(id, req.user.userId, body.url, body.caption);
+  }
+
+  @Get(':id/images')
+  @Roles('super_admin', 'admin', 'site_manager')
+  getImages(@Param('id') id: string) {
+    return this.projectsService.getImages(id);
+  }
 }

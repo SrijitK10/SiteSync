@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
+import { ProjectImage } from './entities/project-image.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -11,6 +12,8 @@ export class ProjectsService {
     private projectsRepository: Repository<Project>,
     @InjectRepository(ProjectMember)
     private membersRepository: Repository<ProjectMember>,
+    @InjectRepository(ProjectImage)
+    private imagesRepository: Repository<ProjectImage>,
   ) {}
 
   async create(createProjectDto: any, userId: string): Promise<Project> {
@@ -48,5 +51,23 @@ export class ProjectsService {
       role_in_project: roleInProject,
     });
     return this.membersRepository.save(member);
+  }
+
+  async addImage(projectId: string, userId: string, url: string, caption?: string) {
+    const image = this.imagesRepository.create({
+      url,
+      caption,
+      project: { id: projectId },
+      uploadedBy: { id: userId },
+    });
+    return this.imagesRepository.save(image);
+  }
+
+  async getImages(projectId: string): Promise<ProjectImage[]> {
+    return this.imagesRepository.find({
+      where: { project: { id: projectId } },
+      relations: ['uploadedBy'],
+      order: { date: 'DESC' },
+    });
   }
 }
