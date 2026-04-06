@@ -10,15 +10,16 @@ import 'package:intl/intl.dart';
 
 // ==========================================
 // Cloudinary Configuration Constants
-// TODO: Replace with your actual Cloudinary credentials
 // ==========================================
-const String cloudinaryCloudName = 'YOUR_CLOUD_NAME';
-const String cloudinaryUploadPreset = 'YOUR_UPLOAD_PRESET';
+const String cloudinaryCloudName = 'decj8mbhf';
+const String cloudinaryUploadPreset = 'rupayan';
 
 
 class GalleryTab extends StatefulWidget {
   final String projectId;
-  const GalleryTab({super.key, required this.projectId});
+  final String projectName;
+
+  const GalleryTab({super.key, required this.projectId, required this.projectName});
 
   @override
   State<GalleryTab> createState() => _GalleryTabState();
@@ -108,9 +109,11 @@ class _GalleryTabState extends State<GalleryTab> {
         throw Exception('Cloudinary configuration missing. Please update constants in gallery_tab.dart.');
       }
       
+      final String folderPath = widget.projectName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_'); // Sanitize folder name
+      
       final cloudinary = CloudinaryPublic(cloudinaryCloudName, cloudinaryUploadPreset, cache: false);
       CloudinaryResponse response = await cloudinary.uploadFile(
-        CloudinaryFile.fromFile(sourceFile.path, resourceType: CloudinaryResourceType.Image),
+        CloudinaryFile.fromFile(sourceFile.path, resourceType: CloudinaryResourceType.Image, folder: folderPath),
       );
 
       final imageUrl = response.secureUrl;

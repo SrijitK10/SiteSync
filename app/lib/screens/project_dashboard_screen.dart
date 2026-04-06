@@ -37,7 +37,7 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
       TasksTab(projectId: widget.projectId),
       CalendarScreen(projectId: widget.projectId),
       if (!isViewer) AttendanceScreen(projectId: widget.projectId),
-      if (!isViewer) GalleryTab(projectId: widget.projectId),
+      if (!isViewer) GalleryTab(projectId: widget.projectId, projectName: widget.projectName ?? 'Unknown_Project'),
     ];
 
     return Scaffold(
