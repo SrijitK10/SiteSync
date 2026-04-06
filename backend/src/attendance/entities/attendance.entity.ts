@@ -7,8 +7,8 @@ export class Attendance {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  contractor_name: string;
+  @Column({ nullable: true })
+  contractor_name: string | null;
 
   @Column({ default: 0 })
   labourers_count: number;
