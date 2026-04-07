@@ -19,16 +19,8 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
   @override
   void initState() {
     super.initState();
-    // Refresh role and user list as soon as the screen opens so an admin
-    // who was promoted (or demoted) sees the current reality immediately.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await ref.read(authProvider.notifier).refreshCurrentUser();
-      if (!mounted) return;
-      final fresh = ref.read(authProvider).currentUser;
-      if (fresh == null || !fresh.role.isAdmin) {
-        if (mounted) context.go('/projects');
-        return;
-      }
+    // Invalidate user list so it re-fetches fresh data when the screen opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(usersProvider);
     });
   }
@@ -157,8 +149,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await ref.read(authProvider.notifier).refreshCurrentUser();
+            onPressed: () {
               ref.invalidate(usersProvider);
             },
           )
