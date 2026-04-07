@@ -21,6 +21,9 @@ export class User {
   @Column({ nullable: true, select: false })
   password_hash: string;
 
+  @Column({ nullable: true })
+  fcm_token: string;
+
   @Column({ default: 'viewer' })
   role: string; // super_admin, admin, site_manager, viewer
 

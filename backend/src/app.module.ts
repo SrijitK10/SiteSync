@@ -11,6 +11,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { ContractorsModule } from './contractors/contractors.module';
 import { CacheModule } from '@nestjs/cache-manager';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CacheModule } from '@nestjs/cache-manager';
     TasksModule,
     AttendanceModule,
     ContractorsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

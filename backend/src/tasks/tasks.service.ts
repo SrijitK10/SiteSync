@@ -2,22 +2,37 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThanOrEqual, Between } from 'typeorm';
 import { Task } from './entities/task.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class TasksService {
   constructor(
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
-  async create(createTaskDto: any): Promise<Task> {
+  async create(createTaskDto: any, userId?: string): Promise<Task> {
     const task = this.tasksRepository.create();
     Object.assign(task, createTaskDto);
     task.project = { id: createTaskDto.projectId } as any;
     if (createTaskDto.userId) {
       task.assignee = { id: createTaskDto.userId } as any;
     }
-    return this.tasksRepository.save(task);
+    const savedTask = await this.tasksRepository.save(task);
+
+    // Fire and forget notification
+    if (userId) { // userId of the creator
+      this.notificationsService.sendNotification(
+        'New Task Created',
+        `${savedTask.title || 'A new task'} has been assigned.`,
+        ['super_admin', 'admin', 'site_manager', 'viewer'],
+        userId,
+        { route: `/project/${savedTask.project.id}` } // or `/task/${savedTask.id}`
+      );
+    }
+
+    return savedTask;
   }
 
   async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string): Promise<Task[]> {
@@ -52,7 +67,7 @@ export class TasksService {
     return task;
   }
 
-  async update(id: string, updateTaskDto: any): Promise<Task> {
+  async update(id: string, updateTaskDto: any, userId?: string): Promise<Task> {
     const task = await this.findOne(id);
     Object.assign(task, updateTaskDto);
     
@@ -66,7 +81,19 @@ export class TasksService {
     if (updateTaskDto.userId) {
       task.assignee = { id: updateTaskDto.userId } as any;
     }
-    return this.tasksRepository.save(task);
+    const savedTask = await this.tasksRepository.save(task);
+
+    if (updateTaskDto.status === 'completed' && userId) {
+      this.notificationsService.sendNotification(
+        'Task Completed',
+        `${savedTask.title || 'A task'} has been marked as completed.`,
+        ['super_admin', 'admin', 'site_manager', 'viewer'],
+        userId,
+        { route: `/project/${savedTask.project?.id || updateTaskDto?.projectId || ''}` } 
+      );
+    }
+
+    return savedTask;
   }
 
   async remove(id: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, UseInterceptors, Request } from '@nestjs/common';
 import { CacheInterceptor } from '@nestjs/cache-manager';
 import { AuthGuard } from '@nestjs/passport';
 import { TasksService } from './tasks.service';
@@ -12,8 +12,8 @@ export class TasksController {
 
   @Post()
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
-  create(@Body() createTaskDto: any) {
-    return this.tasksService.create(createTaskDto);
+  create(@Request() req: any, @Body() createTaskDto: any) {
+    return this.tasksService.create(createTaskDto, req.user?.id);
   }
 
   @Get()
@@ -35,9 +35,9 @@ export class TasksController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTaskDto: any) {
+  update(@Request() req: any, @Param('id') id: string, @Body() updateTaskDto: any) {
     // Workers can update status, Managers can update anything
-    return this.tasksService.update(id, updateTaskDto);
+    return this.tasksService.update(id, updateTaskDto, req.user?.id);
   }
 
   @Delete(':id')

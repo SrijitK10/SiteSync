@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { ProjectImage } from './entities/project-image.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ProjectsService {
@@ -14,13 +15,25 @@ export class ProjectsService {
     private membersRepository: Repository<ProjectMember>,
     @InjectRepository(ProjectImage)
     private imagesRepository: Repository<ProjectImage>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(createProjectDto: any, userId: string): Promise<Project> {
     const project = this.projectsRepository.create();
     Object.assign(project, createProjectDto);
     project.createdBy = { id: userId } as any;
-    return this.projectsRepository.save(project);
+    const savedProject = await this.projectsRepository.save(project);
+    
+    // Fire and forget notification
+    this.notificationsService.sendNotification(
+      'New Project Added',
+      `${savedProject.name || 'A new project'} has been added.`,
+      ['super_admin', 'admin', 'site_manager'],
+      userId,
+      { route: `/project/${savedProject.id}` } // Adjusted path based on what deep linking might use
+    );
+
+    return savedProject;
   }
 
   async findAll(userId: string, role: string): Promise<Project[]> {
@@ -60,7 +73,18 @@ export class ProjectsService {
       project: { id: projectId },
       uploadedBy: { id: userId },
     });
-    return this.imagesRepository.save(image);
+    const savedImage = await this.imagesRepository.save(image);
+
+    // Fire and forget notification
+    this.notificationsService.sendNotification(
+      'Progress Image Added',
+      `A new image has been uploaded to the project.`,
+      ['super_admin', 'admin', 'site_manager'],
+      userId,
+      { route: `/project/${projectId}` } // Adjusted path
+    );
+
+    return savedImage;
   }
 
   async getImages(projectId: string): Promise<ProjectImage[]> {

@@ -14,6 +14,12 @@ export class UsersController {
     return req.user;
   }
 
+  @Patch('me/fcm-token')
+  updateFcmToken(@Request() req: any, @Body('fcm_token') fcm_token: string) {
+    return this.usersService.updateFcmToken(req.user.id, fcm_token);
+  }
+
+
   @Post()
   @Roles('admin', 'super_admin')
   create(@Body() createUserDto: any) {

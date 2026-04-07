@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_client.dart';
 import '../models/user_role.dart';
+import '../services/notification_service.dart';
 
 class AuthState {
   final bool isAuthenticated;
@@ -47,6 +48,9 @@ class AuthNotifier extends Notifier<AuthState> {
           role: fetchedRole,
         ),
       );
+
+      // Sync FCM token
+      await _updateFcmToken();
     } catch (e) {
       // Token expired or invalid — clear it
       final prefs = await SharedPreferences.getInstance();
@@ -83,6 +87,9 @@ class AuthNotifier extends Notifier<AuthState> {
           role: fetchedRole
         ),
       );
+
+      // Sync FCM token
+      await _updateFcmToken();
     } catch (e) {
       print('Error during Firebase login: $e');
       throw Exception('Login Error: $e');
@@ -143,12 +150,26 @@ class AuthNotifier extends Notifier<AuthState> {
         role: fetchedRole,
       ),
     );
+
+    // Sync FCM token
+    await _updateFcmToken();
   }
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt');
     state = AuthState();
+  }
+
+  Future<void> _updateFcmToken() async {
+    try {
+      final token = await NotificationService().getToken();
+      if (token != null) {
+        await apiClient.patch('/users/me/fcm-token', data: {'fcm_token': token});
+      }
+    } catch (e) {
+      print('Failed to update FCM token on backend: $e');
+    }
   }
 
   void setAuth(AuthState newState) {

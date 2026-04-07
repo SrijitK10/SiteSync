@@ -70,10 +70,29 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async updateFcmToken(id: string, fcm_token: string): Promise<User> {
+    const user = await this.findOne(id);
+    user.fcm_token = fcm_token;
+    return this.usersRepository.save(user);
+  }
+
   async remove(id: string): Promise<void> {
     const result = await this.usersRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException('User not found');
     }
+  }
+
+  async findTokensByRoles(roles: string[], excludeUserId?: string): Promise<string[]> {
+    const queryBuilder = this.usersRepository.createQueryBuilder('user')
+      .where('user.role IN (:...roles)', { roles })
+      .andWhere('user.fcm_token IS NOT NULL');
+
+    if (excludeUserId) {
+      queryBuilder.andWhere('user.id != :excludeUserId', { excludeUserId });
+    }
+
+    const users = await queryBuilder.select(['user.fcm_token']).getMany();
+    return users.map(u => u.fcm_token);
   }
 }

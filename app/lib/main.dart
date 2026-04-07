@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 import 'services/keep_alive_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
 import 'screens/login_screen.dart';
@@ -85,6 +87,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize NotificationService
+  await NotificationService().initialize();
+  
   KeepAliveService.start();
   runApp(
     ProviderScope(
@@ -93,11 +99,32 @@ void main() async {
   );
 }
 
-class RupayanApp extends ConsumerWidget {
+class RupayanApp extends ConsumerStatefulWidget {
   const RupayanApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RupayanApp> createState() => _RupayanAppState();
+}
+
+class _RupayanAppState extends ConsumerState<RupayanApp> {
+  StreamSubscription<String>? _routeSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _routeSubscription = NotificationService().onRoute.listen((route) {
+      ref.read(routerProvider).push(route);
+    });
+  }
+
+  @override
+  void dispose() {
+    _routeSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final router = ref.watch(routerProvider);
 
