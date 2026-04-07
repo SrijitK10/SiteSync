@@ -41,11 +41,50 @@ export class ProjectsController {
     return this.projectsService.remove(id);
   }
 
+  // ── Member Management ──────────────────────────────────────────
+
+  @Get(':id/members')
+  @Roles('admin', 'super_admin')
+  getMembers(@Param('id') id: string) {
+    return this.projectsService.getMembers(id);
+  }
+
   @Post(':id/members')
   @Roles('admin', 'super_admin')
   addMember(@Param('id') id: string, @Body() body: any) {
-    return this.projectsService.addMember(id, body.userId, body.roleInProject);
+    return this.projectsService.addMember(id, body.userId, body.roleInProject || 'member');
   }
+
+  @Delete(':id/members/:userId')
+  @Roles('admin', 'super_admin')
+  removeMember(@Param('id') id: string, @Param('userId') userId: string) {
+    return this.projectsService.removeMember(id, userId);
+  }
+
+  // ── User-centric project assignment ────────────────────────────
+
+  /** Get all project IDs a user is assigned to. */
+  @Get('user/:userId/assignments')
+  @Roles('admin', 'super_admin')
+  getProjectIdsForUser(@Param('userId') userId: string) {
+    return this.projectsService.getProjectIdsForUser(userId);
+  }
+
+  /** Bulk set project assignments for a user. */
+  @Post('user/:userId/assignments')
+  @Roles('admin', 'super_admin')
+  setProjectsForUser(@Param('userId') userId: string, @Body() body: { projectIds: string[] }) {
+    return this.projectsService.setProjectsForUser(userId, body.projectIds);
+  }
+
+  /** Assign ALL projects to a user (migration helper). */
+  @Post('user/:userId/assign-all')
+  @Roles('admin', 'super_admin')
+  assignAllProjectsToUser(@Param('userId') userId: string) {
+    return this.projectsService.assignAllProjectsToUser(userId);
+  }
+
+  // ── Images ─────────────────────────────────────────────────────
 
   @Post(':id/images')
   @Roles('super_admin', 'admin', 'site_manager')

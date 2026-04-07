@@ -19,12 +19,12 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
   @override
   void initState() {
     super.initState();
-    // Invalidate user list so it re-fetches fresh data when the screen opens.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(usersProvider);
     });
   }
 
+  // ── Add User ────────────────────────────────────────────────────
   void _showAddUserBottomSheet(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -45,9 +45,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24,
-                right: 24,
-                top: 24,
+                left: 24, right: 24, top: 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -63,7 +61,6 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                     keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 12),
-                  // Role selector dropdown
                   DropdownButtonFormField<String>(
                     initialValue: selectedRole,
                     decoration: InputDecoration(
@@ -122,6 +119,52 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     );
   }
 
+  // ── Project Assignment Sheet ────────────────────────────────────
+  void _showProjectAssignmentSheet(BuildContext context, User user) async {
+    // Fetch all projects and user's current assignments in parallel
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return _ProjectAssignmentSheet(user: user);
+      },
+    );
+  }
+
+  // ── Delete User ────────────────────────────────────────────────
+  Future<void> _deleteUser(BuildContext context, User user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete ${user.name}?'),
+        content: const Text('This action cannot be undone. The user will lose all access.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await apiClient.delete('/users/${user.id}');
+      ref.invalidate(usersProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User deleted.')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -129,9 +172,6 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     final currentUser = authState.currentUser;
     final canEditRoles = currentUser != null && currentUser.role.isAdmin;
 
-    // While auth is still loading or user is momentarily null during a
-    // refresh, show a spinner instead of redirecting. Only redirect when
-    // the user is definitively non-admin.
     if (authState.isLoading || currentUser == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -171,17 +211,40 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final user = users[index];
+              final isSelf = user.id == currentUser.id;
+              final isNonAdmin = user.role.value == 'site_manager' || user.role.value == 'viewer';
               return ListTile(
                 tileColor: AppTheme.surface,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 leading: CircleAvatar(
                   backgroundColor: AppTheme.accent,
-                  child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?', style: const TextStyle(color: AppTheme.surface)),
+                  child: Text(
+                    user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                    style: const TextStyle(color: AppTheme.surface),
+                  ),
                 ),
                 title: Text(user.name, style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
-                subtitle: Text(user.phone ?? user.email ?? '', style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic)),
-                trailing: canEditRoles && user.id != currentUser.id
-                    ? DropdownButton<String>(
+                subtitle: Text(
+                  user.phone ?? user.email ?? '',
+                  style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic),
+                ),
+                // Tap to manage project access for non-admin users
+                onTap: canEditRoles && isNonAdmin && !isSelf
+                    ? () => _showProjectAssignmentSheet(context, user)
+                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Project access indicator for non-admins
+                    if (canEditRoles && isNonAdmin && !isSelf)
+                      IconButton(
+                        icon: const Icon(Icons.folder_shared, color: AppTheme.primary, size: 20),
+                        tooltip: 'Manage Project Access',
+                        onPressed: () => _showProjectAssignmentSheet(context, user),
+                      ),
+                    // Role dropdown or chip
+                    if (canEditRoles && !isSelf)
+                      DropdownButton<String>(
                         value: user.role.value,
                         style: AppTheme.label.copyWith(color: AppTheme.primary, fontSize: 10),
                         underline: const SizedBox(),
@@ -208,16 +271,253 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                           }
                         },
                       )
-                    : Chip(
+                    else
+                      Chip(
                         label: Text(user.role.value.toUpperCase()),
                         labelStyle: AppTheme.label,
                         backgroundColor: AppTheme.background,
                       ),
+                  ],
+                ),
               );
             },
           );
         },
       ),
+    );
+  }
+}
+
+// ── Project Assignment Bottom Sheet (Stateful) ───────────────────
+
+class _ProjectAssignmentSheet extends StatefulWidget {
+  final User user;
+  const _ProjectAssignmentSheet({required this.user});
+
+  @override
+  State<_ProjectAssignmentSheet> createState() => _ProjectAssignmentSheetState();
+}
+
+class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
+  List<Map<String, dynamic>> _allProjects = [];
+  Set<String> _assignedIds = {};
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      // Fetch all projects and user's current assignments in parallel
+      final results = await Future.wait([
+        apiClient.get('/projects'),
+        apiClient.get('/projects/user/${widget.user.id}/assignments'),
+      ]);
+
+      final allProjects = (results[0].data as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      final assignedIds = (results[1].data as List)
+          .map((e) => e.toString())
+          .toSet();
+
+      if (mounted) {
+        setState(() {
+          _allProjects = allProjects;
+          _assignedIds = assignedIds;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load project assignments: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveAssignments() async {
+    setState(() => _isSaving = true);
+    try {
+      await apiClient.post(
+        '/projects/user/${widget.user.id}/assignments',
+        data: {'projectIds': _assignedIds.toList()},
+      );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Access updated for ${widget.user.name}'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Header
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppTheme.accent,
+                    radius: 18,
+                    child: Text(
+                      widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : '?',
+                      style: const TextStyle(color: AppTheme.surface, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.user.name, style: AppTheme.heading.copyWith(fontSize: 16)),
+                        Text(
+                          '${widget.user.role.value.toUpperCase()} • ${widget.user.displayIdentifier}',
+                          style: AppTheme.label.copyWith(fontSize: 11, color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Toggle which projects this user can access:',
+                style: AppTheme.body.copyWith(color: AppTheme.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+
+              // Project list
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _allProjects.isEmpty
+                        ? const Center(child: Text('No projects found.'))
+                        : ListView.builder(
+                            controller: scrollController,
+                            itemCount: _allProjects.length,
+                            itemBuilder: (context, index) {
+                              final project = _allProjects[index];
+                              final projectId = project['id'] as String;
+                              final isAssigned = _assignedIds.contains(projectId);
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: isAssigned
+                                      ? AppTheme.primary.withOpacity(0.08)
+                                      : AppTheme.surface,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isAssigned
+                                        ? AppTheme.primary.withOpacity(0.3)
+                                        : Colors.transparent,
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: SwitchListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                  title: Text(
+                                    project['name'] ?? 'Unnamed',
+                                    style: AppTheme.body.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    project['location'] ?? '',
+                                    style: AppTheme.label.copyWith(fontSize: 11, color: AppTheme.textSecondary),
+                                  ),
+                                  value: isAssigned,
+                                  activeColor: AppTheme.primary,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      if (val) {
+                                        _assignedIds.add(projectId);
+                                      } else {
+                                        _assignedIds.remove(projectId);
+                                      }
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+              ),
+              const SizedBox(height: 12),
+
+              // Summary + Save button
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${_assignedIds.length} of ${_allProjects.length} projects assigned',
+                      style: AppTheme.label.copyWith(color: AppTheme.textSecondary),
+                    ),
+                  ),
+                  if (!_isLoading)
+                    _isSaving
+                        ? const SizedBox(
+                            width: 24, height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: AppTheme.surface,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            ),
+                            icon: const Icon(Icons.save, size: 18),
+                            label: const Text('Save Access'),
+                            onPressed: _saveAssignments,
+                          ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
