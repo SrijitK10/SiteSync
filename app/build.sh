@@ -12,6 +12,6 @@ flutter config --enable-web
 flutter pub get
 
 echo "🏗 Building Web App..."
-flutter build web
+flutter build web --web-renderer html
 
 echo "✅ Build Complete!"
