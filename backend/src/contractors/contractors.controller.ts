@@ -10,6 +10,7 @@ export class ContractorsController {
   constructor(private readonly contractorsService: ContractorsService) {}
 
   @Get()
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findAll() {
     return this.contractorsService.findAll();
   }

@@ -30,7 +30,8 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authProvider).currentUser;
-    final isViewer = currentUser?.role.value == 'viewer';
+    // Treat null user as viewer (safest default while state is loading)
+    final isViewer = currentUser == null || currentUser.role.value == 'viewer';
 
     // Isolated Stack mapping precise structural context directly below
     final List<Widget> pages = [
@@ -39,6 +40,13 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
       if (!isViewer) AttendanceScreen(projectId: widget.projectId),
       if (!isViewer) GalleryTab(projectId: widget.projectId, projectName: widget.projectName ?? 'Unknown_Project'),
     ];
+
+    // Clamp the tab index so it never exceeds the available pages.
+    // This prevents a crash when the role changes mid-session and
+    // the pages list shrinks (e.g. viewer → fewer tabs).
+    if (_currentIndex >= pages.length) {
+      _currentIndex = 0;
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,

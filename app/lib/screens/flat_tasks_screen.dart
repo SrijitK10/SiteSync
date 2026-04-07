@@ -253,7 +253,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authProvider).currentUser;
-    final canEdit = currentUser?.role.canEdit == true;
+    final canEdit = currentUser?.role.canEdit ?? false;
 
     return Scaffold(
       backgroundColor: AppTheme.background,

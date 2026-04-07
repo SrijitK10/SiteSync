@@ -56,9 +56,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const UserManagementScreen(),
         redirect: (context, state) {
           final user = ref.read(authProvider).currentUser;
-          if (user == null || !user.role.isAdmin) {
-            return '/projects';
-          }
+          if (user == null) return '/login';
+          if (!user.role.isAdmin) return '/projects';
           return null;
         },
       ),
@@ -106,12 +105,13 @@ class RupayanApp extends ConsumerStatefulWidget {
   ConsumerState<RupayanApp> createState() => _RupayanAppState();
 }
 
-class _RupayanAppState extends ConsumerState<RupayanApp> {
+class _RupayanAppState extends ConsumerState<RupayanApp> with WidgetsBindingObserver {
   StreamSubscription<String>? _routeSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _routeSubscription = NotificationService().onRoute.listen((route) {
       ref.read(routerProvider).push(route);
     });
@@ -119,8 +119,22 @@ class _RupayanAppState extends ConsumerState<RupayanApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _routeSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // On every resume, re-fetch the current user so the local role cache
+    // tracks whatever the backend says — even if an admin was promoted or
+    // demoted while the app was in the background.
+    if (state == AppLifecycleState.resumed) {
+      final auth = ref.read(authProvider);
+      if (auth.isAuthenticated) {
+        ref.read(authProvider.notifier).refreshCurrentUser();
+      }
+    }
   }
 
   @override

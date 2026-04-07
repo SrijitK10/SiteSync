@@ -273,8 +273,8 @@ class _TasksTabState extends ConsumerState<TasksTab> {
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     final currentUser = ref.watch(authProvider).currentUser;
-    final isViewer = currentUser?.role.value == 'viewer';
-    final canEdit = currentUser?.role.canEdit == true;
+    final isViewer = currentUser == null || currentUser.role.value == 'viewer';
+    final canEdit = currentUser?.role.canEdit ?? false;
 
     return Scaffold(
       backgroundColor: AppTheme.background,

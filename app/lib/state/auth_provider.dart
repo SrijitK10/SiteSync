@@ -43,12 +43,48 @@ class AuthNotifier extends Notifier<AuthState> {
     final cachedUser = _loadCachedUser(prefs);
     if (cachedUser != null) {
       state = AuthState(isAuthenticated: true, currentUser: cachedUser);
+    } else {
+      state = AuthState(isLoading: true);
     }
 
-    // STEP 2: Validate in background. UI is already usable if we had a cache.
+    // STEP 2: Validate in background so the server-side role is authoritative.
+    final refreshed = await _fetchAndApplyCurrentUser();
+    if (!refreshed && cachedUser == null) {
+      // No cache and validation failed — token is likely invalid.
+      await prefs.remove('jwt');
+      await prefs.remove(_kCachedUserKey);
+      await setJwt(null);
+      state = AuthState();
+    }
+
+    if (refreshed) {
+      // Sync FCM token opportunistically once the session is confirmed valid.
+      _updateFcmToken();
+    }
+  }
+
+  /// Re-fetches the current user from the backend and updates both the
+  /// in-memory state and the local cache. Returns true on success.
+  ///
+  /// Call this whenever the client's role/identity might be stale — e.g. on
+  /// app resume, before navigating to an admin-only screen, or after a
+  /// 401/403 from a privileged endpoint. The backend always returns the
+  /// user's live role from the database, so calling this reliably corrects
+  /// any stale cached role on the device.
+  Future<bool> refreshCurrentUser() async {
+    return _fetchAndApplyCurrentUser();
+  }
+
+  Future<bool> _fetchAndApplyCurrentUser() async {
     try {
       final res = await apiClient.get('/auth/me');
-      final userData = res.data;
+      final userData = res.data as Map<String, dynamic>;
+
+      final id = userData['id']?.toString();
+      if (id == null || id.isEmpty) {
+        print('Session validation: server returned no user id');
+        return false;
+      }
 
       final fetchedRole = UserRole.values.firstWhere(
         (r) => r.value == userData['role'],
@@ -56,31 +92,20 @@ class AuthNotifier extends Notifier<AuthState> {
       );
 
       final user = User(
-        id: userData['id'],
-        name: userData['name'],
-        phone: userData['phone'],
-        email: userData['email'],
+        id: id,
+        name: (userData['name'] ?? '').toString(),
+        phone: userData['phone']?.toString(),
+        email: userData['email']?.toString(),
         role: fetchedRole,
       );
 
+      final prefs = await SharedPreferences.getInstance();
       await _saveCachedUser(prefs, userData);
       state = AuthState(isAuthenticated: true, currentUser: user);
-
-      // Sync FCM token opportunistically
-      _updateFcmToken();
+      return true;
     } catch (e) {
-      // If we had a cached user, keep them signed in — they're offline or
-      // the server is still cold. Don't kick them to login.
-      if (cachedUser != null) {
-        print('Session validation failed, keeping cached session: $e');
-        return;
-      }
-      // No cache and validation failed — token is likely invalid.
-      await prefs.remove('jwt');
-      await prefs.remove(_kCachedUserKey);
-      await setJwt(null);
-      state = AuthState();
-      print('Session restore failed: $e');
+      print('Session validation failed: $e');
+      return false;
     }
   }
 

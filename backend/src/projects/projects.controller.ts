@@ -18,11 +18,13 @@ export class ProjectsController {
 
   @Get()
   @UseInterceptors(CacheInterceptor)
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findAll(@Request() req: any) {
     return this.projectsService.findAll(req.user.userId, req.user.role);
   }
 
   @Get(':id')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findOne(@Param('id') id: string) {
     return this.projectsService.findOne(id);
   }

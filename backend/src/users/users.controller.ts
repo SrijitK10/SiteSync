@@ -9,11 +9,6 @@ import { Roles } from '../auth/roles.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get('me')
-  getProfile(@Request() req: any) {
-    return req.user;
-  }
-
   @Patch('me/fcm-token')
   updateFcmToken(@Request() req: any, @Body('fcm_token') fcm_token: string) {
     return this.usersService.updateFcmToken(req.user.id, fcm_token);

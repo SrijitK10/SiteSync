@@ -6,7 +6,6 @@ import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../state/projects_provider.dart';
 import '../state/auth_provider.dart';
-import '../models/user_role.dart';
 import '../services/api_client.dart';
 import '../services/platform_utils.dart';
 
@@ -248,7 +247,7 @@ class ProjectsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(projectsProvider);
     final user = ref.watch(authProvider).currentUser;
-    final canManageProjects = user?.role == UserRole.superAdmin || user?.role == UserRole.admin;
+    final canManageProjects = user != null && user.role.isAdmin;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -260,12 +259,29 @@ class ProjectsScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.people),
               tooltip: 'Manage Users',
-              onPressed: () => context.push('/users'),
+              onPressed: () async {
+                // Refresh role one more time right before opening the screen
+                // so a user who was just demoted can't sneak in on a stale
+                // client state.
+                await ref.read(authProvider.notifier).refreshCurrentUser();
+                if (!context.mounted) return;
+                final fresh = ref.read(authProvider).currentUser;
+                if (fresh == null || !fresh.role.isAdmin) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You no longer have permission to manage users.')),
+                  );
+                  return;
+                }
+                if (context.mounted) context.push('/users');
+              },
             ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Projects',
-            onPressed: () => ref.invalidate(projectsProvider),
+            tooltip: 'Refresh',
+            onPressed: () {
+              ref.read(authProvider.notifier).refreshCurrentUser();
+              ref.invalidate(projectsProvider);
+            },
           ),
           PopupMenuButton<String>(
             onSelected: (value) async {

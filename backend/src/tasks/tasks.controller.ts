@@ -11,7 +11,7 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post()
-  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
+  @Roles('admin', 'super_admin', 'site_manager')
   create(@Request() req: any, @Body() createTaskDto: any) {
     return this.tasksService.create(createTaskDto, req.user?.id);
   }
@@ -31,18 +31,19 @@ export class TasksController {
   }
 
   @Get(':id')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findOne(@Param('id') id: string) {
     return this.tasksService.findOne(id);
   }
 
   @Patch(':id')
+  @Roles('admin', 'super_admin', 'site_manager')
   update(@Request() req: any, @Param('id') id: string, @Body() updateTaskDto: any) {
-    // Workers can update status, Managers can update anything
     return this.tasksService.update(id, updateTaskDto, req.user?.id);
   }
 
   @Delete(':id')
-  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
+  @Roles('admin', 'super_admin', 'site_manager')
   remove(@Param('id') id: string) {
     return this.tasksService.remove(id);
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
@@ -7,10 +8,32 @@ import '../state/users_provider.dart';
 import '../state/auth_provider.dart';
 import '../services/api_client.dart';
 
-class UserManagementScreen extends ConsumerWidget {
+class UserManagementScreen extends ConsumerStatefulWidget {
   const UserManagementScreen({super.key});
 
-  void _showAddUserBottomSheet(BuildContext context, WidgetRef ref) {
+  @override
+  ConsumerState<UserManagementScreen> createState() => _UserManagementScreenState();
+}
+
+class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh role and user list as soon as the screen opens so an admin
+    // who was promoted (or demoted) sees the current reality immediately.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(authProvider.notifier).refreshCurrentUser();
+      if (!mounted) return;
+      final fresh = ref.read(authProvider).currentUser;
+      if (fresh == null || !fresh.role.isAdmin) {
+        if (mounted) context.go('/projects');
+        return;
+      }
+      ref.invalidate(usersProvider);
+    });
+  }
+
+  void _showAddUserBottomSheet(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     String selectedRole = 'site_manager';
@@ -108,10 +131,18 @@ class UserManagementScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final usersAsync = ref.watch(usersProvider);
     final currentUser = ref.watch(authProvider).currentUser;
     final canEditRoles = currentUser != null && currentUser.role.isAdmin;
+
+    // If the user was demoted while this screen was open, kick them out.
+    if (currentUser == null || !currentUser.role.isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/projects');
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -120,13 +151,16 @@ class UserManagementScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.refresh(usersProvider),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).refreshCurrentUser();
+              ref.invalidate(usersProvider);
+            },
           )
         ],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primary,
-        onPressed: () => _showAddUserBottomSheet(context, ref),
+        onPressed: () => _showAddUserBottomSheet(context),
         child: const Icon(Icons.add, color: AppTheme.surface),
       ),
       body: usersAsync.when(
