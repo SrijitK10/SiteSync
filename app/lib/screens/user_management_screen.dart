@@ -132,12 +132,18 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
     final usersAsync = ref.watch(usersProvider);
-    final currentUser = ref.watch(authProvider).currentUser;
+    final currentUser = authState.currentUser;
     final canEditRoles = currentUser != null && currentUser.role.isAdmin;
 
-    // If the user was demoted while this screen was open, kick them out.
-    if (currentUser == null || !currentUser.role.isAdmin) {
+    // While auth is still loading or user is momentarily null during a
+    // refresh, show a spinner instead of redirecting. Only redirect when
+    // the user is definitively non-admin.
+    if (authState.isLoading || currentUser == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!currentUser.role.isAdmin) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/projects');
       });
