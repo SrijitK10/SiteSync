@@ -1,10 +1,9 @@
 // ignore_for_file: deprecated_member_use
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:excel/excel.dart';
+import '../services/file_export.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
@@ -184,14 +183,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         ]);
       }
 
-      final directory = await getApplicationDocumentsDirectory();
-      final String filePath = '${directory.path}/Rupayan_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final List<int>? fileBytes = excel.save();
       
       if (fileBytes != null) {
-        File dataFile = File(filePath);
-        await dataFile.writeAsBytes(fileBytes);
-        await Share.shareXFiles([XFile(filePath)], text: 'Rupayan $range Attendance Cloud Export');
+        final fileName = 'Rupayan_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        await exportFile(
+          bytes: Uint8List.fromList(fileBytes),
+          fileName: fileName,
+          shareText: 'Rupayan $range Attendance Cloud Export',
+        );
       }
 
     } catch (e) {

@@ -1,10 +1,9 @@
 // ignore_for_file: deprecated_member_use
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:excel/excel.dart';
+import '../services/file_export.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
@@ -177,14 +176,15 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         ]);
       }
 
-      final directory = await getApplicationDocumentsDirectory();
-      final String filePath = '${directory.path}/Rupayan_Tasks_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final List<int>? fileBytes = excel.save();
 
       if (fileBytes != null) {
-        File dataFile = File(filePath);
-        await dataFile.writeAsBytes(fileBytes);
-        await Share.shareXFiles([XFile(filePath)], text: 'Rupayan $range Tasks Export');
+        final fileName = 'Rupayan_Tasks_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        await exportFile(
+          bytes: Uint8List.fromList(fileBytes),
+          fileName: fileName,
+          shareText: 'Rupayan $range Tasks Export',
+        );
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));
