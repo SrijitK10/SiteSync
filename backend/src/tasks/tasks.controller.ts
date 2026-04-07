@@ -24,9 +24,10 @@ export class TasksController {
     @Query('range') range?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('flatId') flatId?: string,
   ) {
     if (!projectId) return [];
-    return this.tasksService.findAllByProject(projectId, range, startDate, endDate);
+    return this.tasksService.findAllByProject(projectId, range, startDate, endDate, flatId);
   }
 
   @Get(':id')

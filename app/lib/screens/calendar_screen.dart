@@ -138,7 +138,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 child: Icon(isDone ? Icons.check : Icons.local_fire_department, color: isDone ? AppTheme.success : AppTheme.accent),
                               ),
                               title: Text(
-                                t['title'] ?? 'Untitled', 
+                                () {
+                                  final title = t['title'] ?? 'Untitled';
+                                  final flatNumber = t['flat']?['flat_number']?.toString();
+                                  return flatNumber != null && flatNumber.isNotEmpty
+                                      ? '$flatNumber: $title'
+                                      : title;
+                                }(),
                                 style: AppTheme.body.copyWith(
                                   fontWeight: FontWeight.w600,
                                   decoration: isDone ? TextDecoration.lineThrough : null,

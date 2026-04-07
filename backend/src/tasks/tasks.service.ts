@@ -16,6 +16,9 @@ export class TasksService {
     const task = this.tasksRepository.create();
     Object.assign(task, createTaskDto);
     task.project = { id: createTaskDto.projectId } as any;
+    if (createTaskDto.flatId) {
+      task.flat = { id: createTaskDto.flatId } as any;
+    }
     if (createTaskDto.userId) {
       task.assignee = { id: createTaskDto.userId } as any;
     }
@@ -35,8 +38,12 @@ export class TasksService {
     return savedTask;
   }
 
-  async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string): Promise<Task[]> {
+  async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string, flatId?: string): Promise<Task[]> {
     const whereClause: any = { project: { id: projectId } };
+
+    if (flatId) {
+      whereClause.flat = { id: flatId };
+    }
 
     if (range) {
       if (range === 'custom' && startDate && endDate) {
@@ -56,7 +63,7 @@ export class TasksService {
 
     return this.tasksRepository.find({
       where: whereClause,
-      relations: ['assignee'],
+      relations: ['assignee', 'flat'],
       order: { created_at: 'DESC' },
     });
   }

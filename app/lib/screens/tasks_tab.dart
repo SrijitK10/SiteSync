@@ -10,6 +10,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
+import 'flat_tasks_screen.dart';
 
 class TasksTab extends ConsumerStatefulWidget {
   final String projectId;
@@ -20,29 +21,126 @@ class TasksTab extends ConsumerStatefulWidget {
 }
 
 class _TasksTabState extends ConsumerState<TasksTab> {
-  List<dynamic> _tasks = [];
+  List<dynamic> _flats = [];
   bool _isLoading = true;
   bool _isExporting = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchTasks();
+    _fetchFlats();
   }
 
-  Future<void> _fetchTasks() async {
+  Future<void> _fetchFlats() async {
     try {
-      final res = await apiClient.get('/tasks?projectId=${widget.projectId}');
+      final res = await apiClient.get('/flats?projectId=${widget.projectId}');
       if (mounted) {
         setState(() {
-          _tasks = res.data;
+          _flats = res.data;
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Failed to load tasks: $e');
+      debugPrint('Failed to load flats: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _createFlat(String flatNumber) async {
+    try {
+      await apiClient.post('/flats', data: {
+        'projectId': widget.projectId,
+        'flat_number': flatNumber,
+      });
+      _fetchFlats();
+    } catch (e) {
+      debugPrint('Error creating flat: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add flat: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleFlatCompleted(Map<String, dynamic> flat) async {
+    final bool current = flat['is_completed'] == true;
+    try {
+      await apiClient.patch('/flats/${flat['id']}', data: {'is_completed': !current});
+      _fetchFlats();
+    } catch (e) {
+      debugPrint('Error toggling flat: $e');
+    }
+  }
+
+  Future<void> _deleteFlat(Map<String, dynamic> flat) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Flat ${flat['flat_number']}'),
+        content: const Text(
+          'This will remove the flat. Tasks under this flat will be unlinked but not deleted. Continue?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await apiClient.delete('/flats/${flat['id']}');
+      _fetchFlats();
+    } catch (e) {
+      debugPrint('Error deleting flat: $e');
+    }
+  }
+
+  void _showAddFlatSheet() {
+    final controller = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.background,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setStateLocal) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24, right: 24, top: 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Add Flat', style: AppTheme.heading),
+                  const SizedBox(height: 16),
+                  AppTextField(label: 'FLAT NUMBER', hint: 'E.g. 101', controller: controller),
+                  const SizedBox(height: 32),
+                  isSubmitting
+                      ? const CircularProgressIndicator()
+                      : AppButton(
+                          text: 'Add Flat',
+                          onPressed: () async {
+                            if (controller.text.trim().isEmpty) return;
+                            setStateLocal(() => isSubmitting = true);
+                            await _createFlat(controller.text.trim());
+                            if (context.mounted) Navigator.pop(context);
+                          },
+                        ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _fetchAndExportExcel(String range, {String? startDate, String? endDate}) async {
@@ -60,6 +158,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       excel.setDefaultSheet('Tasks');
 
       sheetObject.appendRow([
+        TextCellValue('Flat'),
         TextCellValue('Task Title'),
         TextCellValue('Notes / Description'),
         TextCellValue('Status'),
@@ -69,6 +168,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
 
       for (var r in remoteRecords) {
         sheetObject.appendRow([
+          TextCellValue(r['flat']?['flat_number']?.toString() ?? '-'),
           TextCellValue(r['title'] ?? 'Unknown'),
           TextCellValue(r['description'] ?? ''),
           TextCellValue(r['status'] ?? 'todo'),
@@ -80,7 +180,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       final directory = await getApplicationDocumentsDirectory();
       final String filePath = '${directory.path}/Rupayan_Tasks_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final List<int>? fileBytes = excel.save();
-      
+
       if (fileBytes != null) {
         File dataFile = File(filePath);
         await dataFile.writeAsBytes(fileBytes);
@@ -107,7 +207,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         );
       },
     );
-    
+
     if (picked != null) {
       final start = picked.start.toIso8601String().split('T')[0];
       final end = picked.end.toIso8601String().split('T')[0];
@@ -157,71 +257,16 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     );
   }
 
-  Future<void> _toggleTaskStatus(String id, String currentStatus) async {
-    String newStatus = currentStatus == 'completed' ? 'todo' : 'completed';
-    try {
-      await apiClient.patch('/tasks/$id', data: {'status': newStatus});
-      _fetchTasks();
-    } catch (e) {
-      debugPrint('Error toggling status: $e');
-    }
-  }
-
-  void _showAddTaskSheet() {
-    final titleController = TextEditingController();
-    final notesController = TextEditingController();
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.background,
-      builder: (bottomSheetContext) {
-        return StatefulBuilder(
-          builder: (context, setStateLocal) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24, right: 24, top: 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Create New Task', style: AppTheme.heading),
-                  const SizedBox(height: 16),
-                  AppTextField(label: 'TITLE', hint: 'E.g. Pour Foundation', controller: titleController),
-                  const SizedBox(height: 16),
-                  AppTextField(label: 'NOTES', hint: 'Add required materials, warnings, or descriptions...', controller: notesController),
-                  const SizedBox(height: 32),
-                  isSubmitting
-                    ? const CircularProgressIndicator()
-                    : AppButton(
-                        text: 'Save Task',
-                        onPressed: () async {
-                          if (titleController.text.trim().isEmpty) return;
-                          setStateLocal(() => isSubmitting = true);
-                          try {
-                            await apiClient.post('/tasks', data: {
-                              'projectId': widget.projectId,
-                              'title': titleController.text.trim(),
-                              'description': notesController.text.trim()
-                            });
-                            _fetchTasks();
-                            if (context.mounted) Navigator.pop(context);
-                          } catch (e) {
-                            debugPrint('Error creating task: $e');
-                            if (context.mounted) setStateLocal(() => isSubmitting = false);
-                          }
-                        },
-                      ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            );
-          }
-        );
-      },
-    );
+  void _openFlat(Map<String, dynamic> flat) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FlatTasksScreen(
+          projectId: widget.projectId,
+          flatId: flat['id'].toString(),
+          flatNumber: flat['flat_number'].toString(),
+        ),
+      ),
+    ).then((_) => _fetchFlats());
   }
 
   @override
@@ -229,14 +274,18 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     final currentUser = ref.watch(authProvider).currentUser;
     final isViewer = currentUser?.role.value == 'viewer';
+    final canEdit = currentUser?.role.canEdit == true;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppTheme.primary,
-        onPressed: _showAddTaskSheet,
-        child: const Icon(Icons.add, color: AppTheme.surface),
-      ),
+      floatingActionButton: canEdit
+          ? FloatingActionButton.extended(
+              backgroundColor: AppTheme.primary,
+              onPressed: _showAddFlatSheet,
+              icon: const Icon(Icons.add, color: AppTheme.surface),
+              label: const Text('Add Flat', style: TextStyle(color: AppTheme.surface)),
+            )
+          : null,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -261,46 +310,141 @@ class _TasksTabState extends ConsumerState<TasksTab> {
             ],
             const SizedBox(height: 8),
             Expanded(
-              child: _tasks.isEmpty
-                ? const Center(child: Text('No tasks created yet.'))
-                : ListView.builder(
-                    itemCount: _tasks.length,
-                    itemBuilder: (context, index) {
-                      final t = _tasks[index];
-                      final bool isDone = t['status'] == 'completed';
-                      return Card(
-                        color: AppTheme.surface,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ExpansionTile(
-                          leading: Checkbox(
-                            value: isDone,
-                            activeColor: AppTheme.success,
-                            onChanged: (val) => _toggleTaskStatus(t['id'], t['status']),
+              child: _flats.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.apartment, size: 48, color: AppTheme.textSecondary),
+                          const SizedBox(height: 12),
+                          Text(
+                            canEdit
+                                ? 'No flats yet.\nTap "Add Flat" to get started.'
+                                : 'No flats have been added yet.',
+                            textAlign: TextAlign.center,
+                            style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
                           ),
-                          title: Text(
-                            t['title'] ?? 'Untitled',
-                            style: AppTheme.body.copyWith(
-                              fontWeight: FontWeight.bold,
-                              decoration: isDone ? TextDecoration.lineThrough : null,
-                            ),
-                          ),
-                          subtitle: Text(isDone ? 'Finished: ${t['completed_at']}' : 'Added: ${t['created_at']}'),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text(
-                                (t['description'] == null || t['description'].toString().trim().isEmpty)
-                                    ? 'No notes provided.'
-                                    : t['description'],
-                                style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
-                              ),
-                            )
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                        ],
+                      ),
+                    )
+                  : GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        childAspectRatio: 1.0,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: _flats.length,
+                      itemBuilder: (context, index) {
+                        final flat = Map<String, dynamic>.from(_flats[index]);
+                        final bool isCompleted = flat['is_completed'] == true;
+                        return _FlatCard(
+                          flat: flat,
+                          isCompleted: isCompleted,
+                          canEdit: canEdit,
+                          onTap: () => _openFlat(flat),
+                          onToggleCompleted: () => _toggleFlatCompleted(flat),
+                          onDelete: () => _deleteFlat(flat),
+                        );
+                      },
+                    ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FlatCard extends StatelessWidget {
+  final Map<String, dynamic> flat;
+  final bool isCompleted;
+  final bool canEdit;
+  final VoidCallback onTap;
+  final VoidCallback onToggleCompleted;
+  final VoidCallback onDelete;
+
+  const _FlatCard({
+    required this.flat,
+    required this.isCompleted,
+    required this.canEdit,
+    required this.onTap,
+    required this.onToggleCompleted,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isCompleted ? AppTheme.success.withAlpha(30) : AppTheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      elevation: 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isCompleted ? Icons.check_circle : Icons.apartment,
+                    color: isCompleted ? AppTheme.success : AppTheme.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    flat['flat_number']?.toString() ?? '?',
+                    style: AppTheme.heading.copyWith(
+                      fontSize: 20,
+                      color: isCompleted ? AppTheme.success : AppTheme.textPrimary,
+                      decoration: isCompleted ? TextDecoration.lineThrough : null,
+                      decorationThickness: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (canEdit)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 18, color: AppTheme.textSecondary),
+                  padding: EdgeInsets.zero,
+                  onSelected: (value) {
+                    if (value == 'toggle') onToggleCompleted();
+                    if (value == 'delete') onDelete();
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'toggle',
+                      child: Row(
+                        children: [
+                          Icon(
+                            isCompleted ? Icons.undo : Icons.check,
+                            size: 18,
+                            color: AppTheme.textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(isCompleted ? 'Unmark Done' : 'Mark Done'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Delete', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

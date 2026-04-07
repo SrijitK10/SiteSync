@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
+import { Flat } from '../../flats/entities/flat.entity';
 
 export enum TaskStatus {
   TODO = 'todo',
@@ -33,6 +34,11 @@ export class Task {
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })
   project: Project;
+
+  @Index()
+  @ManyToOne(() => Flat, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'flat_id' })
+  flat: Flat;
 
   @Index()
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })

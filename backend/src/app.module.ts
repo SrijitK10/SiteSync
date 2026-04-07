@@ -10,6 +10,7 @@ import { ShiftsModule } from './shifts/shifts.module';
 import { TasksModule } from './tasks/tasks.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { ContractorsModule } from './contractors/contractors.module';
+import { FlatsModule } from './flats/flats.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { NotificationsModule } from './notifications/notifications.module';
 
@@ -33,6 +34,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     TasksModule,
     AttendanceModule,
     ContractorsModule,
+    FlatsModule,
     NotificationsModule,
   ],
   controllers: [AppController],
