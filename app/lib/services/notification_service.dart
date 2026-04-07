@@ -113,6 +113,8 @@ class NotificationService {
   }
 
   Future<String?> getToken() async {
-    return await _firebaseMessaging.getToken();
+    return await _firebaseMessaging.getToken(
+      vapidKey: 'BJNt00XCDiEsjEznVjFLbqgDjwPU5m6c3MfydPidyy36FWeTPqSoUcEVSg4hIrVeIC526LPO9vOE2bYnN3jJ7AE',
+    );
   }
 }
