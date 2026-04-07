@@ -259,21 +259,7 @@ class ProjectsScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.people),
               tooltip: 'Manage Users',
-              onPressed: () async {
-                // Refresh role one more time right before opening the screen
-                // so a user who was just demoted can't sneak in on a stale
-                // client state.
-                await ref.read(authProvider.notifier).refreshCurrentUser();
-                if (!context.mounted) return;
-                final fresh = ref.read(authProvider).currentUser;
-                if (fresh == null || !fresh.role.isAdmin) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('You no longer have permission to manage users.')),
-                  );
-                  return;
-                }
-                if (context.mounted) context.push('/users');
-              },
+              onPressed: () => context.push('/users'),
             ),
           IconButton(
             icon: const Icon(Icons.refresh),
