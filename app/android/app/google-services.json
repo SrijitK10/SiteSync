@@ -12,7 +12,16 @@
           "package_name": "com.sitesync.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "648404388408-9c0346qqfcrohqjn5v78bm7qvv9vsegn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sitesync.app",
+            "certificate_hash": "68b0da1e6f7991603c89f2f10636130b4884a8ad"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAHG51RGnIDD-16jpgyBY38eU3WnTxdpeY"
