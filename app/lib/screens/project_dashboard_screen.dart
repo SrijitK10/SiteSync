@@ -12,19 +12,21 @@ class ProjectDashboardScreen extends ConsumerStatefulWidget {
   final String projectId;
   final String? projectName;
   final String? projectLocation;
-  
+
   const ProjectDashboardScreen({
-    super.key, 
+    super.key,
     required this.projectId,
     this.projectName,
     this.projectLocation,
   });
 
   @override
-  ConsumerState<ProjectDashboardScreen> createState() => _ProjectDashboardScreenState();
+  ConsumerState<ProjectDashboardScreen> createState() =>
+      _ProjectDashboardScreenState();
 }
 
-class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen> {
+class _ProjectDashboardScreenState
+    extends ConsumerState<ProjectDashboardScreen> {
   int _currentIndex = 0;
 
   @override
@@ -38,7 +40,11 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
       TasksTab(projectId: widget.projectId),
       CalendarScreen(projectId: widget.projectId),
       if (!isViewer) AttendanceScreen(projectId: widget.projectId),
-      if (!isViewer) GalleryTab(projectId: widget.projectId, projectName: widget.projectName ?? 'Unknown_Project'),
+      if (!isViewer)
+        GalleryTab(
+          projectId: widget.projectId,
+          projectName: widget.projectName ?? 'Unknown_Project',
+        ),
     ];
 
     // Clamp the tab index so it never exceeds the available pages.
@@ -55,9 +61,19 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.projectName ?? 'Active Workspace', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            if (widget.projectLocation != null && widget.projectLocation!.isNotEmpty)
-              Text(widget.projectLocation!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
+            Text(
+              widget.projectName ?? 'Active Workspace',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (widget.projectLocation != null &&
+                widget.projectLocation!.isNotEmpty)
+              Text(
+                widget.projectLocation!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
           ],
         ),
         leading: IconButton(
@@ -65,6 +81,13 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
           // Pops out of the specific Project Workspace entirely back to Global Projects Landing
           onPressed: () => context.pop(),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
+          ),
+        ],
       ),
       body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
@@ -75,10 +98,24 @@ class _ProjectDashboardScreenState extends ConsumerState<ProjectDashboardScreen>
         backgroundColor: AppTheme.surface,
         type: BottomNavigationBarType.fixed,
         items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Tasks'),
-          const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Calendar'),
-          if (!isViewer) const BottomNavigationBarItem(icon: Icon(Icons.co_present), label: 'Attendance'),
-          if (!isViewer) const BottomNavigationBarItem(icon: Icon(Icons.photo_library), label: 'Progress'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.assignment),
+            label: 'Tasks',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Calendar',
+          ),
+          if (!isViewer)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.co_present),
+              label: 'Attendance',
+            ),
+          if (!isViewer)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.photo_library),
+              label: 'Progress',
+            ),
         ],
       ),
     );

@@ -18,7 +18,11 @@ class GalleryTab extends StatefulWidget {
   final String projectId;
   final String projectName;
 
-  const GalleryTab({super.key, required this.projectId, required this.projectName});
+  const GalleryTab({
+    super.key,
+    required this.projectId,
+    required this.projectName,
+  });
 
   @override
   State<GalleryTab> createState() => _GalleryTabState();
@@ -59,19 +63,21 @@ class _GalleryTabState extends State<GalleryTab> {
         posts.add([img]);
         continue;
       }
-      
+
       final lastPost = posts.last;
       final lastImg = lastPost.last;
-      
+
       final dt1 = DateTime.tryParse(img['date'] ?? '');
       final dt2 = DateTime.tryParse(lastImg['date'] ?? '');
-      
+
       bool sameGroup = false;
       if (dt1 != null && dt2 != null && img['caption'] == lastImg['caption']) {
         if (dt1.difference(dt2).inMinutes.abs() <= 5) {
           sameGroup = true;
         }
-      } else if (dt1 == null && dt2 == null && img['caption'] == lastImg['caption']) {
+      } else if (dt1 == null &&
+          dt2 == null &&
+          img['caption'] == lastImg['caption']) {
         sameGroup = true;
       }
 
@@ -85,13 +91,15 @@ class _GalleryTabState extends State<GalleryTab> {
   }
 
   void _openFullscreen(List<dynamic> images, int initialIndex) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _FullscreenViewer(
-        images: images,
-        initialIndex: initialIndex,
-        projectName: widget.projectName,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _FullscreenViewer(
+          images: images,
+          initialIndex: initialIndex,
+          projectName: widget.projectName,
+        ),
       ),
-    ));
+    );
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -111,7 +119,10 @@ class _GalleryTabState extends State<GalleryTab> {
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
               backgroundColor: AppTheme.background,
-              title: Text('Preview (${images.length})', style: AppTheme.heading),
+              title: Text(
+                'Preview (${images.length})',
+                style: AppTheme.heading,
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: Column(
@@ -120,16 +131,20 @@ class _GalleryTabState extends State<GalleryTab> {
                     Flexible(
                       child: GridView.builder(
                         shrinkWrap: true,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                            ),
                         itemCount: images.length,
                         itemBuilder: (context, index) {
                           return ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(File(images[index].path), fit: BoxFit.cover),
+                            child: Image.file(
+                              File(images[index].path),
+                              fit: BoxFit.cover,
+                            ),
                           );
                         },
                       ),
@@ -146,14 +161,23 @@ class _GalleryTabState extends State<GalleryTab> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
                 TextButton(
                   onPressed: () async {
-                    final List<XFile> newImgs = await _picker.pickMultiImage(imageQuality: 70);
-                    if (newImgs.isNotEmpty) setDialogState(() => images = newImgs);
+                    final List<XFile> newImgs = await _picker.pickMultiImage(
+                      imageQuality: 70,
+                    );
+                    if (newImgs.isNotEmpty)
+                      setDialogState(() => images = newImgs);
                   },
-                  child: const Text('Reselect', style: TextStyle(color: AppTheme.primary)),
+                  child: Text(
+                    'Reselect',
+                    style: TextStyle(color: AppTheme.primary),
+                  ),
                 ),
                 AppButton(
                   text: 'Upload',
@@ -174,17 +198,31 @@ class _GalleryTabState extends State<GalleryTab> {
     setState(() => _isUploading = true);
 
     try {
-      final String folderPath = widget.projectName.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
-      final cloudinary = CloudinaryPublic(cloudinaryCloudName, cloudinaryUploadPreset, cache: false);
+      final String folderPath = widget.projectName.replaceAll(
+        RegExp(r'[^a-zA-Z0-9_\-]'),
+        '_',
+      );
+      final cloudinary = CloudinaryPublic(
+        cloudinaryCloudName,
+        cloudinaryUploadPreset,
+        cache: false,
+      );
 
       for (var img in images) {
         final response = await cloudinary.uploadFile(
-          CloudinaryFile.fromFile(img.path, resourceType: CloudinaryResourceType.Image, folder: folderPath),
+          CloudinaryFile.fromFile(
+            img.path,
+            resourceType: CloudinaryResourceType.Image,
+            folder: folderPath,
+          ),
         );
-        await apiClient.post('/projects/${widget.projectId}/images', data: {
-          'url': response.secureUrl,
-          'caption': captionController.text.trim(),
-        });
+        await apiClient.post(
+          '/projects/${widget.projectId}/images',
+          data: {
+            'url': response.secureUrl,
+            'caption': captionController.text.trim(),
+          },
+        );
       }
 
       _fetchImages();
@@ -192,7 +230,12 @@ class _GalleryTabState extends State<GalleryTab> {
       debugPrint('Error uploading image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload Failed: $e', style: const TextStyle(color: Colors.red))),
+          SnackBar(
+            content: Text(
+              'Upload Failed: $e',
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
         );
       }
     } finally {
@@ -212,7 +255,8 @@ class _GalleryTabState extends State<GalleryTab> {
       final List<XFile> files = [];
 
       for (int i = 0; i < images.length; i++) {
-        final savePath = '${tempDir.path}/share_${images[i]['date'] ?? 'img'}_$i.jpg';
+        final savePath =
+            '${tempDir.path}/share_${images[i]['date'] ?? 'img'}_$i.jpg';
         await dio.download(images[i]['url'], savePath);
         files.add(XFile(savePath));
       }
@@ -223,9 +267,9 @@ class _GalleryTabState extends State<GalleryTab> {
     } catch (e) {
       debugPrint('Error sharing images: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to share: $e')));
       }
     }
   }
@@ -242,11 +286,20 @@ class _GalleryTabState extends State<GalleryTab> {
         backgroundColor: AppTheme.primary,
         onPressed: _isUploading ? null : _pickAndUploadImage,
         child: _isUploading
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: AppTheme.surface, strokeWidth: 2))
-            : const Icon(Icons.add_a_photo, color: AppTheme.surface),
+            ? SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: AppTheme.surface,
+                  strokeWidth: 2,
+                ),
+              )
+            : Icon(Icons.add_a_photo, color: AppTheme.surface),
       ),
       body: _images.isEmpty
-          ? Center(child: Text('No progress images recorded.', style: AppTheme.body))
+          ? Center(
+              child: Text('No progress images recorded.', style: AppTheme.body),
+            )
           : RefreshIndicator(
               onRefresh: _fetchImages,
               child: ListView.builder(
@@ -255,11 +308,17 @@ class _GalleryTabState extends State<GalleryTab> {
                 itemBuilder: (context, groupIndex) {
                   final groupImages = posts[groupIndex];
                   final rawDate = groupImages.first['date'] ?? 'Unknown';
-                  final dateFormatted = rawDate != 'Unknown' && rawDate.isNotEmpty
-                      ? DateFormat('MMM dd, yyyy  h:mm a').format(DateTime.parse(rawDate).toLocal())
+                  final dateFormatted =
+                      rawDate != 'Unknown' && rawDate.isNotEmpty
+                      ? DateFormat(
+                          'MMM dd, yyyy  h:mm a',
+                        ).format(DateTime.parse(rawDate).toLocal())
                       : 'Unknown Date';
-                  final uploaderName = groupImages.first['uploadedBy']?['name'] ?? 'Unknown User';
-                  final caption = groupImages.first['caption']?.toString() ?? '';
+                  final uploaderName =
+                      groupImages.first['uploadedBy']?['name'] ??
+                      'Unknown User';
+                  final caption =
+                      groupImages.first['caption']?.toString() ?? '';
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 20),
@@ -269,14 +328,28 @@ class _GalleryTabState extends State<GalleryTab> {
                         // Date header
                         Row(
                           children: [
-                            Text(dateFormatted, style: AppTheme.label.copyWith(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                            Text(
+                              dateFormatted,
+                              style: AppTheme.label.copyWith(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const SizedBox(width: 8),
-                            Text('· ${groupImages.length} photo${groupImages.length > 1 ? 's' : ''}',
-                                style: AppTheme.label.copyWith(color: AppTheme.textSecondary)),
+                            Text(
+                              '· ${groupImages.length} photo${groupImages.length > 1 ? 's' : ''}',
+                              style: AppTheme.label.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
                             const Spacer(),
                             GestureDetector(
                               onTap: () => _shareImages(groupImages, caption),
-                              child: const Icon(Icons.share, size: 18, color: AppTheme.textSecondary),
+                              child: Icon(
+                                Icons.share,
+                                size: 18,
+                                color: AppTheme.textSecondary,
+                              ),
                             ),
                           ],
                         ),
@@ -290,10 +363,15 @@ class _GalleryTabState extends State<GalleryTab> {
                             itemBuilder: (context, imgIndex) {
                               final img = groupImages[imgIndex];
                               return GestureDetector(
-                                onTap: () => _openFullscreen(groupImages, imgIndex),
+                                onTap: () =>
+                                    _openFullscreen(groupImages, imgIndex),
                                 child: Container(
                                   width: 160,
-                                  margin: EdgeInsets.only(right: imgIndex < groupImages.length - 1 ? 8 : 0),
+                                  margin: EdgeInsets.only(
+                                    right: imgIndex < groupImages.length - 1
+                                        ? 8
+                                        : 0,
+                                  ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
                                     child: Image.network(
@@ -301,7 +379,10 @@ class _GalleryTabState extends State<GalleryTab> {
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, _) => Container(
                                         color: Colors.grey[200],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -313,9 +394,19 @@ class _GalleryTabState extends State<GalleryTab> {
                         const SizedBox(height: 8),
                         // Caption + uploader
                         if (caption.isNotEmpty)
-                          Text(caption, style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                          Text(
+                            caption,
+                            style: AppTheme.body.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         const SizedBox(height: 2),
-                        Text('By $uploaderName', style: AppTheme.label.copyWith(color: AppTheme.textSecondary)),
+                        Text(
+                          'By $uploaderName',
+                          style: AppTheme.label.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -360,17 +451,27 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
     super.dispose();
   }
 
-  Future<void> _shareImage(String url, String dateString, String caption) async {
+  Future<void> _shareImage(
+    String url,
+    String dateString,
+    String caption,
+  ) async {
     try {
       final tempDir = await getTemporaryDirectory();
       final savePath = '${tempDir.path}/progress_$dateString.jpg';
       await Dio().download(url, savePath);
       final shareText = caption.isNotEmpty ? caption : widget.projectName;
       // ignore: deprecated_member_use
-      await Share.shareXFiles([XFile(savePath)], text: shareText, subject: shareText);
+      await Share.shareXFiles(
+        [XFile(savePath)],
+        text: shareText,
+        subject: shareText,
+      );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to share: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to share: $e')));
       }
     }
   }
@@ -416,7 +517,11 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
                   child: Image.network(
                     widget.images[index]['url'],
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, _) => const Icon(Icons.broken_image, color: Colors.grey, size: 60),
+                    errorBuilder: (_, __, _) => const Icon(
+                      Icons.broken_image,
+                      color: Colors.grey,
+                      size: 60,
+                    ),
                   ),
                 ),
               );
@@ -441,10 +546,19 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (caption.isNotEmpty)
-                    Text(caption, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                    Text(
+                      caption,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   const SizedBox(height: 4),
-                  Text('$uploader · $dateFormatted',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    '$uploader · $dateFormatted',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
                 ],
               ),
             ),

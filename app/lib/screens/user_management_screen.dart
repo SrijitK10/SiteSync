@@ -12,7 +12,8 @@ class UserManagementScreen extends ConsumerStatefulWidget {
   const UserManagementScreen({super.key});
 
   @override
-  ConsumerState<UserManagementScreen> createState() => _UserManagementScreenState();
+  ConsumerState<UserManagementScreen> createState() =>
+      _UserManagementScreenState();
 }
 
 class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
@@ -45,14 +46,20 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24, right: 24, top: 24,
+                left: 24,
+                right: 24,
+                top: 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Add New Teammate', style: AppTheme.heading),
                   const SizedBox(height: 16),
-                  AppTextField(label: 'NAME', hint: 'Rajesh Kumar', controller: nameController),
+                  AppTextField(
+                    label: 'NAME',
+                    hint: 'Rajesh Kumar',
+                    controller: nameController,
+                  ),
                   const SizedBox(height: 12),
                   AppTextField(
                     label: 'PHONE NUMBER',
@@ -75,7 +82,10 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                      DropdownMenuItem(value: 'site_manager', child: Text('Site Manager')),
+                      DropdownMenuItem(
+                        value: 'site_manager',
+                        child: Text('Site Manager'),
+                      ),
                       DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
                     ],
                     onChanged: (val) {
@@ -88,15 +98,20 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                       : AppButton(
                           text: 'Create User',
                           onPressed: () async {
-                            if (nameController.text.isEmpty || phoneController.text.isEmpty) return;
+                            if (nameController.text.isEmpty ||
+                                phoneController.text.isEmpty)
+                              return;
                             setState(() => isSubmitting = true);
                             try {
                               final phone = '+91${phoneController.text.trim()}';
-                              await apiClient.post('/users', data: {
-                                'name': nameController.text.trim(),
-                                'phone': phone,
-                                'role': selectedRole,
-                              });
+                              await apiClient.post(
+                                '/users',
+                                data: {
+                                  'name': nameController.text.trim(),
+                                  'phone': phone,
+                                  'role': selectedRole,
+                                },
+                              );
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ref.invalidate(usersProvider);
@@ -104,7 +119,14 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                             } catch (e) {
                               setState(() => isSubmitting = false);
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Submission failed: $e', style: const TextStyle(color: Colors.red))));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Submission failed: $e',
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                );
                               }
                             }
                           },
@@ -113,7 +135,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                 ],
               ),
             );
-          }
+          },
         );
       },
     );
@@ -141,9 +163,14 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete ${user.name}?'),
-        content: const Text('This action cannot be undone. The user will lose all access.'),
+        content: const Text(
+          'This action cannot be undone. The user will lose all access.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -156,11 +183,15 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       await apiClient.delete('/users/${user.id}');
       ref.invalidate(usersProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User deleted.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('User deleted.')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
       }
     }
   }
@@ -192,19 +223,20 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             onPressed: () {
               ref.invalidate(usersProvider);
             },
-          )
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primary,
         onPressed: () => _showAddUserBottomSheet(context),
-        child: const Icon(Icons.add, color: AppTheme.surface),
+        child: Icon(Icons.add, color: AppTheme.surface),
       ),
       body: usersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (users) {
-          if (users.isEmpty) return const Center(child: Text('No users found.'));
+          if (users.isEmpty)
+            return const Center(child: Text('No users found.'));
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: users.length,
@@ -212,21 +244,30 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             itemBuilder: (context, index) {
               final user = users[index];
               final isSelf = user.id == currentUser.id;
-              final isNonAdmin = user.role.value == 'site_manager' || user.role.value == 'viewer';
+              final isNonAdmin =
+                  user.role.value == 'site_manager' ||
+                  user.role.value == 'viewer';
               return ListTile(
                 tileColor: AppTheme.surface,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 leading: CircleAvatar(
                   backgroundColor: AppTheme.accent,
                   child: Text(
                     user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                    style: const TextStyle(color: AppTheme.surface),
+                    style: TextStyle(color: AppTheme.surface),
                   ),
                 ),
-                title: Text(user.name, style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                title: Text(
+                  user.name,
+                  style: AppTheme.body.copyWith(fontWeight: FontWeight.w600),
+                ),
                 subtitle: Text(
                   user.phone ?? user.email ?? '',
-                  style: AppTheme.label.copyWith(textBaseline: TextBaseline.alphabetic),
+                  style: AppTheme.label.copyWith(
+                    textBaseline: TextBaseline.alphabetic,
+                  ),
                 ),
                 // Tap to manage project access for non-admin users
                 onTap: canEditRoles && isNonAdmin && !isSelf
@@ -238,34 +279,72 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                     // Project access indicator for non-admins
                     if (canEditRoles && isNonAdmin && !isSelf)
                       IconButton(
-                        icon: const Icon(Icons.folder_shared, color: AppTheme.primary, size: 20),
+                        icon: Icon(
+                          Icons.folder_shared,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
                         tooltip: 'Manage Project Access',
-                        onPressed: () => _showProjectAssignmentSheet(context, user),
+                        onPressed: () =>
+                            _showProjectAssignmentSheet(context, user),
                       ),
                     // Role dropdown or chip
                     if (canEditRoles && !isSelf)
                       DropdownButton<String>(
                         value: user.role.value,
-                        style: AppTheme.label.copyWith(color: AppTheme.primary, fontSize: 10),
+                        style: AppTheme.label.copyWith(
+                          color: AppTheme.primary,
+                          fontSize: 10,
+                        ),
                         underline: const SizedBox(),
-                        icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primary, size: 20),
+                        icon: Icon(
+                          Icons.arrow_drop_down,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
                         items: const [
-                          DropdownMenuItem(value: 'super_admin', child: Text('SUPER ADMIN')),
-                          DropdownMenuItem(value: 'admin', child: Text('ADMIN')),
-                          DropdownMenuItem(value: 'site_manager', child: Text('SITE MANAGER')),
-                          DropdownMenuItem(value: 'viewer', child: Text('VIEWER')),
+                          DropdownMenuItem(
+                            value: 'super_admin',
+                            child: Text('SUPER ADMIN'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'admin',
+                            child: Text('ADMIN'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'site_manager',
+                            child: Text('SITE MANAGER'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'viewer',
+                            child: Text('VIEWER'),
+                          ),
                         ],
                         onChanged: (newRole) async {
                           if (newRole != null && newRole != user.role.value) {
                             try {
-                              await apiClient.patch('/users/${user.id}', data: {'role': newRole});
+                              await apiClient.patch(
+                                '/users/${user.id}',
+                                data: {'role': newRole},
+                              );
                               ref.invalidate(usersProvider);
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Role updated successfully.')));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Role updated successfully.'),
+                                  ),
+                                );
                               }
                             } catch (e) {
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update role: $e', style: const TextStyle(color: Colors.red))));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Failed to update role: $e',
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                );
                               }
                             }
                           }
@@ -295,7 +374,8 @@ class _ProjectAssignmentSheet extends StatefulWidget {
   const _ProjectAssignmentSheet({required this.user});
 
   @override
-  State<_ProjectAssignmentSheet> createState() => _ProjectAssignmentSheetState();
+  State<_ProjectAssignmentSheet> createState() =>
+      _ProjectAssignmentSheetState();
 }
 
 class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
@@ -336,9 +416,9 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
       debugPrint('Failed to load project assignments: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load: $e')));
       }
     }
   }
@@ -362,9 +442,9 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
       }
     }
   }
@@ -385,7 +465,8 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
               // Handle bar
               Center(
                 child: Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: AppTheme.textSecondary.withOpacity(0.3),
@@ -401,8 +482,13 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
                     backgroundColor: AppTheme.accent,
                     radius: 18,
                     child: Text(
-                      widget.user.name.isNotEmpty ? widget.user.name[0].toUpperCase() : '?',
-                      style: const TextStyle(color: AppTheme.surface, fontWeight: FontWeight.bold),
+                      widget.user.name.isNotEmpty
+                          ? widget.user.name[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: AppTheme.surface,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -410,10 +496,16 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.user.name, style: AppTheme.heading.copyWith(fontSize: 16)),
+                        Text(
+                          widget.user.name,
+                          style: AppTheme.heading.copyWith(fontSize: 16),
+                        ),
                         Text(
                           '${widget.user.role.value.toUpperCase()} • ${widget.user.displayIdentifier}',
-                          style: AppTheme.label.copyWith(fontSize: 11, color: AppTheme.textSecondary),
+                          style: AppTheme.label.copyWith(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -423,7 +515,10 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
               const SizedBox(height: 4),
               Text(
                 'Toggle which projects this user can access:',
-                style: AppTheme.body.copyWith(color: AppTheme.textSecondary, fontSize: 13),
+                style: AppTheme.body.copyWith(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -432,57 +527,63 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _allProjects.isEmpty
-                        ? const Center(child: Text('No projects found.'))
-                        : ListView.builder(
-                            controller: scrollController,
-                            itemCount: _allProjects.length,
-                            itemBuilder: (context, index) {
-                              final project = _allProjects[index];
-                              final projectId = project['id'] as String;
-                              final isAssigned = _assignedIds.contains(projectId);
+                    ? const Center(child: Text('No projects found.'))
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: _allProjects.length,
+                        itemBuilder: (context, index) {
+                          final project = _allProjects[index];
+                          final projectId = project['id'] as String;
+                          final isAssigned = _assignedIds.contains(projectId);
 
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  color: isAssigned
-                                      ? AppTheme.primary.withOpacity(0.08)
-                                      : AppTheme.surface,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: isAssigned
-                                        ? AppTheme.primary.withOpacity(0.3)
-                                        : Colors.transparent,
-                                    width: 1.2,
-                                  ),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: isAssigned
+                                  ? AppTheme.primary.withOpacity(0.08)
+                                  : AppTheme.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isAssigned
+                                    ? AppTheme.primary.withOpacity(0.3)
+                                    : Colors.transparent,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: SwitchListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 2,
+                              ),
+                              title: Text(
+                                project['name'] ?? 'Unnamed',
+                                style: AppTheme.body.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
                                 ),
-                                child: SwitchListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                                  title: Text(
-                                    project['name'] ?? 'Unnamed',
-                                    style: AppTheme.body.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    project['location'] ?? '',
-                                    style: AppTheme.label.copyWith(fontSize: 11, color: AppTheme.textSecondary),
-                                  ),
-                                  value: isAssigned,
-                                  activeColor: AppTheme.primary,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      if (val) {
-                                        _assignedIds.add(projectId);
-                                      } else {
-                                        _assignedIds.remove(projectId);
-                                      }
-                                    });
-                                  },
+                              ),
+                              subtitle: Text(
+                                project['location'] ?? '',
+                                style: AppTheme.label.copyWith(
+                                  fontSize: 11,
+                                  color: AppTheme.textSecondary,
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                              value: isAssigned,
+                              activeColor: AppTheme.primary,
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val) {
+                                    _assignedIds.add(projectId);
+                                  } else {
+                                    _assignedIds.remove(projectId);
+                                  }
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
               ),
               const SizedBox(height: 12),
 
@@ -492,21 +593,29 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
                   Expanded(
                     child: Text(
                       '${_assignedIds.length} of ${_allProjects.length} projects assigned',
-                      style: AppTheme.label.copyWith(color: AppTheme.textSecondary),
+                      style: AppTheme.label.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ),
                   if (!_isLoading)
                     _isSaving
                         ? const SizedBox(
-                            width: 24, height: 24,
+                            width: 24,
+                            height: 24,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primary,
                               foregroundColor: AppTheme.surface,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
                             ),
                             icon: const Icon(Icons.save, size: 18),
                             label: const Text('Save Access'),

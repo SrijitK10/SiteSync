@@ -74,18 +74,22 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
           textInputAction: TextInputAction.newline,
           style: AppTheme.body,
           decoration: InputDecoration(
-            hintText: 'Add required materials, warnings, or descriptions...\nUse Enter to add a new line.',
+            hintText:
+                'Add required materials, warnings, or descriptions...\nUse Enter to add a new line.',
             hintStyle: AppTheme.body.copyWith(color: AppTheme.textSecondary),
             filled: true,
             fillColor: AppTheme.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppTheme.accent, width: 2),
+              borderSide: BorderSide(color: AppTheme.accent, width: 2),
             ),
           ),
         ),
@@ -95,29 +99,57 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
 
   Widget _buildNotesBullets(String? description) {
     if (description == null || description.trim().isEmpty) {
-      return Text('No notes provided.', style: AppTheme.body.copyWith(color: AppTheme.textSecondary));
+      return Text(
+        'No notes provided.',
+        style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+      );
     }
-    final lines = description.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final lines = description
+        .split('\n')
+        .where((l) => l.trim().isNotEmpty)
+        .toList();
     if (lines.isEmpty) {
-      return Text('No notes provided.', style: AppTheme.body.copyWith(color: AppTheme.textSecondary));
+      return Text(
+        'No notes provided.',
+        style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: lines.map((line) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('• ', style: AppTheme.body.copyWith(color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
-            Expanded(child: Text(line.trim(), style: AppTheme.body.copyWith(color: AppTheme.textSecondary))),
-          ],
-        ),
-      )).toList(),
+      children: lines
+          .map(
+            (line) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '• ',
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      line.trim(),
+                      style: AppTheme.body.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
   void _showEditNotesSheet(Map<String, dynamic> task) {
-    final notesController = TextEditingController(text: task['description'] ?? '');
+    final notesController = TextEditingController(
+      text: task['description'] ?? '',
+    );
     bool isSubmitting = false;
 
     showModalBottomSheet(
@@ -130,7 +162,9 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24, right: 24, top: 24,
+                left: 24,
+                right: 24,
+                top: 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -141,23 +175,27 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                   _buildNotesField(notesController),
                   const SizedBox(height: 32),
                   isSubmitting
-                    ? const Center(child: CircularProgressIndicator())
-                    : AppButton(
-                        text: 'Save Notes',
-                        onPressed: () async {
-                          setStateLocal(() => isSubmitting = true);
-                          try {
-                            await apiClient.patch('/tasks/${task['id']}', data: {
-                              'description': notesController.text.trim(),
-                            });
-                            _fetchTasks();
-                            if (context.mounted) Navigator.pop(context);
-                          } catch (e) {
-                            debugPrint('Error updating notes: $e');
-                            if (context.mounted) setStateLocal(() => isSubmitting = false);
-                          }
-                        },
-                      ),
+                      ? const Center(child: CircularProgressIndicator())
+                      : AppButton(
+                          text: 'Save Notes',
+                          onPressed: () async {
+                            setStateLocal(() => isSubmitting = true);
+                            try {
+                              await apiClient.patch(
+                                '/tasks/${task['id']}',
+                                data: {
+                                  'description': notesController.text.trim(),
+                                },
+                              );
+                              _fetchTasks();
+                              if (context.mounted) Navigator.pop(context);
+                            } catch (e) {
+                              debugPrint('Error updating notes: $e');
+                              if (context.mounted)
+                                setStateLocal(() => isSubmitting = false);
+                            }
+                          },
+                        ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -175,7 +213,10 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
         title: const Text('Delete Task'),
         content: const Text('Are you sure you want to delete this task?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -207,39 +248,52 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24, right: 24, top: 24,
+                left: 24,
+                right: 24,
+                top: 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('New Task for Flat ${widget.flatNumber}', style: AppTheme.heading),
+                  Text(
+                    'New Task for Flat ${widget.flatNumber}',
+                    style: AppTheme.heading,
+                  ),
                   const SizedBox(height: 16),
-                  AppTextField(label: 'TITLE', hint: 'E.g. Pour Foundation', controller: titleController),
+                  AppTextField(
+                    label: 'TITLE',
+                    hint: 'E.g. Pour Foundation',
+                    controller: titleController,
+                  ),
                   const SizedBox(height: 16),
                   _buildNotesField(notesController),
                   const SizedBox(height: 32),
                   isSubmitting
-                    ? const CircularProgressIndicator()
-                    : AppButton(
-                        text: 'Save Task',
-                        onPressed: () async {
-                          if (titleController.text.trim().isEmpty) return;
-                          setStateLocal(() => isSubmitting = true);
-                          try {
-                            await apiClient.post('/tasks', data: {
-                              'projectId': widget.projectId,
-                              'flatId': widget.flatId,
-                              'title': titleController.text.trim(),
-                              'description': notesController.text.trim(),
-                            });
-                            _fetchTasks();
-                            if (context.mounted) Navigator.pop(context);
-                          } catch (e) {
-                            debugPrint('Error creating task: $e');
-                            if (context.mounted) setStateLocal(() => isSubmitting = false);
-                          }
-                        },
-                      ),
+                      ? const CircularProgressIndicator()
+                      : AppButton(
+                          text: 'Save Task',
+                          onPressed: () async {
+                            if (titleController.text.trim().isEmpty) return;
+                            setStateLocal(() => isSubmitting = true);
+                            try {
+                              await apiClient.post(
+                                '/tasks',
+                                data: {
+                                  'projectId': widget.projectId,
+                                  'flatId': widget.flatId,
+                                  'title': titleController.text.trim(),
+                                  'description': notesController.text.trim(),
+                                },
+                              );
+                              _fetchTasks();
+                              if (context.mounted) Navigator.pop(context);
+                            } catch (e) {
+                              debugPrint('Error creating task: $e');
+                              if (context.mounted)
+                                setStateLocal(() => isSubmitting = false);
+                            }
+                          },
+                        ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -258,19 +312,24 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text('Flat ${widget.flatNumber}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text(
+          'Flat ${widget.flatNumber}',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primary,
         onPressed: _showAddTaskSheet,
-        child: const Icon(Icons.add, color: AppTheme.surface),
+        child: Icon(Icons.add, color: AppTheme.surface),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: _tasks.isEmpty
-                  ? const Center(child: Text('No tasks created for this flat yet.'))
+                  ? const Center(
+                      child: Text('No tasks created for this flat yet.'),
+                    )
                   : ListView.builder(
                       itemCount: _tasks.length,
                       itemBuilder: (context, index) {
@@ -283,19 +342,31 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                             leading: Checkbox(
                               value: isDone,
                               activeColor: AppTheme.success,
-                              onChanged: (val) => _toggleTaskStatus(t['id'], t['status']),
+                              onChanged: (val) =>
+                                  _toggleTaskStatus(t['id'], t['status']),
                             ),
                             title: Text(
                               t['title'] ?? 'Untitled',
                               style: AppTheme.body.copyWith(
                                 fontWeight: FontWeight.bold,
-                                decoration: isDone ? TextDecoration.lineThrough : null,
+                                decoration: isDone
+                                    ? TextDecoration.lineThrough
+                                    : null,
                               ),
                             ),
-                            subtitle: Text(isDone ? 'Finished: ${t['completed_at']}' : 'Added: ${t['created_at']}'),
+                            subtitle: Text(
+                              isDone
+                                  ? 'Finished: ${t['completed_at']}'
+                                  : 'Added: ${t['created_at']}',
+                            ),
                             children: [
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  16,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -303,25 +374,64 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                     if (canEdit) ...[
                                       const SizedBox(height: 12),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           TextButton.icon(
-                                            onPressed: () => _showEditNotesSheet(Map<String, dynamic>.from(t)),
-                                            icon: const Icon(Icons.edit_outlined, size: 16, color: AppTheme.primary),
-                                            label: const Text('Edit Notes', style: TextStyle(color: AppTheme.primary, fontSize: 13)),
+                                            onPressed: () =>
+                                                _showEditNotesSheet(
+                                                  Map<String, dynamic>.from(t),
+                                                ),
+                                            icon: Icon(
+                                              Icons.edit_outlined,
+                                              size: 16,
+                                              color: AppTheme.primary,
+                                            ),
+                                            label: Text(
+                                              'Edit Notes',
+                                              style: TextStyle(
+                                                color: AppTheme.primary,
+                                                fontSize: 13,
+                                              ),
+                                            ),
                                             style: TextButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 4),
                                           TextButton.icon(
-                                            onPressed: () => _deleteTask(t['id']),
-                                            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                                            label: const Text('Delete', style: TextStyle(color: Colors.red, fontSize: 13)),
+                                            onPressed: () =>
+                                                _deleteTask(t['id']),
+                                            icon: const Icon(
+                                              Icons.delete_outline,
+                                              size: 16,
+                                              color: Colors.red,
+                                            ),
+                                            label: const Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                                fontSize: 13,
+                                              ),
+                                            ),
                                             style: TextButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
                                             ),
                                           ),
                                         ],

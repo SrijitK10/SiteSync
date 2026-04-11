@@ -22,10 +22,7 @@ class AppTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: AppTheme.label,
-        ),
+        Text(label, style: AppTheme.label),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -37,14 +34,17 @@ class AppTextField extends StatelessWidget {
             hintStyle: AppTheme.body.copyWith(color: AppTheme.textSecondary),
             filled: true,
             fillColor: AppTheme.surface,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppTheme.accent, width: 2),
+              borderSide: BorderSide(color: AppTheme.accent, width: 2),
             ),
           ),
         ),

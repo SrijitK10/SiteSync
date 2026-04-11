@@ -47,10 +47,10 @@ class _TasksTabState extends ConsumerState<TasksTab> {
 
   Future<void> _createFlat(String flatNumber) async {
     try {
-      await apiClient.post('/flats', data: {
-        'projectId': widget.projectId,
-        'flat_number': flatNumber,
-      });
+      await apiClient.post(
+        '/flats',
+        data: {'projectId': widget.projectId, 'flat_number': flatNumber},
+      );
       _fetchFlats();
     } catch (e) {
       debugPrint('Error creating flat: $e');
@@ -65,7 +65,10 @@ class _TasksTabState extends ConsumerState<TasksTab> {
   Future<void> _toggleFlatCompleted(Map<String, dynamic> flat) async {
     final bool current = flat['is_completed'] == true;
     try {
-      await apiClient.patch('/flats/${flat['id']}', data: {'is_completed': !current});
+      await apiClient.patch(
+        '/flats/${flat['id']}',
+        data: {'is_completed': !current},
+      );
       _fetchFlats();
     } catch (e) {
       debugPrint('Error toggling flat: $e');
@@ -81,7 +84,10 @@ class _TasksTabState extends ConsumerState<TasksTab> {
           'This will remove the flat. Tasks under this flat will be unlinked but not deleted. Continue?',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -112,14 +118,20 @@ class _TasksTabState extends ConsumerState<TasksTab> {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24, right: 24, top: 24,
+                left: 24,
+                right: 24,
+                top: 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Add Flat', style: AppTheme.heading),
                   const SizedBox(height: 16),
-                  AppTextField(label: 'FLAT NUMBER', hint: 'E.g. 101', controller: controller),
+                  AppTextField(
+                    label: 'FLAT NUMBER',
+                    hint: 'E.g. 101',
+                    controller: controller,
+                  ),
                   const SizedBox(height: 32),
                   isSubmitting
                       ? const CircularProgressIndicator()
@@ -142,7 +154,11 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     );
   }
 
-  Future<void> _fetchAndExportExcel(String range, {String? startDate, String? endDate}) async {
+  Future<void> _fetchAndExportExcel(
+    String range, {
+    String? startDate,
+    String? endDate,
+  }) async {
     setState(() => _isExporting = true);
     try {
       String url = '/tasks?projectId=${widget.projectId}&range=$range';
@@ -179,7 +195,8 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       final List<int>? fileBytes = excel.save();
 
       if (fileBytes != null) {
-        final fileName = 'Rupayan_Tasks_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        final fileName =
+            'Rupayan_Tasks_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
         await exportFile(
           bytes: Uint8List.fromList(fileBytes),
           fileName: fileName,
@@ -187,7 +204,10 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -201,7 +221,9 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: AppTheme.primary),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.primary),
           ),
           child: child!,
         );
@@ -219,7 +241,9 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.background,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) {
         return SafeArea(
           child: Column(
@@ -227,27 +251,42 @@ class _TasksTabState extends ConsumerState<TasksTab> {
             children: [
               const Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Text('Download Task Tracking Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Download Task Tracking Reports',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               ListTile(
-                leading: const Icon(Icons.today, color: AppTheme.accent),
+                leading: Icon(Icons.today, color: AppTheme.accent),
                 title: const Text('Export Daily Created/Completed'),
-                onTap: () { Navigator.pop(context); _fetchAndExportExcel('daily'); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _fetchAndExportExcel('daily');
+                },
               ),
               ListTile(
-                leading: const Icon(Icons.date_range, color: AppTheme.accent),
+                leading: Icon(Icons.date_range, color: AppTheme.accent),
                 title: const Text('Export Weekly Summary'),
-                onTap: () { Navigator.pop(context); _fetchAndExportExcel('weekly'); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _fetchAndExportExcel('weekly');
+                },
               ),
               ListTile(
-                leading: const Icon(Icons.calendar_month, color: AppTheme.accent),
+                leading: Icon(Icons.calendar_month, color: AppTheme.accent),
                 title: const Text('Export Monthly Complete Tracker'),
-                onTap: () { Navigator.pop(context); _fetchAndExportExcel('monthly'); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _fetchAndExportExcel('monthly');
+                },
               ),
               ListTile(
-                leading: const Icon(Icons.tune, color: AppTheme.primary),
+                leading: Icon(Icons.tune, color: AppTheme.primary),
                 title: const Text('Export Custom Date Range'),
-                onTap: () { Navigator.pop(context); _showCustomDateRangePicker(); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _showCustomDateRangePicker();
+                },
               ),
               const SizedBox(height: 16),
             ],
@@ -258,15 +297,17 @@ class _TasksTabState extends ConsumerState<TasksTab> {
   }
 
   void _openFlat(Map<String, dynamic> flat) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => FlatTasksScreen(
-          projectId: widget.projectId,
-          flatId: flat['id'].toString(),
-          flatNumber: flat['flat_number'].toString(),
-        ),
-      ),
-    ).then((_) => _fetchFlats());
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => FlatTasksScreen(
+              projectId: widget.projectId,
+              flatId: flat['id'].toString(),
+              flatNumber: flat['flat_number'].toString(),
+            ),
+          ),
+        )
+        .then((_) => _fetchFlats());
   }
 
   @override
@@ -282,8 +323,11 @@ class _TasksTabState extends ConsumerState<TasksTab> {
           ? FloatingActionButton.extended(
               backgroundColor: AppTheme.primary,
               onPressed: _showAddFlatSheet,
-              icon: const Icon(Icons.add, color: AppTheme.surface),
-              label: const Text('Add Flat', style: TextStyle(color: AppTheme.surface)),
+              icon: Icon(Icons.add, color: AppTheme.surface),
+              label: Text(
+                'Add Flat',
+                style: TextStyle(color: AppTheme.surface),
+              ),
             )
           : null,
       body: Padding(
@@ -293,17 +337,37 @@ class _TasksTabState extends ConsumerState<TasksTab> {
           children: [
             if (!isViewer) ...[
               if (_isExporting)
-                const Center(child: Padding(padding: EdgeInsets.only(bottom: 16), child: CircularProgressIndicator(color: AppTheme.accent)))
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: CircularProgressIndicator(color: AppTheme.accent),
+                  ),
+                )
               else
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     onPressed: () => _showExportOptions(context),
-                    icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
-                    label: const Text('Download Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                    icon: Icon(
+                      Icons.download,
+                      size: 18,
+                      color: AppTheme.primary,
+                    ),
+                    label: Text(
+                      'Download Reports',
+                      style: TextStyle(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -315,25 +379,32 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.apartment, size: 48, color: AppTheme.textSecondary),
+                          Icon(
+                            Icons.apartment,
+                            size: 48,
+                            color: AppTheme.textSecondary,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             canEdit
                                 ? 'No flats yet.\nTap "Add Flat" to get started.'
                                 : 'No flats have been added yet.',
                             textAlign: TextAlign.center,
-                            style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+                            style: AppTheme.body.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
                         ],
                       ),
                     )
                   : GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        childAspectRatio: 1.0,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 1.0,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
                       itemCount: _flats.length,
                       itemBuilder: (context, index) {
                         final flat = Map<String, dynamic>.from(_flats[index]);
@@ -398,8 +469,12 @@ class _FlatCard extends StatelessWidget {
                     flat['flat_number']?.toString() ?? '?',
                     style: AppTheme.heading.copyWith(
                       fontSize: 20,
-                      color: isCompleted ? AppTheme.success : AppTheme.textPrimary,
-                      decoration: isCompleted ? TextDecoration.lineThrough : null,
+                      color: isCompleted
+                          ? AppTheme.success
+                          : AppTheme.textPrimary,
+                      decoration: isCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
                       decorationThickness: 2,
                     ),
                   ),
@@ -411,7 +486,11 @@ class _FlatCard extends StatelessWidget {
                 top: 4,
                 right: 4,
                 child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 18, color: AppTheme.textSecondary),
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: 18,
+                    color: AppTheme.textSecondary,
+                  ),
                   padding: EdgeInsets.zero,
                   onSelected: (value) {
                     if (value == 'toggle') onToggleCompleted();
@@ -436,7 +515,11 @@ class _FlatCard extends StatelessWidget {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: Colors.red,
+                          ),
                           SizedBox(width: 8),
                           Text('Delete', style: TextStyle(color: Colors.red)),
                         ],

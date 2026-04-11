@@ -21,15 +21,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   final _labourersController = TextEditingController();
   final _mistrisController = TextEditingController();
   String? _selectedContractor;
-  
+
   List<dynamic> _contractors = [];
   bool _isLoadingContractors = true;
 
   final List<Map<String, dynamic>> _records = [];
-  
+
   bool _isExporting = false;
   bool _isSyncing = false;
-  
+
   String _siteAddress = 'Loading Location...';
   String _projectName = 'Loading Project...';
   bool _isLoadingProject = true;
@@ -75,7 +75,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   void _addRecordLocal() {
     if (_selectedContractor == null) return;
-    
+
     final labourers = int.tryParse(_labourersController.text.trim()) ?? 0;
     final mistris = int.tryParse(_mistrisController.text.trim()) ?? 0;
 
@@ -111,29 +111,40 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   Future<void> _submitAttendanceToCloud() async {
     if (_records.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add at least one worker first.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one worker first.')),
+      );
       return;
     }
 
     setState(() => _isSyncing = true);
     try {
-      final formattedRecords = _records.map((r) => {
-        'contractor_name': r['contractor_name'],
-        'labourers_count': r['labourers_count'],
-        'mistris_count': r['mistris_count'],
-      }).toList();
-      
-      await apiClient.post('/attendance/bulk', data: {
-        'projectId': widget.projectId,
-        'siteAddress': _siteAddress,
-        'records': formattedRecords,
-      });
-      
+      final formattedRecords = _records
+          .map(
+            (r) => {
+              'contractor_name': r['contractor_name'],
+              'labourers_count': r['labourers_count'],
+              'mistris_count': r['mistris_count'],
+            },
+          )
+          .toList();
+
+      await apiClient.post(
+        '/attendance/bulk',
+        data: {
+          'projectId': widget.projectId,
+          'siteAddress': _siteAddress,
+          'records': formattedRecords,
+        },
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('✅ Roster securely synced to Database!'),
-          backgroundColor: AppTheme.success,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Roster securely synced to Database!'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
         setState(() {
           _records.clear();
           _selectedContractor = null;
@@ -142,13 +153,20 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         });
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to sync: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to sync: $e')));
     } finally {
       if (mounted) setState(() => _isSyncing = false);
     }
   }
 
-  Future<void> _fetchAndExportExcel(String range, {String? startDate, String? endDate}) async {
+  Future<void> _fetchAndExportExcel(
+    String range, {
+    String? startDate,
+    String? endDate,
+  }) async {
     setState(() => _isExporting = true);
 
     try {
@@ -184,18 +202,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       }
 
       final List<int>? fileBytes = excel.save();
-      
+
       if (fileBytes != null) {
-        final fileName = 'Rupayan_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+        final fileName =
+            'Rupayan_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
         await exportFile(
           bytes: Uint8List.fromList(fileBytes),
           fileName: fileName,
           shareText: 'Rupayan $range Attendance Cloud Export',
         );
       }
-
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));
       debugPrint('Export error: $e');
     } finally {
       if (mounted) setState(() => _isExporting = false);
@@ -210,15 +231,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppTheme.primary,
-            ),
+            colorScheme: Theme.of(
+              context,
+            ).colorScheme.copyWith(primary: AppTheme.primary),
           ),
           child: child!,
         );
       },
     );
-    
+
     if (picked != null) {
       final start = picked.start.toIso8601String().split('T')[0];
       final end = picked.end.toIso8601String().split('T')[0];
@@ -230,9 +251,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     try {
       await apiClient.post('/contractors', data: {'name': name});
       _fetchContractors();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contractor Added')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Contractor Added')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add contractor: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add contractor: $e')));
     }
   }
 
@@ -240,9 +267,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     try {
       await apiClient.delete('/contractors/$id');
       _fetchContractors();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contractor Removed')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Contractor Removed')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove contractor: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to remove contractor: $e')),
+        );
     }
   }
 
@@ -251,11 +284,18 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.background,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) {
         final localController = TextEditingController();
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 16, right: 16, top: 16),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -271,7 +311,11 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_circle, color: AppTheme.primary, size: 36),
+                    icon: Icon(
+                      Icons.add_circle,
+                      color: AppTheme.primary,
+                      size: 36,
+                    ),
                     onPressed: () {
                       if (localController.text.trim().isNotEmpty) {
                         _addContractorConfig(localController.text.trim());
@@ -286,25 +330,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               const SizedBox(height: 16),
               const Divider(),
               Expanded(
-                child: _contractors.isEmpty 
-                  ? const Center(child: Text('No contractors found.'))
-                  : ListView.builder(
-                      itemCount: _contractors.length,
-                      itemBuilder: (c, i) {
-                        final contractor = _contractors[i];
-                        return ListTile(
-                          title: Text(contractor['name']),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              _deleteContractorConfig(contractor['id']);
-                              Navigator.pop(ctx);
-                            },
-                          ),
-                        );
-                      },
-                    ),
-              )
+                child: _contractors.isEmpty
+                    ? const Center(child: Text('No contractors found.'))
+                    : ListView.builder(
+                        itemCount: _contractors.length,
+                        itemBuilder: (c, i) {
+                          final contractor = _contractors[i];
+                          return ListTile(
+                            title: Text(contractor['name']),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                _deleteContractorConfig(contractor['id']);
+                                Navigator.pop(ctx);
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
             ],
           ),
         );
@@ -316,7 +360,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.background,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) {
         return SafeArea(
           child: Column(
@@ -324,27 +370,42 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
             children: [
               const Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Text('Download Central Database Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Download Central Database Reports',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               ListTile(
-                leading: const Icon(Icons.today, color: AppTheme.accent),
+                leading: Icon(Icons.today, color: AppTheme.accent),
                 title: const Text('Export Daily Roster'),
-                onTap: () { Navigator.pop(context); _fetchAndExportExcel('daily'); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _fetchAndExportExcel('daily');
+                },
               ),
               ListTile(
-                leading: const Icon(Icons.date_range, color: AppTheme.accent),
+                leading: Icon(Icons.date_range, color: AppTheme.accent),
                 title: const Text('Export Weekly Roster'),
-                onTap: () { Navigator.pop(context); _fetchAndExportExcel('weekly'); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _fetchAndExportExcel('weekly');
+                },
               ),
               ListTile(
-                leading: const Icon(Icons.calendar_month, color: AppTheme.accent),
+                leading: Icon(Icons.calendar_month, color: AppTheme.accent),
                 title: const Text('Export Monthly Complete Tracker'),
-                onTap: () { Navigator.pop(context); _fetchAndExportExcel('monthly'); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _fetchAndExportExcel('monthly');
+                },
               ),
               ListTile(
-                leading: const Icon(Icons.tune, color: AppTheme.primary),
+                leading: Icon(Icons.tune, color: AppTheme.primary),
                 title: const Text('Export Custom Date Range'),
-                onTap: () { Navigator.pop(context); _showCustomDateRangePicker(); },
+                onTap: () {
+                  Navigator.pop(context);
+                  _showCustomDateRangePicker();
+                },
               ),
               const SizedBox(height: 16),
             ],
@@ -359,154 +420,223 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       // We remove the AppBar completely because it's tightly embedded inside the ProjectDashboardScreen IndexedStack natively!
-      body: _isLoadingProject 
-        ? const Center(child: CircularProgressIndicator())
-        : Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_isExporting)
-                  const Center(child: Padding(padding: EdgeInsets.only(bottom: 16), child: CircularProgressIndicator(color: AppTheme.accent)))
-                else
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _showManageContractorsDialog(context),
-                          icon: const Icon(Icons.group, size: 18, color: AppTheme.accent),
-                          label: const Text('Contractors', style: TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w600)),
+      body: _isLoadingProject
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_isExporting)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: CircularProgressIndicator(
+                          color: AppTheme.accent,
                         ),
-                        TextButton.icon(
-                          onPressed: () => _showExportOptions(context),
-                          icon: const Icon(Icons.download, size: 18, color: AppTheme.primary),
-                          label: const Text('Reports', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surface,
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                    )
+                  else
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _isLoadingContractors 
-                            ? const LinearProgressIndicator()
-                            : DropdownButtonFormField<String>(
-                                value: _selectedContractor,
-                                decoration: const InputDecoration(
-                                  labelText: 'CONTRACTOR',
-                                  labelStyle: TextStyle(color: AppTheme.textSecondary),
-                                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.textSecondary)),
-                                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.primary)),
-                                ),
-                                dropdownColor: AppTheme.surface,
-                                style: const TextStyle(color: AppTheme.textPrimary),
-                                items: _contractors.map((c) {
-                                  return DropdownMenuItem<String>(
-                                    value: c['name'],
-                                    child: Text(c['name']),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  setState(() {
-                                    _selectedContractor = val;
-                                  });
-                                },
+                          TextButton.icon(
+                            onPressed: () =>
+                                _showManageContractorsDialog(context),
+                            icon: Icon(
+                              Icons.group,
+                              size: 18,
+                              color: AppTheme.accent,
+                            ),
+                            label: Text(
+                              'Contractors',
+                              style: TextStyle(
+                                color: AppTheme.accent,
+                                fontWeight: FontWeight.w600,
                               ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: AppTextField(
-                                  label: 'LABOURERS',
-                                  hint: '0',
-                                  controller: _labourersController,
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: AppTextField(
-                                  label: 'MISTRIS',
-                                  hint: '0',
-                                  controller: _mistrisController,
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 16),
-                          AppButton(
-                            text: 'Add to Temporary Roster',
-                            onPressed: _addRecordLocal,
+                          TextButton.icon(
+                            onPressed: () => _showExportOptions(context),
+                            icon: Icon(
+                              Icons.download,
+                              size: 18,
+                              color: AppTheme.primary,
+                            ),
+                            label: Text(
+                              'Reports',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Today\'s Roster', style: AppTheme.heading.copyWith(fontSize: 18)),
-                    if (_records.isNotEmpty)
-                      Text('${_records.length} Pending Sync', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: _records.isEmpty
-                      ? const Center(child: Text('No attendance recorded yet today.'))
-                      : ListView.builder(
-                          itemCount: _records.length,
-                          itemBuilder: (context, index) {
-                            final r = _records[index];
-                            return Card(
-                              color: AppTheme.surface,
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: const Icon(Icons.engineering, color: AppTheme.accent),
-                                title: Text(r['contractor_name']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text('Labourers: ${r['labourers_count']} • Mistris: ${r['mistris_count']}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, color: AppTheme.primary),
-                                      onPressed: () => _editRecordLocal(index),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                      onPressed: () => _removeRecordLocal(index),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                ),
-                const SizedBox(height: 16),
-                _isSyncing
-                  ? const Center(child: CircularProgressIndicator())
-                  : AppButton(
-                      text: 'Submit ALL to Database',
-                      onPressed: _submitAttendanceToCloud,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _isLoadingContractors
+                                ? const LinearProgressIndicator()
+                                : DropdownButtonFormField<String>(
+                                    value: _selectedContractor,
+                                    decoration: InputDecoration(
+                                      labelText: 'CONTRACTOR',
+                                      labelStyle: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                      focusedBorder: UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: AppTheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    dropdownColor: AppTheme.surface,
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                    items: _contractors.map((c) {
+                                      return DropdownMenuItem<String>(
+                                        value: c['name'],
+                                        child: Text(c['name']),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _selectedContractor = val;
+                                      });
+                                    },
+                                  ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AppTextField(
+                                    label: 'LABOURERS',
+                                    hint: '0',
+                                    controller: _labourersController,
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: AppTextField(
+                                    label: 'MISTRIS',
+                                    hint: '0',
+                                    controller: _mistrisController,
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            AppButton(
+                              text: 'Add to Temporary Roster',
+                              onPressed: _addRecordLocal,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-              ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Today\'s Roster',
+                        style: AppTheme.heading.copyWith(fontSize: 18),
+                      ),
+                      if (_records.isNotEmpty)
+                        Text(
+                          '${_records.length} Pending Sync',
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: _records.isEmpty
+                        ? const Center(
+                            child: Text('No attendance recorded yet today.'),
+                          )
+                        : ListView.builder(
+                            itemCount: _records.length,
+                            itemBuilder: (context, index) {
+                              final r = _records[index];
+                              return Card(
+                                color: AppTheme.surface,
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.engineering,
+                                    color: AppTheme.accent,
+                                  ),
+                                  title: Text(
+                                    r['contractor_name']!,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Labourers: ${r['labourers_count']} • Mistris: ${r['mistris_count']}',
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.edit,
+                                          color: AppTheme.primary,
+                                        ),
+                                        onPressed: () =>
+                                            _editRecordLocal(index),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.redAccent,
+                                        ),
+                                        onPressed: () =>
+                                            _removeRecordLocal(index),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+                  _isSyncing
+                      ? const Center(child: CircularProgressIndicator())
+                      : AppButton(
+                          text: 'Submit ALL to Database',
+                          onPressed: _submitAttendanceToCloud,
+                        ),
+                ],
+              ),
             ),
-          ),
     );
   }
 }

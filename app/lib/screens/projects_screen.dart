@@ -12,13 +12,19 @@ import '../services/platform_utils.dart';
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String projectId) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    String projectId,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
         title: Text('Delete Project', style: AppTheme.heading),
-        content: const Text('Are you sure you want to permanently delete this project? All associated tasks, calendars, and attendance records will be completely erased.'),
+        content: const Text(
+          'Are you sure you want to permanently delete this project? All associated tasks, calendars, and attendance records will be completely erased.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -37,11 +43,15 @@ class ProjectsScreen extends ConsumerWidget {
         await apiClient.delete('/projects/$projectId');
         ref.invalidate(projectsProvider);
         if (context.mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project structure fully deleted.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Project structure fully deleted.')),
+          );
         }
       } catch (e) {
         if (context.mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete project: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete project: $e')),
+          );
         }
       }
     }
@@ -119,53 +129,70 @@ class ProjectsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   isSubmitting
-                    ? const CircularProgressIndicator()
-                    : AppButton(
-                        text: 'Update Password',
-                        onPressed: () async {
-                          final oldPw = oldPasswordController.text;
-                          final newPw = newPasswordController.text;
-                          final confirmPw = confirmPasswordController.text;
+                      ? const CircularProgressIndicator()
+                      : AppButton(
+                          text: 'Update Password',
+                          onPressed: () async {
+                            final oldPw = oldPasswordController.text;
+                            final newPw = newPasswordController.text;
+                            final confirmPw = confirmPasswordController.text;
 
-                          if (oldPw.isEmpty || newPw.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please fill in all fields')),
-                            );
-                            return;
-                          }
-                          if (newPw.length < 6) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('New password must be at least 6 characters')),
-                            );
-                            return;
-                          }
-                          if (newPw != confirmPw) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Passwords do not match')),
-                            );
-                            return;
-                          }
+                            if (oldPw.isEmpty || newPw.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please fill in all fields'),
+                                ),
+                              );
+                              return;
+                            }
+                            if (newPw.length < 6) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'New password must be at least 6 characters',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            if (newPw != confirmPw) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Passwords do not match'),
+                                ),
+                              );
+                              return;
+                            }
 
-                          setState(() => isSubmitting = true);
-                          try {
-                            await ref.read(authProvider.notifier).changePassword(oldPw, newPw);
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Password changed successfully')),
-                              );
+                            setState(() => isSubmitting = true);
+                            try {
+                              await ref
+                                  .read(authProvider.notifier)
+                                  .changePassword(oldPw, newPw);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Password changed successfully',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(extractErrorMessage(e)),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (context.mounted)
+                                setState(() => isSubmitting = false);
                             }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(extractErrorMessage(e))),
-                              );
-                            }
-                          } finally {
-                            if (context.mounted) setState(() => isSubmitting = false);
-                          }
-                        },
-                      ),
+                          },
+                        ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -203,36 +230,52 @@ class ProjectsScreen extends ConsumerWidget {
                 children: [
                   Text('Create Centralized Project', style: AppTheme.heading),
                   const SizedBox(height: 16),
-                  AppTextField(label: 'NAME', hint: 'E.g. Downtown Plaza', controller: nameController),
+                  AppTextField(
+                    label: 'NAME',
+                    hint: 'E.g. Downtown Plaza',
+                    controller: nameController,
+                  ),
                   const SizedBox(height: 16),
-                  AppTextField(label: 'LOCATION', hint: '123 Main St', controller: locationController),
+                  AppTextField(
+                    label: 'LOCATION',
+                    hint: '123 Main St',
+                    controller: locationController,
+                  ),
                   const SizedBox(height: 32),
                   isSubmitting
-                    ? const CircularProgressIndicator()
-                    : AppButton(
-                        text: 'Commit to Database',
-                        onPressed: () async {
-                          if (nameController.text.trim().isEmpty) return;
-                          
-                          setState(() => isSubmitting = true);
-                          try {
-                            await apiClient.post('/projects', data: {
-                              'name': nameController.text.trim(),
-                              'location': locationController.text.trim(),
-                              'status': 'active',
-                            });
-                            
-                            ref.invalidate(projectsProvider);
-                            if (context.mounted) Navigator.pop(context);
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding project: $e')));
+                      ? const CircularProgressIndicator()
+                      : AppButton(
+                          text: 'Commit to Database',
+                          onPressed: () async {
+                            if (nameController.text.trim().isEmpty) return;
+
+                            setState(() => isSubmitting = true);
+                            try {
+                              await apiClient.post(
+                                '/projects',
+                                data: {
+                                  'name': nameController.text.trim(),
+                                  'location': locationController.text.trim(),
+                                  'status': 'active',
+                                },
+                              );
+
+                              ref.invalidate(projectsProvider);
+                              if (context.mounted) Navigator.pop(context);
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error adding project: $e'),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (context.mounted)
+                                setState(() => isSubmitting = false);
                             }
-                          } finally {
-                            if (context.mounted) setState(() => isSubmitting = false);
-                          }
-                        },
-                      ),
+                          },
+                        ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -262,6 +305,11 @@ class ProjectsScreen extends ConsumerWidget {
               onPressed: () => context.push('/users'),
             ),
           IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: () {
@@ -273,6 +321,8 @@ class ProjectsScreen extends ConsumerWidget {
             onSelected: (value) async {
               if (value == 'change_password') {
                 _showChangePasswordDialog(context, ref);
+              } else if (value == 'settings') {
+                context.push('/settings');
               } else if (value == 'logout') {
                 await ref.read(authProvider.notifier).logout();
               }
@@ -290,6 +340,16 @@ class ProjectsScreen extends ConsumerWidget {
                   ),
                 ),
               const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings_outlined, size: 20),
+                    SizedBox(width: 8),
+                    Text('Settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'logout',
                 child: Row(
                   children: [
@@ -303,11 +363,13 @@ class ProjectsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: canManageProjects ? FloatingActionButton(
-        backgroundColor: AppTheme.primary,
-        onPressed: () => _showAddProjectBottomSheet(context, ref),
-        child: const Icon(Icons.add, color: AppTheme.surface),
-      ) : null,
+      floatingActionButton: canManageProjects
+          ? FloatingActionButton(
+              backgroundColor: AppTheme.primary,
+              onPressed: () => _showAddProjectBottomSheet(context, ref),
+              child: Icon(Icons.add, color: AppTheme.surface),
+            )
+          : null,
       body: projectsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
@@ -318,16 +380,25 @@ class ProjectsScreen extends ConsumerWidget {
               children: [
                 const Icon(Icons.error_outline, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
-                Text('Connection Error', style: AppTheme.heading.copyWith(color: Colors.red)),
+                Text(
+                  'Connection Error',
+                  style: AppTheme.heading.copyWith(color: Colors.red),
+                ),
                 const SizedBox(height: 8),
-                Text(err.toString(), textAlign: TextAlign.center, style: AppTheme.body),
+                Text(
+                  err.toString(),
+                  textAlign: TextAlign.center,
+                  style: AppTheme.body,
+                ),
               ],
             ),
           ),
         ),
         data: (projects) {
           if (projects.isEmpty) {
-            return const Center(child: Text('No projects found. Add one above!'));
+            return const Center(
+              child: Text('No projects found. Add one above!'),
+            );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -337,7 +408,7 @@ class ProjectsScreen extends ConsumerWidget {
               final p = projects[index];
               return GestureDetector(
                 onTap: () => context.push(
-                  '/projects/${p['id']}', 
+                  '/projects/${p['id']}',
                   extra: {'name': p['name'], 'location': p['location']},
                 ),
                 child: Container(
@@ -361,21 +432,42 @@ class ProjectsScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Text(p['name'] ?? 'Unnamed', style: AppTheme.heading.copyWith(fontSize: 18), overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              p['name'] ?? 'Unnamed',
+                              style: AppTheme.heading.copyWith(fontSize: 18),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           if (canManageProjects)
                             GestureDetector(
-                              onTap: () => _confirmDelete(context, ref, p['id'].toString()),
-                              child: const Icon(Icons.delete_outline, size: 20, color: AppTheme.textSecondary),
+                              onTap: () => _confirmDelete(
+                                context,
+                                ref,
+                                p['id'].toString(),
+                              ),
+                              child: Icon(
+                                Icons.delete_outline,
+                                size: 20,
+                                color: AppTheme.textSecondary,
+                              ),
                             ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 16, color: AppTheme.textSecondary),
+                          Icon(
+                            Icons.location_on,
+                            size: 16,
+                            color: AppTheme.textSecondary,
+                          ),
                           const SizedBox(width: 4),
-                          Text(p['location'] ?? 'No Location', style: AppTheme.body.copyWith(color: AppTheme.textSecondary)),
+                          Text(
+                            p['location'] ?? 'No Location',
+                            style: AppTheme.body.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
                         ],
                       ),
                     ],

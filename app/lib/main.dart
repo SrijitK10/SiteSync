@@ -9,12 +9,14 @@ import 'services/keep_alive_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
+import 'state/settings_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/project_dashboard_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/projects_screen.dart';
+import 'screens/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -25,7 +27,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // While restoring session, don't redirect anywhere
       if (authState.isLoading) return null;
 
-      final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/signup' || state.matchedLocation == '/forgot-password';
+      final isAuthRoute =
+          state.matchedLocation == '/login' ||
+          state.matchedLocation == '/signup' ||
+          state.matchedLocation == '/forgot-password';
 
       if (!authState.isAuthenticated) {
         return isAuthRoute ? null : '/login';
@@ -38,10 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
@@ -66,6 +68,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProjectsScreen(),
       ),
       GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
         path: '/projects/:id',
         builder: (context, state) {
           final projectId = state.pathParameters['id']!;
@@ -83,19 +89,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   // Initialize NotificationService
   await NotificationService().initialize();
-  
+
   KeepAliveService.start();
-  runApp(
-    ProviderScope(
-      child: RupayanApp(),
-    ),
-  );
+  runApp(ProviderScope(child: RupayanApp()));
 }
 
 class RupayanApp extends ConsumerStatefulWidget {
@@ -105,8 +105,31 @@ class RupayanApp extends ConsumerStatefulWidget {
   ConsumerState<RupayanApp> createState() => _RupayanAppState();
 }
 
-class _RupayanAppState extends ConsumerState<RupayanApp> with WidgetsBindingObserver {
+class _RupayanAppState extends ConsumerState<RupayanApp>
+    with WidgetsBindingObserver {
   StreamSubscription<String>? _routeSubscription;
+
+  Widget _buildAppShell({
+    required BuildContext context,
+    required Widget? child,
+    required AppSettingsState settings,
+  }) {
+    AppTheme.syncWithContext(context);
+    final mediaQuery = MediaQuery.of(context);
+    final brightness = Theme.of(context).brightness;
+
+    return KeyedSubtree(
+      key: ValueKey(
+        '${settings.themeMode.name}-${settings.textScalePreset.name}-${brightness.name}',
+      ),
+      child: MediaQuery(
+        data: mediaQuery.copyWith(
+          textScaler: TextScaler.linear(settings.textScalePreset.scale),
+        ),
+        child: child ?? const SizedBox.shrink(),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -140,24 +163,31 @@ class _RupayanAppState extends ConsumerState<RupayanApp> with WidgetsBindingObse
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final settings = ref.watch(appSettingsProvider);
     final router = ref.watch(routerProvider);
 
     if (authState.isLoading) {
       return MaterialApp(
         title: 'Rupayan',
         theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: settings.themeMode,
         debugShowCheckedModeBanner: false,
-        home: const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        builder: (context, child) =>
+            _buildAppShell(context: context, child: child, settings: settings),
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
 
     return MaterialApp.router(
       title: 'Rupayan',
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: settings.themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) =>
+          _buildAppShell(context: context, child: child, settings: settings),
     );
   }
 }

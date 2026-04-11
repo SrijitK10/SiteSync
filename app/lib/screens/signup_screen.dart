@@ -49,7 +49,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+        const SnackBar(
+          content: Text('Please enter a valid 10-digit mobile number'),
+        ),
       );
       return;
     }
@@ -92,9 +94,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -128,28 +130,31 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid OTP: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Invalid OTP: $e')));
       }
     }
   }
 
   Future<void> _signInWithCredential(fb.PhoneAuthCredential credential) async {
     try {
-      final userCredential = await fb.FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await fb.FirebaseAuth.instance
+          .signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
       final name = _nameController.text.trim();
 
       if (idToken != null && mounted) {
-        await ref.read(authProvider.notifier).loginWithFirebaseToken(idToken, name: name);
+        await ref
+            .read(authProvider.notifier)
+            .loginWithFirebaseToken(idToken, name: name);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign Up failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Sign Up failed: $e')));
       }
     }
   }
@@ -181,22 +186,24 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       return;
     }
     if (password != confirm) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      await ref.read(authProvider.notifier).registerWithPassword(email, password, name);
+      await ref
+          .read(authProvider.notifier)
+          .registerWithPassword(email, password, name);
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(extractErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     }
   }
@@ -223,16 +230,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: AppCard(
-              padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(
+                vertical: 32.0,
+                horizontal: 24.0,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.person_add,
-                    size: 64,
-                    color: AppTheme.accent,
-                  ),
+                  Icon(Icons.person_add, size: 64, color: AppTheme.accent),
                   const SizedBox(height: 16),
                   Text(
                     'Create Account',
@@ -272,7 +278,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -294,7 +303,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -339,7 +351,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -366,8 +381,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               onPressed: _resendCountdown > 0 ? null : _sendOTP,
               child: Text(
                 _resendCountdown > 0
-                  ? 'Resend in ${_resendCountdown}s'
-                  : 'Resend OTP',
+                    ? 'Resend in ${_resendCountdown}s'
+                    : 'Resend OTP',
               ),
             ),
           ],
@@ -393,7 +408,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
       const SizedBox(height: 20),
@@ -411,7 +429,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
       const SizedBox(height: 20),
@@ -429,10 +450,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           suffixIcon: IconButton(
-            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            ),
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
       ),
@@ -451,9 +478,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           suffixIcon: IconButton(
-            icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
+            icon: Icon(
+              _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+            ),
             onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
           ),
         ),
