@@ -7,6 +7,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../state/auth_provider.dart';
 import '../services/platform_utils.dart';
+import '../services/phone_auth_service.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -27,6 +28,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   String? _verificationId;
   int? _resendToken;
   int _resendCountdown = 0;
+  bool _preferRecaptcha = false;
 
   // Email + Password (iOS)
   final _emailController = TextEditingController();
@@ -60,20 +62,30 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await fb.FirebaseAuth.instance.verifyPhoneNumber(
+      await PhoneAuthService.verifyPhoneNumber(
         phoneNumber: fullPhone,
-        timeout: const Duration(seconds: 60),
+        preferRecaptcha: _preferRecaptcha,
         verificationCompleted: (fb.PhoneAuthCredential credential) async {
           await _signInWithCredential(credential);
         },
-        verificationFailed: (fb.FirebaseAuthException e) {
-          if (mounted) {
-            setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Verification failed: ${e.message}')),
-            );
-          }
-        },
+        verificationFailed:
+            (
+              fb.FirebaseAuthException e, {
+              required bool usedRecaptchaFallback,
+            }) {
+              if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      usedRecaptchaFallback
+                          ? 'Verification failed even after retrying with browser verification: ${e.message}'
+                          : 'Verification failed: ${e.message}',
+                    ),
+                  ),
+                );
+              }
+            },
         codeSent: (String verificationId, int? resendToken) {
           if (mounted) {
             setState(() {
@@ -90,6 +102,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           _verificationId = verificationId;
         },
         forceResendingToken: _resendToken,
+        onRecaptchaFallbackEnabled: () {
+          if (mounted) {
+            setState(() => _preferRecaptcha = true);
+          } else {
+            _preferRecaptcha = true;
+          }
+        },
       );
     } catch (e) {
       if (mounted) {

@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../services/api_client.dart';
+import '../services/phone_auth_service.dart';
 import '../services/platform_utils.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String? _firebaseIdToken;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _preferRecaptcha = false;
 
   // ── Step 1: Send SMS OTP ──────────────────────────────────────
 
@@ -47,20 +49,30 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await fb.FirebaseAuth.instance.verifyPhoneNumber(
+      await PhoneAuthService.verifyPhoneNumber(
         phoneNumber: fullPhone,
-        timeout: const Duration(seconds: 60),
+        preferRecaptcha: _preferRecaptcha,
         verificationCompleted: (fb.PhoneAuthCredential credential) async {
           await _onCredentialObtained(credential);
         },
-        verificationFailed: (fb.FirebaseAuthException e) {
-          if (mounted) {
-            setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Verification failed: ${e.message}')),
-            );
-          }
-        },
+        verificationFailed:
+            (
+              fb.FirebaseAuthException e, {
+              required bool usedRecaptchaFallback,
+            }) {
+              if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      usedRecaptchaFallback
+                          ? 'Verification failed even after retrying with browser verification: ${e.message}'
+                          : 'Verification failed: ${e.message}',
+                    ),
+                  ),
+                );
+              }
+            },
         codeSent: (String verificationId, int? resendToken) {
           if (mounted) {
             setState(() {
@@ -77,6 +89,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           _verificationId = verificationId;
         },
         forceResendingToken: _resendToken,
+        onRecaptchaFallbackEnabled: () {
+          if (mounted) {
+            setState(() => _preferRecaptcha = true);
+          } else {
+            _preferRecaptcha = true;
+          }
+        },
       );
     } catch (e) {
       if (mounted) {

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:excel/excel.dart';
+import 'package:intl/intl.dart';
 import '../services/file_export.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
@@ -18,6 +19,9 @@ class AttendanceScreen extends ConsumerStatefulWidget {
 }
 
 class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
+  static final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
+  static final DateFormat _timeFormatter = DateFormat('hh:mm a');
+
   final _labourersController = TextEditingController();
   final _mistrisController = TextEditingController();
   String? _selectedContractor;
@@ -153,12 +157,15 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to sync: $e')));
+      }
     } finally {
-      if (mounted) setState(() => _isSyncing = false);
+      if (mounted) {
+        setState(() => _isSyncing = false);
+      }
     }
   }
 
@@ -175,7 +182,30 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         url += '&startDate=$startDate&endDate=$endDate';
       }
       final res = await apiClient.get(url);
-      final List<dynamic> remoteRecords = res.data;
+      final List<dynamic> remoteRecords = List<dynamic>.from(res.data);
+      remoteRecords.sort((a, b) {
+        final contractorA = (a['contractor_name'] ?? 'Unknown')
+            .toString()
+            .trim()
+            .toLowerCase();
+        final contractorB = (b['contractor_name'] ?? 'Unknown')
+            .toString()
+            .trim()
+            .toLowerCase();
+
+        final contractorCompare = contractorA.compareTo(contractorB);
+        if (contractorCompare != 0) {
+          return contractorCompare;
+        }
+
+        final dateA = _parseAttendanceDateTime(a);
+        final dateB = _parseAttendanceDateTime(b);
+
+        if (dateA == null && dateB == null) return 0;
+        if (dateA == null) return 1;
+        if (dateB == null) return -1;
+        return dateA.compareTo(dateB);
+      });
 
       var excel = Excel.createExcel();
       Sheet sheetObject = excel['Attendance'];
@@ -186,17 +216,27 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         TextCellValue('Labourers'),
         TextCellValue('Mistris'),
         TextCellValue('Mapped Project Location'),
-        TextCellValue('Timestamp (Server Locked)'),
+        TextCellValue('Date'),
+        TextCellValue('Time'),
         TextCellValue('Logged By'),
       ]);
 
       for (var r in remoteRecords) {
+        final loggedAt = _parseAttendanceDateTime(r);
+        final dateText = loggedAt != null
+            ? _dateFormatter.format(loggedAt)
+            : (r['date']?.toString() ?? '');
+        final timeText = loggedAt != null
+            ? _timeFormatter.format(loggedAt)
+            : '';
+
         sheetObject.appendRow([
           TextCellValue(r['contractor_name'] ?? 'Unknown'),
           TextCellValue(r['labourers_count']?.toString() ?? '0'),
           TextCellValue(r['mistris_count']?.toString() ?? '0'),
           TextCellValue(r['site_address'] ?? 'No Address'),
-          TextCellValue(r['date'] ?? ''),
+          TextCellValue(dateText),
+          TextCellValue(timeText),
           TextCellValue(r['recorder']?['name'] ?? 'Unknown Admin'),
         ]);
       }
@@ -213,14 +253,31 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         );
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));
+      }
       debugPrint('Export error: $e');
     } finally {
-      if (mounted) setState(() => _isExporting = false);
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
     }
+  }
+
+  DateTime? _parseAttendanceDateTime(dynamic record) {
+    final createdAt = record['created_at']?.toString();
+    if (createdAt != null && createdAt.isNotEmpty) {
+      return DateTime.tryParse(createdAt)?.toLocal();
+    }
+
+    final dateOnly = record['date']?.toString();
+    if (dateOnly != null && dateOnly.isNotEmpty) {
+      return DateTime.tryParse(dateOnly);
+    }
+
+    return null;
   }
 
   Future<void> _showCustomDateRangePicker() async {
@@ -251,15 +308,17 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     try {
       await apiClient.post('/contractors', data: {'name': name});
       _fetchContractors();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Contractor Added')));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to add contractor: $e')));
+      }
     }
   }
 
@@ -267,15 +326,17 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     try {
       await apiClient.delete('/contractors/$id');
       _fetchContractors();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Contractor Removed')));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to remove contractor: $e')),
         );
+      }
     }
   }
 

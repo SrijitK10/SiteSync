@@ -24,6 +24,9 @@ export class Attendance {
   @CreateDateColumn({ type: 'date' })
   date: Date;
 
+  @CreateDateColumn()
+  created_at: Date;
+
   @Index()
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })

@@ -7,6 +7,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
 import '../state/auth_provider.dart';
 import '../services/platform_utils.dart';
+import '../services/phone_auth_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -26,6 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _verificationId;
   int? _resendToken;
   int _resendCountdown = 0;
+  bool _preferRecaptcha = false;
 
   // Email + Password (iOS)
   final _emailController = TextEditingController();
@@ -38,7 +40,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+        const SnackBar(
+          content: Text('Please enter a valid 10-digit mobile number'),
+        ),
       );
       return;
     }
@@ -47,20 +51,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await fb.FirebaseAuth.instance.verifyPhoneNumber(
+      await PhoneAuthService.verifyPhoneNumber(
         phoneNumber: fullPhone,
-        timeout: const Duration(seconds: 60),
+        preferRecaptcha: _preferRecaptcha,
         verificationCompleted: (fb.PhoneAuthCredential credential) async {
           await _signInWithCredential(credential);
         },
-        verificationFailed: (fb.FirebaseAuthException e) {
-          if (mounted) {
-            setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Verification failed: ${e.message}')),
-            );
-          }
-        },
+        verificationFailed:
+            (
+              fb.FirebaseAuthException e, {
+              required bool usedRecaptchaFallback,
+            }) {
+              if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      usedRecaptchaFallback
+                          ? 'Verification failed even after retrying with browser verification: ${e.message}'
+                          : 'Verification failed: ${e.message}',
+                    ),
+                  ),
+                );
+              }
+            },
         codeSent: (String verificationId, int? resendToken) {
           if (mounted) {
             setState(() {
@@ -77,13 +91,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _verificationId = verificationId;
         },
         forceResendingToken: _resendToken,
+        onRecaptchaFallbackEnabled: () {
+          if (mounted) {
+            setState(() => _preferRecaptcha = true);
+          } else {
+            _preferRecaptcha = true;
+          }
+        },
       );
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -117,16 +138,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid OTP: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Invalid OTP: $e')));
       }
     }
   }
 
   Future<void> _signInWithCredential(fb.PhoneAuthCredential credential) async {
     try {
-      final userCredential = await fb.FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await fb.FirebaseAuth.instance
+          .signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
 
       if (idToken != null && mounted) {
@@ -135,9 +157,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
       }
     }
   }
@@ -168,9 +190,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(extractErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     }
   }
@@ -195,15 +217,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: AppCard(
-              padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(
+                vertical: 32.0,
+                horizontal: 24.0,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Image.asset(
-                    'assets/images/rppl.png',
-                    height: 100,
-                  ),
+                  Image.asset('assets/images/rppl.png', height: 100),
                   const SizedBox(height: 40),
 
                   if (isApplePlatform)
@@ -242,15 +264,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
         const SizedBox(height: 24),
-        AppButton(
-          text: 'Send OTP',
-          isLoading: _isLoading,
-          onPressed: _sendOTP,
-        ),
+        AppButton(text: 'Send OTP', isLoading: _isLoading, onPressed: _sendOTP),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -287,7 +308,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
         const SizedBox(height: 24),
@@ -314,8 +338,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               onPressed: _resendCountdown > 0 ? null : _sendOTP,
               child: Text(
                 _resendCountdown > 0
-                  ? 'Resend in ${_resendCountdown}s'
-                  : 'Resend OTP',
+                    ? 'Resend in ${_resendCountdown}s'
+                    : 'Resend OTP',
               ),
             ),
           ],
@@ -342,7 +366,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
       const SizedBox(height: 20),
@@ -360,10 +387,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           suffixIcon: IconButton(
-            icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            ),
+            onPressed: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
           ),
         ),
       ),
