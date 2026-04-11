@@ -305,11 +305,6 @@ class ProjectsScreen extends ConsumerWidget {
               onPressed: () => context.push('/users'),
             ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
-            onPressed: () => context.push('/settings'),
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: () {
