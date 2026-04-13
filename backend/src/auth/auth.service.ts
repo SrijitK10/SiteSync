@@ -30,11 +30,16 @@ export class AuthService {
   }
 
   async loginOrRegister(identifier: { phone?: string; email?: string }, firebaseUid: string, name?: string) {
+    // Normalize phone before any lookups or comparisons
+    const normalizedPhone = identifier.phone
+      ? this.usersService.normalizePhone(identifier.phone)
+      : undefined;
+
     // Try to find existing user by Firebase UID first, then phone/email
     let user = await this.usersService.findByFirebaseUid(firebaseUid);
 
-    if (!user && identifier.phone) {
-      user = await this.usersService.findByPhone(identifier.phone);
+    if (!user && normalizedPhone) {
+      user = await this.usersService.findByPhone(normalizedPhone);
     }
     if (!user && identifier.email) {
       user = await this.usersService.findByEmail(identifier.email);
@@ -42,21 +47,37 @@ export class AuthService {
 
     if (!user) {
       // Auto-register new users as 'viewer'
-      user = await this.usersService.create({
-        phone: identifier.phone || undefined,
-        email: identifier.email || undefined,
-        firebase_uid: firebaseUid,
-        name: name || identifier.phone || identifier.email || 'User',
-        role: 'viewer',
-      });
+      try {
+        user = await this.usersService.create({
+          phone: normalizedPhone || undefined,
+          email: identifier.email || undefined,
+          firebase_uid: firebaseUid,
+          name: name || normalizedPhone || identifier.email || 'User',
+          role: 'viewer',
+        });
+      } catch (error) {
+        // Race condition: another request created the user between our lookup and insert.
+        // Find the existing user instead of failing.
+        if (error instanceof ConflictException) {
+          if (normalizedPhone) {
+            user = await this.usersService.findByPhone(normalizedPhone);
+          }
+          if (!user && identifier.email) {
+            user = await this.usersService.findByEmail(identifier.email);
+          }
+          if (!user) throw error;
+        } else {
+          throw error;
+        }
+      }
     } else {
       const updates: Record<string, string> = {};
 
-      if (!user.firebase_uid) {
+      if (user.firebase_uid !== firebaseUid) {
         updates.firebase_uid = firebaseUid;
       }
-      if (identifier.phone && user.phone !== identifier.phone) {
-        updates.phone = identifier.phone;
+      if (normalizedPhone && user.phone !== normalizedPhone) {
+        updates.phone = normalizedPhone;
       }
       if (identifier.email && !user.email) {
         updates.email = identifier.email;

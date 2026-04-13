@@ -31,7 +31,8 @@ export class TasksService {
         `${savedTask.title || 'A new task'} has been assigned.`,
         ['super_admin', 'admin', 'site_manager', 'viewer'],
         userId,
-        { route: `/project/${savedTask.project.id}` } // or `/task/${savedTask.id}`
+        { route: `/projects/${savedTask.project.id}` },
+        savedTask.project.id
       );
     }
 
@@ -96,7 +97,8 @@ export class TasksService {
         `${savedTask.title || 'A task'} has been marked as completed.`,
         ['super_admin', 'admin', 'site_manager', 'viewer'],
         userId,
-        { route: `/project/${savedTask.project?.id || updateTaskDto?.projectId || ''}` } 
+        { route: `/projects/${savedTask.project?.id || updateTaskDto?.projectId || ''}` },
+        savedTask.project?.id || updateTaskDto?.projectId
       );
     }
 

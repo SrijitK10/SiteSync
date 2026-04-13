@@ -28,9 +28,9 @@ export class ProjectsService {
     this.notificationsService.sendNotification(
       'New Project Added',
       `${savedProject.name || 'A new project'} has been added.`,
-      ['super_admin', 'admin', 'site_manager'],
+      ['super_admin', 'admin'],
       userId,
-      { route: `/project/${savedProject.id}` }
+      { route: `/projects/${savedProject.id}` }
     );
 
     return savedProject;
@@ -176,9 +176,9 @@ export class ProjectsService {
       `A new image has been uploaded to the project.`,
       ['super_admin', 'admin', 'site_manager'],
       userId,
-      { route: `/project/${projectId}` }
+      { route: `/projects/${projectId}` },
+      projectId
     );
-
     return savedImage;
   }
 

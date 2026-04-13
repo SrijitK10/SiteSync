@@ -10,7 +10,7 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  private normalizePhone(phone?: string | null): string | undefined {
+  normalizePhone(phone?: string | null): string | undefined {
     if (!phone) return undefined;
     const trimmed = phone.trim();
     if (!trimmed) return undefined;
@@ -151,13 +151,24 @@ export class UsersService {
     }
   }
 
-  async findTokensByRoles(roles: string[], excludeUserId?: string): Promise<string[]> {
+  async findTokensByRoles(roles: string[], excludeUserId?: string, projectId?: string): Promise<string[]> {
     const queryBuilder = this.usersRepository.createQueryBuilder('user')
       .where('user.role IN (:...roles)', { roles })
       .andWhere('user.fcm_token IS NOT NULL');
 
     if (excludeUserId) {
       queryBuilder.andWhere('user.id != :excludeUserId', { excludeUserId });
+    }
+
+    if (projectId) {
+      queryBuilder.andWhere((qb) => {
+        const subQuery = qb.subQuery()
+          .select('pm.user_id')
+          .from('project_members', 'pm')
+          .where('pm.project_id = :projectId')
+          .getQuery();
+        return `(user.role IN ('super_admin', 'admin') OR user.id IN ${subQuery})`;
+      }).setParameter('projectId', projectId);
     }
 
     const users = await queryBuilder.select(['user.fcm_token']).getMany();

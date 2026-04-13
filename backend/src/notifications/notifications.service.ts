@@ -14,11 +14,13 @@ export class NotificationsService {
     recipientRoles: string[],
     excludeUserId: string,
     data?: any,
+    projectId?: string,
   ) {
     try {
       const tokens = await this.usersService.findTokensByRoles(
         recipientRoles,
         excludeUserId,
+        projectId,
       );
 
       if (!tokens || tokens.length === 0) {
