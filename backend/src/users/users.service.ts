@@ -10,13 +10,42 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
+  private normalizePhone(phone?: string | null): string | undefined {
+    if (!phone) return undefined;
+    const trimmed = phone.trim();
+    if (!trimmed) return undefined;
+
+    const digits = trimmed.replace(/\D/g, '');
+    if (!digits) return undefined;
+
+    if (trimmed.startsWith('+')) {
+      return `+${digits}`;
+    }
+
+    if (digits.length === 10) {
+      return `+91${digits}`;
+    }
+
+    if (digits.length === 12 && digits.startsWith('91')) {
+      return `+${digits}`;
+    }
+
+    if (digits.startsWith('00') && digits.length > 2) {
+      return `+${digits.slice(2)}`;
+    }
+
+    return `+${digits}`;
+  }
+
   async create(userData: Partial<User>): Promise<User> {
     if (userData.phone) {
-      userData.phone = userData.phone.replace(/[^\d+]/g, ''); // Normalize by keeping only digits and +
+      userData.phone = this.normalizePhone(userData.phone);
 
-      const existing = await this.findByPhone(userData.phone);
-      if (existing) {
-        throw new ConflictException('Phone number already registered');
+      if (userData.phone) {
+        const existing = await this.findByPhone(userData.phone);
+        if (existing) {
+          throw new ConflictException('Phone number already registered');
+        }
       }
     }
     if (userData.email) {
@@ -43,22 +72,30 @@ export class UsersService {
   async findByPhone(phone: string): Promise<User | null> {
     if (!phone) return null;
 
+    const normalizedPhone = this.normalizePhone(phone);
+    if (!normalizedPhone) return null;
+
     // Exact match first
-    const exactMatch = await this.usersRepository.findOne({ where: { phone } });
+    const exactMatch = await this.usersRepository.findOne({
+      where: { phone: normalizedPhone },
+    });
     if (exactMatch) return exactMatch;
 
     // Fuzzy match based on last 10 digits
-    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanPhone = normalizedPhone.replace(/\D/g, '');
     if (cleanPhone.length >= 10) {
       const last10 = cleanPhone.slice(-10);
-      // Use REPLACE to strip common non-digit characters in DB for matching existing non-normalized rows
-      const fuzzyMatch = await this.usersRepository.createQueryBuilder('user')
-        .where("REPLACE(REPLACE(REPLACE(user.phone, ' ', ''), '-', ''), '+', '') LIKE :likePhone", { likePhone: `%${last10}` })
+      const fuzzyMatch = await this.usersRepository
+        .createQueryBuilder('user')
+        .where(
+          "RIGHT(regexp_replace(COALESCE(user.phone, ''), '\\D', '', 'g'), 10) = :last10",
+          { last10 },
+        )
         .getOne();
-      
+
       if (fuzzyMatch) return fuzzyMatch;
     }
-    
+
     return null;
   }
 
@@ -85,6 +122,17 @@ export class UsersService {
   }
 
   async update(id: string, updateData: Partial<User>): Promise<User> {
+    if (updateData.phone !== undefined) {
+      updateData.phone = this.normalizePhone(updateData.phone);
+
+      if (updateData.phone) {
+        const existing = await this.findByPhone(updateData.phone);
+        if (existing && existing.id !== id) {
+          throw new ConflictException('Phone number already registered');
+        }
+      }
+    }
+
     const user = await this.findOne(id);
     Object.assign(user, updateData);
     return this.usersRepository.save(user);

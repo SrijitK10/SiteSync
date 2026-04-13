@@ -49,9 +49,25 @@ export class AuthService {
         name: name || identifier.phone || identifier.email || 'User',
         role: 'viewer',
       });
-    } else if (!user.firebase_uid) {
-      // Link Firebase UID if user was pre-created by admin
-      await this.usersService.update(user.id, { firebase_uid: firebaseUid } as any);
+    } else {
+      const updates: Record<string, string> = {};
+
+      if (!user.firebase_uid) {
+        updates.firebase_uid = firebaseUid;
+      }
+      if (identifier.phone && user.phone !== identifier.phone) {
+        updates.phone = identifier.phone;
+      }
+      if (identifier.email && !user.email) {
+        updates.email = identifier.email;
+      }
+      if ((!user.name || user.name.trim().length === 0) && name) {
+        updates.name = name;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        user = await this.usersService.update(user.id, updates as any);
+      }
     }
 
     return this.issueToken(user);
