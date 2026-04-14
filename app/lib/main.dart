@@ -135,7 +135,7 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
 
     return KeyedSubtree(
       key: ValueKey(
-        '${settings.themeMode.name}-${settings.textScalePreset.name}-${brightness.name}',
+        '${settings.themeMode.name}-${settings.textScalePreset.name}-${brightness.name}-${settings.locale.languageCode}',
       ),
       child: MediaQuery(
         data: mediaQuery.copyWith(
