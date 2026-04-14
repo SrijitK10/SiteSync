@@ -16,10 +16,10 @@ export class TranslationInterceptor implements NestInterceptor {
         // We only translate if lang is not 'en' or not default
         if (lang === 'en') return data;
         
-        const translateObj = (obj: any) => {
+        const translateObj = (obj: any): any => {
           if (!obj) return obj;
           if (Array.isArray(obj)) {
-            return obj.map(item => translateObj(item));
+            return obj.map((item: any) => translateObj(item));
           }
           if (typeof obj === 'object') {
             const newObj = { ...obj };
