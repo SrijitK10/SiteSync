@@ -34,6 +34,11 @@ final Dio apiClient = Dio(
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
+
+      final prefs = await SharedPreferences.getInstance();
+      final locale = prefs.getString('app_locale') ?? 'en';
+      options.headers['Accept-Language'] = locale;
+
       return handler.next(options);
     },
     onError: (DioException e, handler) async {

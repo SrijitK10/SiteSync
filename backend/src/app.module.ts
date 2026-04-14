@@ -13,6 +13,7 @@ import { ContractorsModule } from './contractors/contractors.module';
 import { FlatsModule } from './flats/flats.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { NotificationsModule } from './notifications/notifications.module';
+import { TranslationModule } from './translation/translation.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     ContractorsModule,
     FlatsModule,
     NotificationsModule,
+    TranslationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

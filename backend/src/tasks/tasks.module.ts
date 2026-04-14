@@ -4,11 +4,13 @@ import { TasksService } from './tasks.service';
 import { TasksController } from './tasks.controller';
 import { Task } from './entities/task.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TranslationModule } from '../translation/translation.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Task]),
     NotificationsModule,
+    TranslationModule,
   ],
   controllers: [TasksController],
   providers: [TasksService],

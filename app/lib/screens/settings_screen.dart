@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../l10n/app_localizations.dart';
 import '../state/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
@@ -16,7 +17,7 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context)!.settingsTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -53,6 +54,36 @@ class SettingsScreen extends ConsumerWidget {
                   selected: {settings.themeMode},
                   onSelectionChanged: (selection) {
                     notifier.setThemeMode(selection.first);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.languageLabel,
+                  style: AppTheme.heading,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Choose the language for the App interface and dynamic translation.',
+                  style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment<String>(value: 'en', label: Text('English')),
+                    ButtonSegment<String>(value: 'hi', label: Text('हिंदी')),
+                    ButtonSegment<String>(value: 'bn', label: Text('বাংলা')),
+                  ],
+                  selected: {settings.locale.languageCode},
+                  onSelectionChanged: (selection) {
+                    notifier.setLocale(Locale(selection.first));
                   },
                 ),
               ],

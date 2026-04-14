@@ -20,6 +20,12 @@ export class Task {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ type: 'jsonb', nullable: true, default: {} })
+  title_translations: any;
+
+  @Column({ type: 'jsonb', nullable: true, default: {} })
+  description_translations: any;
+
   @Column({
     type: 'enum',
     enum: TaskStatus,

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThanOrEqual, Between } from 'typeorm';
 import { Task } from './entities/task.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { TranslationService } from '../translation/translation.service';
 
 @Injectable()
 export class TasksService {
@@ -10,7 +11,28 @@ export class TasksService {
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
     private readonly notificationsService: NotificationsService,
+    private readonly translationService: TranslationService,
   ) {}
+
+  private async translateTaskAndSave(task: Task, title?: string, description?: string) {
+    const targetLangs = ['en', 'hi', 'bn'];
+    task.title_translations = task.title_translations || {};
+    task.description_translations = task.description_translations || {};
+
+    try {
+      if (title) {
+        const titleTranslations = await this.translationService.translateText(title, targetLangs);
+        task.title_translations = { ...task.title_translations, ...titleTranslations };
+      }
+      if (description) {
+        const descTranslations = await this.translationService.translateText(description, targetLangs);
+        task.description_translations = { ...task.description_translations, ...descTranslations };
+      }
+      await this.tasksRepository.save(task);
+    } catch (e) {
+      console.error('Background translation failed', e);
+    }
+  }
 
   async create(createTaskDto: any, userId?: string): Promise<Task> {
     const task = this.tasksRepository.create();
@@ -23,6 +45,9 @@ export class TasksService {
       task.assignee = { id: createTaskDto.userId } as any;
     }
     const savedTask = await this.tasksRepository.save(task);
+
+    // Asynchronously update translations
+    this.translateTaskAndSave(savedTask, createTaskDto.title, createTaskDto.description);
 
     // Fire and forget notification
     if (userId) { // userId of the creator
@@ -90,6 +115,10 @@ export class TasksService {
       task.assignee = { id: updateTaskDto.userId } as any;
     }
     const savedTask = await this.tasksRepository.save(task);
+
+    if (updateTaskDto.title !== undefined || updateTaskDto.description !== undefined) {
+      this.translateTaskAndSave(savedTask, updateTaskDto.title, updateTaskDto.description);
+    }
 
     if (updateTaskDto.status === 'completed' && userId) {
       const taskTitle = savedTask.title || 'A task';

@@ -21,18 +21,22 @@ class AppSettingsState {
   const AppSettingsState({
     this.themeMode = ThemeMode.system,
     this.textScalePreset = AppTextScalePreset.standard,
+    this.locale = const Locale('en'),
   });
 
   final ThemeMode themeMode;
   final AppTextScalePreset textScalePreset;
+  final Locale locale;
 
   AppSettingsState copyWith({
     ThemeMode? themeMode,
     AppTextScalePreset? textScalePreset,
+    Locale? locale,
   }) {
     return AppSettingsState(
       themeMode: themeMode ?? this.themeMode,
       textScalePreset: textScalePreset ?? this.textScalePreset,
+      locale: locale ?? this.locale,
     );
   }
 }
@@ -40,6 +44,7 @@ class AppSettingsState {
 class AppSettingsNotifier extends Notifier<AppSettingsState> {
   static const _themeModeKey = 'app_theme_mode';
   static const _textScaleKey = 'app_text_scale';
+  static const _localeKey = 'app_locale';
 
   bool _didScheduleLoad = false;
 
@@ -56,10 +61,12 @@ class AppSettingsNotifier extends Notifier<AppSettingsState> {
     final prefs = await SharedPreferences.getInstance();
     final savedTheme = prefs.getString(_themeModeKey);
     final savedScale = prefs.getString(_textScaleKey);
+    final savedLocale = prefs.getString(_localeKey);
 
     state = AppSettingsState(
       themeMode: _themeModeFromString(savedTheme),
       textScalePreset: _textScaleFromString(savedScale),
+      locale: savedLocale != null ? Locale(savedLocale) : const Locale('en'),
     );
   }
 
@@ -73,6 +80,12 @@ class AppSettingsNotifier extends Notifier<AppSettingsState> {
     state = state.copyWith(textScalePreset: preset);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_textScaleKey, preset.name);
+  }
+
+  Future<void> setLocale(Locale loc) async {
+    state = state.copyWith(locale: loc);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_localeKey, loc.languageCode);
   }
 
   ThemeMode _themeModeFromString(String? value) {

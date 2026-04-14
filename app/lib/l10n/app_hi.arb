@@ -1,0 +1,15 @@
+{
+  "@@locale": "hi",
+  "appTitle": "SiteSync",
+  "loginTitle": "लॉग इन",
+  "emailLabel": "ईमेल",
+  "passwordLabel": "पासवर्ड",
+  "submitBtn": "जमा करें",
+  "tasksTitle": "कार्य",
+  "calendarTitle": "कैलेंडर",
+  "progressTitle": "प्रगति",
+  "attendanceTitle": "उपस्थिति",
+  "settingsTitle": "सेटिंग्स",
+  "activeWorkspace": "सक्रिय कार्यक्षेत्र",
+  "languageLabel": "भाषा"
+}

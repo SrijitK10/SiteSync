@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../state/auth_provider.dart';
 import '../state/projects_provider.dart';
+import '../l10n/app_localizations.dart';
 import 'attendance_screen.dart';
 import 'calendar_screen.dart';
 import 'tasks_tab.dart';
@@ -37,17 +38,20 @@ class _ProjectDashboardScreenState
     final isViewer = currentUser == null || currentUser.role.value == 'viewer';
 
     // Try to resolve project details if missing (e.g. deep linked from notification)
-    final projects = ref.watch(projectsProvider).valueOrNull ?? [];
+    final projects =
+        ref.watch(projectsProvider).asData?.value ??
+        const <Map<String, dynamic>>[];
     final currentProject = projects.firstWhere(
       (p) => p['id'] == widget.projectId,
       orElse: () => <String, dynamic>{},
     );
 
-    final resolvedProjectName = widget.projectName ?? 
-        (currentProject['name'] as String?) ?? 
-        'Active Workspace';
-    final resolvedProjectLocation = widget.projectLocation ?? 
-        (currentProject['location'] as String?);
+    final resolvedProjectName =
+        widget.projectName ??
+        (currentProject['name'] as String?) ??
+        AppLocalizations.of(context)!.activeWorkspace;
+    final resolvedProjectLocation =
+        widget.projectLocation ?? (currentProject['location'] as String?);
 
     // Isolated Stack mapping precise structural context directly below
     final List<Widget> pages = [
@@ -104,7 +108,7 @@ class _ProjectDashboardScreenState
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
+            tooltip: AppLocalizations.of(context)!.settingsTitle,
             onPressed: () => context.push('/settings'),
           ),
         ],
@@ -118,23 +122,23 @@ class _ProjectDashboardScreenState
         backgroundColor: AppTheme.surface,
         type: BottomNavigationBarType.fixed,
         items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Tasks',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.assignment),
+            label: AppLocalizations.of(context)!.tasksTitle,
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: 'Calendar',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.calendar_month),
+            label: AppLocalizations.of(context)!.calendarTitle,
           ),
           if (!isViewer)
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.co_present),
-              label: 'Attendance',
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.co_present),
+              label: AppLocalizations.of(context)!.attendanceTitle,
             ),
           if (!isViewer)
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.photo_library),
-              label: 'Progress',
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.photo_library),
+              label: AppLocalizations.of(context)!.progressTitle,
             ),
         ],
       ),

@@ -10,6 +10,7 @@ import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
 import 'state/settings_provider.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
@@ -18,30 +19,44 @@ import 'screens/user_management_screen.dart';
 import 'screens/projects_screen.dart';
 import 'screens/settings_screen.dart';
 
+class _RouterRefreshNotifier extends ChangeNotifier {
+  _RouterRefreshNotifier(this.ref) {
+    ref.listen<AuthState>(authProvider, (previous, next) => notifyListeners());
+  }
+
+  final Ref ref;
+
+  String? redirect(BuildContext context, GoRouterState state) {
+    final authState = ref.read(authProvider);
+
+    // While restoring session, don't redirect anywhere.
+    if (authState.isLoading) return null;
+
+    final isAuthRoute =
+        state.matchedLocation == '/login' ||
+        state.matchedLocation == '/signup' ||
+        state.matchedLocation == '/forgot-password';
+
+    if (!authState.isAuthenticated) {
+      return isAuthRoute ? null : '/login';
+    }
+
+    if (isAuthRoute) {
+      return '/projects';
+    }
+
+    return null;
+  }
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final refreshNotifier = _RouterRefreshNotifier(ref);
+  ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
     initialLocation: '/projects',
-    redirect: (context, state) {
-      // While restoring session, don't redirect anywhere
-      if (authState.isLoading) return null;
-
-      final isAuthRoute =
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/signup' ||
-          state.matchedLocation == '/forgot-password';
-
-      if (!authState.isAuthenticated) {
-        return isAuthRoute ? null : '/login';
-      }
-
-      if (isAuthRoute) {
-        return '/projects';
-      }
-
-      return null;
-    },
+    refreshListenable: refreshNotifier,
+    redirect: refreshNotifier.redirect,
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
@@ -172,6 +187,9 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: settings.themeMode,
+        locale: settings.locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         debugShowCheckedModeBanner: false,
         builder: (context, child) =>
             _buildAppShell(context: context, child: child, settings: settings),
@@ -184,6 +202,9 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,
+      locale: settings.locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) =>

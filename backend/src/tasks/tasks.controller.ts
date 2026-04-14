@@ -4,9 +4,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { TasksService } from './tasks.service';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { TranslationInterceptor } from '../translation/translation.interceptor';
 
 @Controller('tasks')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseInterceptors(TranslationInterceptor)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 

@@ -1,0 +1,15 @@
+{
+  "@@locale": "en",
+  "appTitle": "SiteSync",
+  "loginTitle": "Login",
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "submitBtn": "Submit",
+  "tasksTitle": "Tasks",
+  "calendarTitle": "Calendar",
+  "progressTitle": "Progress",
+  "attendanceTitle": "Attendance",
+  "settingsTitle": "Settings",
+  "activeWorkspace": "Active Workspace",
+  "languageLabel": "Language"
+}

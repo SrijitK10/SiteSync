@@ -1,0 +1,15 @@
+{
+  "@@locale": "bn",
+  "appTitle": "SiteSync",
+  "loginTitle": "লগইন",
+  "emailLabel": "ইমেইল",
+  "passwordLabel": "পাসওয়ার্ড",
+  "submitBtn": "জমা দিন",
+  "tasksTitle": "কাজ",
+  "calendarTitle": "ক্যালেন্ডার",
+  "progressTitle": "অগ্রগতি",
+  "attendanceTitle": "উপস্থিতি",
+  "settingsTitle": "সেটিংস",
+  "activeWorkspace": "সক্রিয় ওয়ার্কস্পেস",
+  "languageLabel": "ভাষা"
+}

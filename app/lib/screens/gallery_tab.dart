@@ -193,7 +193,15 @@ class _GalleryTabState extends State<GalleryTab> {
       },
     );
 
-    if (dialogCanceled) return;
+    if (!mounted) {
+      captionController.dispose();
+      return;
+    }
+
+    if (dialogCanceled) {
+      captionController.dispose();
+      return;
+    }
 
     setState(() => _isUploading = true);
 
@@ -239,6 +247,7 @@ class _GalleryTabState extends State<GalleryTab> {
         );
       }
     } finally {
+      captionController.dispose();
       if (mounted) setState(() => _isUploading = false);
     }
   }
