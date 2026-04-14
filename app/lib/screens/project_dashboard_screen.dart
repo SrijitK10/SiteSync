@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../state/auth_provider.dart';
+import '../state/projects_provider.dart';
 import 'attendance_screen.dart';
 import 'calendar_screen.dart';
 import 'tasks_tab.dart';
@@ -35,6 +36,19 @@ class _ProjectDashboardScreenState
     // Treat null user as viewer (safest default while state is loading)
     final isViewer = currentUser == null || currentUser.role.value == 'viewer';
 
+    // Try to resolve project details if missing (e.g. deep linked from notification)
+    final projects = ref.watch(projectsProvider).valueOrNull ?? [];
+    final currentProject = projects.firstWhere(
+      (p) => p['id'] == widget.projectId,
+      orElse: () => <String, dynamic>{},
+    );
+
+    final resolvedProjectName = widget.projectName ?? 
+        (currentProject['name'] as String?) ?? 
+        'Active Workspace';
+    final resolvedProjectLocation = widget.projectLocation ?? 
+        (currentProject['location'] as String?);
+
     // Isolated Stack mapping precise structural context directly below
     final List<Widget> pages = [
       TasksTab(projectId: widget.projectId),
@@ -43,7 +57,7 @@ class _ProjectDashboardScreenState
       if (!isViewer)
         GalleryTab(
           projectId: widget.projectId,
-          projectName: widget.projectName ?? 'Unknown_Project',
+          projectName: resolvedProjectName,
         ),
     ];
 
@@ -62,13 +76,13 @@ class _ProjectDashboardScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.projectName ?? 'Active Workspace',
+              resolvedProjectName,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            if (widget.projectLocation != null &&
-                widget.projectLocation!.isNotEmpty)
+            if (resolvedProjectLocation != null &&
+                resolvedProjectLocation.isNotEmpty)
               Text(
-                widget.projectLocation!,
+                resolvedProjectLocation,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
@@ -79,7 +93,13 @@ class _ProjectDashboardScreenState
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           // Pops out of the specific Project Workspace entirely back to Global Projects Landing
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/projects');
+            }
+          },
         ),
         actions: [
           IconButton(

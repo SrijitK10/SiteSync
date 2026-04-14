@@ -70,7 +70,7 @@ export class TasksService {
   }
 
   async findOne(id: string): Promise<Task> {
-    const task = await this.tasksRepository.findOne({ where: { id }, relations: ['assignee', 'project'] });
+    const task = await this.tasksRepository.findOne({ where: { id }, relations: ['assignee', 'project', 'flat'] });
     if (!task) throw new NotFoundException('Task not found');
     return task;
   }
@@ -92,9 +92,18 @@ export class TasksService {
     const savedTask = await this.tasksRepository.save(task);
 
     if (updateTaskDto.status === 'completed' && userId) {
+      const taskTitle = savedTask.title || 'A task';
+      let message = `${taskTitle} has been marked as completed.`;
+      
+      if (savedTask.project && savedTask.flat) {
+        message = `${taskTitle} has been completed for flat ${savedTask.flat.flat_number} in project ${savedTask.project.name}.`;
+      } else if (savedTask.project) {
+        message = `${taskTitle} has been completed in project ${savedTask.project.name}.`;
+      }
+
       this.notificationsService.sendNotification(
         'Task Completed',
-        `${savedTask.title || 'A task'} has been marked as completed.`,
+        message,
         ['super_admin', 'admin', 'site_manager', 'viewer'],
         userId,
         { route: `/projects/${savedTask.project?.id || updateTaskDto?.projectId || ''}` },
