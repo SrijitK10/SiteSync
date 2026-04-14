@@ -183,6 +183,7 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
 
     if (authState.isLoading) {
       return MaterialApp(
+        key: ValueKey('app-${settings.locale.languageCode}'),
         title: 'Rupayan',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
@@ -198,6 +199,7 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
     }
 
     return MaterialApp.router(
+      key: ValueKey('app-${settings.locale.languageCode}'),
       title: 'Rupayan',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
