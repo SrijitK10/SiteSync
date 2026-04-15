@@ -724,15 +724,64 @@ abstract class AppLocalizations {
   /// **'Export extraction failed'**
   String get exportFailed;
 
+  /// No description provided for @importTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Tasks'**
   String get importTasks;
+
+  /// No description provided for @importTasksDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy tasks from another flat'**
   String get importTasksDescription;
+
+  /// No description provided for @importTasksInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Only task titles will be imported. Notes will stay empty.'**
   String get importTasksInfo;
+
+  /// No description provided for @selectSourceFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Select source flat'**
   String get selectSourceFlat;
+
+  /// No description provided for @selectTasksToImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Select tasks to import'**
   String get selectTasksToImport;
+
+  /// No description provided for @importSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Selected'**
   String get importSelected;
+
+  /// No description provided for @noOtherFlats.
+  ///
+  /// In en, this message translates to:
+  /// **'No other flats available to import from.'**
   String get noOtherFlats;
+
+  /// No description provided for @noTasksToImport.
+  ///
+  /// In en, this message translates to:
+  /// **'This flat has no tasks to import.'**
   String get noTasksToImport;
+
+  /// No description provided for @selectAtLeastOneTaskToImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one task to import.'**
   String get selectAtLeastOneTaskToImport;
+
+  /// No description provided for @tasksImportedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks imported successfully!'**
   String get tasksImportedSuccess;
 }
 

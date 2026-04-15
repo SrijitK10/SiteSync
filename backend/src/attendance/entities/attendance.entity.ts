@@ -16,6 +16,9 @@ export class Attendance {
   @Column({ default: 0 })
   mistris_count: number;
 
+  @Column({ type: 'text', nullable: true })
+  work_description: string | null;
+
   @Column()
   site_address: string;
 

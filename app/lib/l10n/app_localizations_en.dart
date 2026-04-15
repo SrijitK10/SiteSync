@@ -341,24 +341,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importTasks => 'Import Tasks';
+
   @override
   String get importTasksDescription => 'Copy tasks from another flat';
+
   @override
   String get importTasksInfo =>
       'Only task titles will be imported. Notes will stay empty.';
+
   @override
   String get selectSourceFlat => 'Select source flat';
+
   @override
   String get selectTasksToImport => 'Select tasks to import';
+
   @override
   String get importSelected => 'Import Selected';
+
   @override
   String get noOtherFlats => 'No other flats available to import from.';
+
   @override
   String get noTasksToImport => 'This flat has no tasks to import.';
+
   @override
   String get selectAtLeastOneTaskToImport =>
       'Select at least one task to import.';
+
   @override
   String get tasksImportedSuccess => 'Tasks imported successfully!';
 }

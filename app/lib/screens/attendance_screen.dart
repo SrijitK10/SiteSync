@@ -24,6 +24,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
   final _labourersController = TextEditingController();
   final _mistrisController = TextEditingController();
+  final _workDescriptionController = TextEditingController();
   String? _selectedContractor;
 
   List<dynamic> _contractors = [];
@@ -83,17 +84,21 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     final labourers = int.tryParse(_labourersController.text.trim()) ?? 0;
     final mistris = int.tryParse(_mistrisController.text.trim()) ?? 0;
 
+    final workDesc = _workDescriptionController.text.trim();
+
     setState(() {
       _records.insert(0, {
         'contractor_name': _selectedContractor,
         'labourers_count': labourers,
         'mistris_count': mistris,
+        'work_description': workDesc.isNotEmpty ? workDesc : null,
         'date': DateTime.now().toIso8601String(),
         'project': _projectName,
       });
       _selectedContractor = null;
       _labourersController.clear();
       _mistrisController.clear();
+      _workDescriptionController.clear();
     });
   }
 
@@ -103,6 +108,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _selectedContractor = record['contractor_name'];
       _labourersController.text = record['labourers_count'].toString();
       _mistrisController.text = record['mistris_count'].toString();
+      _workDescriptionController.text = record['work_description'] ?? '';
       _records.removeAt(index);
     });
   }
@@ -129,6 +135,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               'contractor_name': r['contractor_name'],
               'labourers_count': r['labourers_count'],
               'mistris_count': r['mistris_count'],
+              'work_description': r['work_description'],
             },
           )
           .toList();
@@ -154,6 +161,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           _selectedContractor = null;
           _labourersController.clear();
           _mistrisController.clear();
+          _workDescriptionController.clear();
         });
       }
     } catch (e) {
@@ -215,6 +223,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         TextCellValue('Contractor'),
         TextCellValue('Labourers'),
         TextCellValue('Mistris'),
+        TextCellValue('Work Done'),
         TextCellValue('Mapped Project Location'),
         TextCellValue('Date'),
         TextCellValue('Time'),
@@ -234,6 +243,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           TextCellValue(r['contractor_name'] ?? 'Unknown'),
           TextCellValue(r['labourers_count']?.toString() ?? '0'),
           TextCellValue(r['mistris_count']?.toString() ?? '0'),
+          TextCellValue(r['work_description'] ?? ''),
           TextCellValue(r['site_address'] ?? 'No Address'),
           TextCellValue(dateText),
           TextCellValue(timeText),
@@ -608,6 +618,13 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                               ],
                             ),
                             const SizedBox(height: 16),
+                            AppTextField(
+                              label: 'WORK DONE',
+                              hint: 'Describe what the contractor did today...',
+                              controller: _workDescriptionController,
+                              maxLines: 2,
+                            ),
+                            const SizedBox(height: 16),
                             AppButton(
                               text: 'Add to Temporary Roster',
                               onPressed: _addRecordLocal,
@@ -659,8 +676,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: Text(
-                                    'Labourers: ${r['labourers_count']} • Mistris: ${r['mistris_count']}',
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Labourers: ${r['labourers_count']} • Mistris: ${r['mistris_count']}',
+                                      ),
+                                      if (r['work_description'] != null && r['work_description'].toString().isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            r['work_description'],
+                                            style: TextStyle(
+                                              color: AppTheme.textSecondary,
+                                              fontSize: 12,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
