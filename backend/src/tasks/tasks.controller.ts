@@ -1,5 +1,4 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, UseInterceptors, Request } from '@nestjs/common';
-import { CacheInterceptor } from '@nestjs/cache-manager';
 import { AuthGuard } from '@nestjs/passport';
 import { TasksService } from './tasks.service';
 import { RolesGuard } from '../auth/roles.guard';
@@ -19,7 +18,6 @@ export class TasksController {
   }
 
   @Get()
-  @UseInterceptors(CacheInterceptor)
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findAll(
     @Query('projectId') projectId: string,

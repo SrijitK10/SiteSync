@@ -6,7 +6,14 @@ export class TranslationService {
   private readonly logger = new Logger(TranslationService.name);
   private readonly endpoint = 'https://api.cognitive.microsofttranslator.com/translate?api-version=3.0';
 
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) {
+    const key = process.env.AZURE_TRANSLATOR_KEY || this.configService.get<string>('AZURE_TRANSLATOR_KEY');
+    if (key) {
+      this.logger.log('Azure Translator key is configured. Dynamic translation enabled.');
+    } else {
+      this.logger.warn('Azure Translator key is NOT configured. Dynamic translation will be skipped.');
+    }
+  }
 
   async translateText(text: string, targetLanguages: string[]): Promise<Record<string, string>> {
     if (!text || targetLanguages.length === 0) return {};

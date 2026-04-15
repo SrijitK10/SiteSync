@@ -5,6 +5,7 @@ import { TasksController } from './tasks.controller';
 import { Task } from './entities/task.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TranslationModule } from '../translation/translation.module';
+import { TranslationInterceptor } from '../translation/translation.interceptor';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { TranslationModule } from '../translation/translation.module';
     TranslationModule,
   ],
   controllers: [TasksController],
-  providers: [TasksService],
+  providers: [TasksService, TranslationInterceptor],
 })
 export class TasksModule {}
+
