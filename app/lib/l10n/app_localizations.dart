@@ -418,6 +418,18 @@ abstract class AppLocalizations {
   /// **'Added: {date}'**
   String added(String date);
 
+  /// No description provided for @addedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by: {name}'**
+  String addedBy(String name);
+
+  /// No description provided for @unknownUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown user'**
+  String get unknownUser;
+
   /// No description provided for @untitled.
   ///
   /// In en, this message translates to:
@@ -711,6 +723,17 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export extraction failed'**
   String get exportFailed;
+
+  String get importTasks;
+  String get importTasksDescription;
+  String get importTasksInfo;
+  String get selectSourceFlat;
+  String get selectTasksToImport;
+  String get importSelected;
+  String get noOtherFlats;
+  String get noTasksToImport;
+  String get selectAtLeastOneTaskToImport;
+  String get tasksImportedSuccess;
 }
 
 class _AppLocalizationsDelegate

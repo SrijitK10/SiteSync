@@ -183,6 +183,14 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
+  String addedBy(String name) {
+    return 'যোগ করেছেন: $name';
+  }
+
+  @override
+  String get unknownUser => 'অজানা ব্যবহারকারী';
+
+  @override
   String get untitled => 'শিরোনামহীন';
 
   @override
@@ -334,4 +342,27 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get exportFailed => 'রপ্তানি ব্যর্থ';
+
+  @override
+  String get importTasks => 'কাজ আমদানি করুন';
+  @override
+  String get importTasksDescription => 'অন্য ফ্ল্যাট থেকে কাজ কপি করুন';
+  @override
+  String get importTasksInfo =>
+      'শুধু কাজের শিরোনাম আমদানি হবে। নোট খালি থাকবে।';
+  @override
+  String get selectSourceFlat => 'উৎস ফ্ল্যাট নির্বাচন করুন';
+  @override
+  String get selectTasksToImport => 'আমদানি করতে কাজ নির্বাচন করুন';
+  @override
+  String get importSelected => 'নির্বাচিত আমদানি করুন';
+  @override
+  String get noOtherFlats => 'আমদানির জন্য অন্য কোনো ফ্ল্যাট নেই।';
+  @override
+  String get noTasksToImport => 'এই ফ্ল্যাটে আমদানির জন্য কোনো কাজ নেই।';
+  @override
+  String get selectAtLeastOneTaskToImport =>
+      'আমদানি করতে অন্তত একটি কাজ নির্বাচন করুন।';
+  @override
+  String get tasksImportedSuccess => 'কাজ সফলভাবে আমদানি হয়েছে!';
 }

@@ -17,6 +17,17 @@ export class TasksController {
     return this.tasksService.create(createTaskDto, req.user?.id);
   }
 
+  @Post('copy')
+  @Roles('admin', 'super_admin', 'site_manager')
+  copyTasks(@Request() req: any, @Body() body: { taskIds: string[]; targetFlatId: string; projectId: string }) {
+    return this.tasksService.copyTasks(
+      body.taskIds,
+      body.targetFlatId,
+      body.projectId,
+      req.user?.id,
+    );
+  }
+
   @Get()
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findAll(

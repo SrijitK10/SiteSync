@@ -184,6 +184,14 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
+  String addedBy(String name) {
+    return '$name ने जोड़ा';
+  }
+
+  @override
+  String get unknownUser => 'अज्ञात उपयोगकर्ता';
+
+  @override
   String get untitled => 'बिना शीर्षक';
 
   @override
@@ -333,4 +341,28 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get exportFailed => 'निर्यात विफल';
+
+  @override
+  String get importTasks => 'कार्य आयात करें';
+  @override
+  String get importTasksDescription => 'दूसरे फ़्लैट से कार्य कॉपी करें';
+  @override
+  String get importTasksInfo =>
+      'केवल कार्य शीर्षक आयात होंगे। नोट्स खाली रहेंगे।';
+  @override
+  String get selectSourceFlat => 'स्रोत फ़्लैट चुनें';
+  @override
+  String get selectTasksToImport => 'आयात करने के लिए कार्य चुनें';
+  @override
+  String get importSelected => 'चयनित आयात करें';
+  @override
+  String get noOtherFlats => 'आयात के लिए कोई अन्य फ़्लैट उपलब्ध नहीं।';
+  @override
+  String get noTasksToImport =>
+      'इस फ़्लैट में आयात करने के लिए कोई कार्य नहीं है।';
+  @override
+  String get selectAtLeastOneTaskToImport =>
+      'आयात करने के लिए कम से कम एक कार्य चुनें।';
+  @override
+  String get tasksImportedSuccess => 'कार्य सफलतापूर्वक आयात किए गए!';
 }

@@ -56,6 +56,8 @@
   "noTasksYet": "এই ফ্ল্যাটের জন্য এখনো কোনো কাজ তৈরি করা হয়নি।",
   "finished": "সম্পন্ন: {date}",
   "added": "যোগ করা হয়েছে: {date}",
+  "addedBy": "যোগ করেছেন: {name}",
+  "unknownUser": "অজানা ব্যবহারকারী",
   "untitled": "শিরোনামহীন",
 
   "cancel": "বাতিল",
@@ -108,5 +110,15 @@
   "passwordsDoNotMatch": "পাসওয়ার্ড মিলছে না",
   "passwordChangedSuccess": "পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে",
   "projectDeletedSuccess": "প্রকল্প কাঠামো সম্পূর্ণ মুছে ফেলা হয়েছে।",
-  "exportFailed": "রপ্তানি ব্যর্থ"
+  "exportFailed": "রপ্তানি ব্যর্থ",
+  "importTasks": "কাজ আমদানি করুন",
+  "importTasksDescription": "অন্য ফ্ল্যাট থেকে কাজ কপি করুন",
+  "importTasksInfo": "শুধু কাজের শিরোনাম আমদানি হবে। নোট খালি থাকবে।",
+  "selectSourceFlat": "উৎস ফ্ল্যাট নির্বাচন করুন",
+  "selectTasksToImport": "আমদানি করতে কাজ নির্বাচন করুন",
+  "importSelected": "নির্বাচিত আমদানি করুন",
+  "noOtherFlats": "আমদানির জন্য অন্য কোনো ফ্ল্যাট নেই।",
+  "noTasksToImport": "এই ফ্ল্যাটে আমদানির জন্য কোনো কাজ নেই।",
+  "selectAtLeastOneTaskToImport": "আমদানি করতে অন্তত একটি কাজ নির্বাচন করুন।",
+  "tasksImportedSuccess": "কাজ সফলভাবে আমদানি হয়েছে!"
 }

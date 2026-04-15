@@ -289,7 +289,8 @@ class ProjectsScreen extends ConsumerWidget {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         centerTitle: false,
-        title: Image.asset('assets/images/rppl.png', height: 36),
+        toolbarHeight: 72,
+        title: Image.asset('assets/images/rppl.png', height: 56),
         actions: [
           if (canManageProjects)
             IconButton(

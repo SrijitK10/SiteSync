@@ -52,6 +52,11 @@ export class Task {
   assignee: User;
 
   @Index()
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by' })
+  createdBy: User;
+
+  @Index()
   @CreateDateColumn({ type: 'date' })
   created_at: Date;
 

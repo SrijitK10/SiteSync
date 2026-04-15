@@ -56,6 +56,8 @@
   "noTasksYet": "इस फ़्लैट के लिए अभी तक कोई कार्य नहीं बनाया गया है।",
   "finished": "पूर्ण: {date}",
   "added": "जोड़ा गया: {date}",
+  "addedBy": "{name} ने जोड़ा",
+  "unknownUser": "अज्ञात उपयोगकर्ता",
   "untitled": "बिना शीर्षक",
 
   "cancel": "रद्द करें",
@@ -108,5 +110,15 @@
   "passwordsDoNotMatch": "पासवर्ड मेल नहीं खाते",
   "passwordChangedSuccess": "पासवर्ड सफलतापूर्वक बदला गया",
   "projectDeletedSuccess": "प्रोजेक्ट संरचना पूरी तरह हटाई गई।",
-  "exportFailed": "निर्यात विफल"
+  "exportFailed": "निर्यात विफल",
+  "importTasks": "कार्य आयात करें",
+  "importTasksDescription": "दूसरे फ़्लैट से कार्य कॉपी करें",
+  "importTasksInfo": "केवल कार्य शीर्षक आयात होंगे। नोट्स खाली रहेंगे।",
+  "selectSourceFlat": "स्रोत फ़्लैट चुनें",
+  "selectTasksToImport": "आयात करने के लिए कार्य चुनें",
+  "importSelected": "चयनित आयात करें",
+  "noOtherFlats": "आयात के लिए कोई अन्य फ़्लैट उपलब्ध नहीं।",
+  "noTasksToImport": "इस फ़्लैट में आयात करने के लिए कोई कार्य नहीं है।",
+  "selectAtLeastOneTaskToImport": "आयात करने के लिए कम से कम एक कार्य चुनें।",
+  "tasksImportedSuccess": "कार्य सफलतापूर्वक आयात किए गए!"
 }

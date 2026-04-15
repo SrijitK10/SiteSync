@@ -60,6 +60,9 @@
   "@finished": { "placeholders": { "date": { "type": "String" } } },
   "added": "Added: {date}",
   "@added": { "placeholders": { "date": { "type": "String" } } },
+  "addedBy": "Added by: {name}",
+  "@addedBy": { "placeholders": { "name": { "type": "String" } } },
+  "unknownUser": "Unknown user",
   "untitled": "Untitled",
 
   "cancel": "Cancel",
@@ -113,5 +116,15 @@
   "passwordsDoNotMatch": "Passwords do not match",
   "passwordChangedSuccess": "Password changed successfully",
   "projectDeletedSuccess": "Project structure fully deleted.",
-  "exportFailed": "Export extraction failed"
+  "exportFailed": "Export extraction failed",
+  "importTasks": "Import Tasks",
+  "importTasksDescription": "Copy tasks from another flat",
+  "importTasksInfo": "Only task titles will be imported. Notes will stay empty.",
+  "selectSourceFlat": "Select source flat",
+  "selectTasksToImport": "Select tasks to import",
+  "importSelected": "Import Selected",
+  "noOtherFlats": "No other flats available to import from.",
+  "noTasksToImport": "This flat has no tasks to import.",
+  "selectAtLeastOneTaskToImport": "Select at least one task to import.",
+  "tasksImportedSuccess": "Tasks imported successfully!"
 }

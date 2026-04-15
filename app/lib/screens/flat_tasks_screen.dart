@@ -61,6 +61,314 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     }
   }
 
+  String _creatorName(Map<String, dynamic> task, AppLocalizations l) {
+    final createdBy = task['createdBy'];
+    if (createdBy is Map &&
+        createdBy['name']?.toString().trim().isNotEmpty == true) {
+      return createdBy['name'].toString().trim();
+    }
+    return l.unknownUser;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchOtherFlatsForImport() async {
+    final res = await apiClient.get('/flats?projectId=${widget.projectId}');
+    return (res.data as List<dynamic>)
+        .map((flat) => Map<String, dynamic>.from(flat as Map))
+        .where((flat) => flat['id']?.toString() != widget.flatId)
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchTasksForImport(
+    String sourceFlatId,
+  ) async {
+    final res = await apiClient.get(
+      '/tasks?projectId=${widget.projectId}&flatId=$sourceFlatId',
+    );
+    return (res.data as List<dynamic>)
+        .map((task) => Map<String, dynamic>.from(task as Map))
+        .toList();
+  }
+
+  Future<void> _showImportTasksSheet() async {
+    final l = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+
+    List<Map<String, dynamic>> otherFlats;
+    try {
+      otherFlats = await _fetchOtherFlatsForImport();
+    } catch (e) {
+      debugPrint('Failed to load flats for import: $e');
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(l.connectionError)));
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    if (otherFlats.isEmpty) {
+      messenger.showSnackBar(SnackBar(content: Text(l.noOtherFlats)));
+      return;
+    }
+
+    String selectedSourceFlatId = otherFlats.first['id'].toString();
+    List<Map<String, dynamic>> sourceTasks;
+    try {
+      sourceTasks = await _fetchTasksForImport(selectedSourceFlatId);
+    } catch (e) {
+      debugPrint('Failed to load source flat tasks: $e');
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(l.connectionError)));
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    final selectedTaskIds = <String>{};
+    bool isSubmitting = false;
+    bool isLoadingSourceTasks = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.background,
+      builder: (bottomSheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.9,
+          child: StatefulBuilder(
+            builder: (context, setStateLocal) {
+              Future<void> loadSourceTasks(String flatId) async {
+                setStateLocal(() {
+                  selectedSourceFlatId = flatId;
+                  isLoadingSourceTasks = true;
+                  selectedTaskIds.clear();
+                });
+
+                try {
+                  final tasks = await _fetchTasksForImport(flatId);
+                  if (!mounted) return;
+                  setStateLocal(() {
+                    sourceTasks = tasks;
+                    isLoadingSourceTasks = false;
+                  });
+                } catch (e) {
+                  debugPrint('Failed to load import tasks: $e');
+                  if (!mounted) return;
+                  setStateLocal(() {
+                    sourceTasks = [];
+                    isLoadingSourceTasks = false;
+                  });
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(l.connectionError)),
+                  );
+                }
+              }
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l.importTasks, style: AppTheme.heading),
+                    const SizedBox(height: 8),
+                    Text(
+                      l.importTasksDescription,
+                      style: AppTheme.body.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        l.importTasksInfo,
+                        style: AppTheme.body.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(l.selectSourceFlat, style: AppTheme.label),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedSourceFlatId,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppTheme.surface,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE0E0E0),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: AppTheme.accent,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      items: otherFlats
+                          .map(
+                            (flat) => DropdownMenuItem<String>(
+                              value: flat['id'].toString(),
+                              child: Text(
+                                '${l.flat} ${flat['flat_number']?.toString() ?? ''}',
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null || value == selectedSourceFlatId) {
+                          return;
+                        }
+                        loadSourceTasks(value);
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Text(l.selectTasksToImport, style: AppTheme.label),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: isLoadingSourceTasks
+                            ? const Center(child: CircularProgressIndicator())
+                            : sourceTasks.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Text(
+                                    l.noTasksToImport,
+                                    textAlign: TextAlign.center,
+                                    style: AppTheme.body.copyWith(
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                itemCount: sourceTasks.length,
+                                separatorBuilder: (context, index) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final task = sourceTasks[index];
+                                  final taskId = task['id'].toString();
+                                  final isSelected = selectedTaskIds.contains(
+                                    taskId,
+                                  );
+                                  return CheckboxListTile(
+                                    value: isSelected,
+                                    activeColor: AppTheme.primary,
+                                    title: Text(
+                                      task['title']
+                                                  ?.toString()
+                                                  .trim()
+                                                  .isNotEmpty ==
+                                              true
+                                          ? task['title'].toString()
+                                          : l.untitled,
+                                      style: AppTheme.body.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      l.importTasksInfo,
+                                      style: AppTheme.body.copyWith(
+                                        fontSize: 12,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
+                                    onChanged: (value) {
+                                      setStateLocal(() {
+                                        if (value == true) {
+                                          selectedTaskIds.add(taskId);
+                                        } else {
+                                          selectedTaskIds.remove(taskId);
+                                        }
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    AppButton(
+                      text: l.importSelected,
+                      isLoading: isSubmitting,
+                      onPressed: () async {
+                        if (selectedTaskIds.isEmpty) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(l.selectAtLeastOneTaskToImport),
+                            ),
+                          );
+                          return;
+                        }
+
+                        setStateLocal(() => isSubmitting = true);
+                        try {
+                          await apiClient.post(
+                            '/tasks/copy',
+                            data: {
+                              'taskIds': selectedTaskIds.toList(),
+                              'targetFlatId': widget.flatId,
+                              'projectId': widget.projectId,
+                            },
+                          );
+                          await _fetchTasks();
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(l.tasksImportedSuccess)),
+                          );
+                        } catch (e) {
+                          debugPrint('Error importing tasks: $e');
+                          if (context.mounted) {
+                            setStateLocal(() => isSubmitting = false);
+                          }
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(l.connectionError)),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildNotesField(TextEditingController controller) {
     final l = AppLocalizations.of(context)!;
     return Column(
@@ -191,11 +499,14 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                 },
                               );
                               _fetchTasks();
-                              if (context.mounted) Navigator.pop(context);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                              }
                             } catch (e) {
                               debugPrint('Error updating notes: $e');
-                              if (context.mounted)
+                              if (context.mounted) {
                                 setStateLocal(() => isSubmitting = false);
+                              }
                             }
                           },
                         ),
@@ -291,11 +602,14 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                 },
                               );
                               _fetchTasks();
-                              if (context.mounted) Navigator.pop(context);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                              }
                             } catch (e) {
                               debugPrint('Error creating task: $e');
-                              if (context.mounted)
+                              if (context.mounted) {
                                 setStateLocal(() => isSubmitting = false);
+                              }
                             }
                           },
                         ),
@@ -322,6 +636,15 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
           '${l.flat} ${widget.flatNumber}',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
+        actions: canEdit
+            ? [
+                IconButton(
+                  tooltip: l.importTasks,
+                  onPressed: _showImportTasksSheet,
+                  icon: const Icon(Icons.file_download_outlined),
+                ),
+              ]
+            : null,
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primary,
@@ -339,6 +662,10 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                       itemBuilder: (context, index) {
                         final t = _tasks[index];
                         final bool isDone = t['status'] == 'completed';
+                        final creatorName = _creatorName(
+                          Map<String, dynamic>.from(t),
+                          l,
+                        );
                         return Card(
                           color: AppTheme.surface,
                           margin: const EdgeInsets.only(bottom: 8),
@@ -358,10 +685,23 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                     : null,
                               ),
                             ),
-                            subtitle: Text(
-                              isDone
-                                  ? l.finished(t['completed_at'] ?? '')
-                                  : l.added(t['created_at'] ?? ''),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isDone
+                                      ? l.finished(t['completed_at'] ?? '')
+                                      : l.added(t['created_at'] ?? ''),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  l.addedBy(creatorName),
+                                  style: AppTheme.body.copyWith(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                             children: [
                               Padding(
@@ -374,6 +714,14 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Text(
+                                      l.addedBy(creatorName),
+                                      style: AppTheme.body.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
                                     _buildNotesBullets(t['description']),
                                     if (canEdit) ...[
                                       const SizedBox(height: 12),

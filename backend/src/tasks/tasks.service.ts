@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, Between } from 'typeorm';
+import { Repository, MoreThanOrEqual, Between, In } from 'typeorm';
 import { Task } from './entities/task.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TranslationService } from '../translation/translation.service';
@@ -43,6 +43,9 @@ export class TasksService {
     }
     if (createTaskDto.userId) {
       task.assignee = { id: createTaskDto.userId } as any;
+    }
+    if (userId) {
+      task.createdBy = { id: userId } as any;
     }
     const savedTask = await this.tasksRepository.save(task);
 
@@ -89,13 +92,16 @@ export class TasksService {
 
     return this.tasksRepository.find({
       where: whereClause,
-      relations: ['assignee', 'flat'],
+      relations: ['assignee', 'flat', 'createdBy'],
       order: { created_at: 'DESC' },
     });
   }
 
   async findOne(id: string): Promise<Task> {
-    const task = await this.tasksRepository.findOne({ where: { id }, relations: ['assignee', 'project', 'flat'] });
+    const task = await this.tasksRepository.findOne({
+      where: { id },
+      relations: ['assignee', 'project', 'flat', 'createdBy'],
+    });
     if (!task) throw new NotFoundException('Task not found');
     return task;
   }
@@ -141,6 +147,35 @@ export class TasksService {
     }
 
     return savedTask;
+  }
+
+  async copyTasks(taskIds: string[], targetFlatId: string, projectId: string, userId?: string): Promise<Task[]> {
+    const sourceTasks = await this.tasksRepository.find({
+      where: {
+        id: In(taskIds),
+        project: { id: projectId },
+      },
+    });
+
+    if (!sourceTasks.length) throw new NotFoundException('No source tasks found');
+
+    const newTasks: Task[] = [];
+    for (const source of sourceTasks) {
+      const task = this.tasksRepository.create({
+        title: source.title,
+        // Only copy the task itself. Notes stay blank on imported tasks.
+        description: null as any,
+        title_translations: source.title_translations || {},
+        description_translations: {},
+        status: 'todo' as any,
+        project: { id: projectId } as any,
+        flat: { id: targetFlatId } as any,
+        createdBy: userId ? ({ id: userId } as any) : null,
+      });
+      newTasks.push(task);
+    }
+
+    return this.tasksRepository.save(newTasks);
   }
 
   async remove(id: string): Promise<void> {

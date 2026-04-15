@@ -179,6 +179,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         TextCellValue('Notes / Description'),
         TextCellValue('Status'),
         TextCellValue('Creation Date'),
+        TextCellValue('Added By'),
         TextCellValue('Completion Date'),
       ]);
 
@@ -189,6 +190,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
           TextCellValue(r['description'] ?? ''),
           TextCellValue(r['status'] ?? 'todo'),
           TextCellValue(r['created_at'] ?? ''),
+          TextCellValue(r['createdBy']?['name']?.toString() ?? '-'),
           TextCellValue(r['completed_at'] ?? 'Pending'),
         ]);
       }
@@ -257,7 +259,10 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
                   l.downloadTaskReports,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               ListTile(
@@ -329,10 +334,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
               backgroundColor: AppTheme.primary,
               onPressed: _showAddFlatSheet,
               icon: Icon(Icons.add, color: AppTheme.surface),
-              label: Text(
-                l.addFlat,
-                style: TextStyle(color: AppTheme.surface),
-              ),
+              label: Text(l.addFlat, style: TextStyle(color: AppTheme.surface)),
             )
           : null,
       body: Padding(
@@ -525,7 +527,10 @@ class _FlatCard extends StatelessWidget {
                             color: Colors.red,
                           ),
                           const SizedBox(width: 8),
-                          Text(l.delete, style: const TextStyle(color: Colors.red)),
+                          Text(
+                            l.delete,
+                            style: const TextStyle(color: Colors.red),
+                          ),
                         ],
                       ),
                     ),
