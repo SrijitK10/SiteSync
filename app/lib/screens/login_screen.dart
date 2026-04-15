@@ -8,6 +8,7 @@ import '../widgets/app_card.dart';
 import '../state/auth_provider.dart';
 import '../services/platform_utils.dart';
 import '../services/phone_auth_service.dart';
+import '../l10n/app_localizations.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -37,12 +38,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ── PHONE OTP FLOW (Android) ──────────────────────────────────
 
   void _sendOTP() async {
+    final l = AppLocalizations.of(context)!;
     final phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid 10-digit mobile number'),
-        ),
+        SnackBar(content: Text(l.validMobileError)),
       );
       return;
     }
@@ -119,10 +119,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _verifyOTP() async {
+    final l = AppLocalizations.of(context)!;
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the 6-digit OTP')),
+        SnackBar(content: Text(l.enterOTPError)),
       );
       return;
     }
@@ -167,18 +168,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ── EMAIL + PASSWORD FLOW (iOS) ───────────────────────────────
 
   void _loginWithPassword() async {
+    final l = AppLocalizations.of(context)!;
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     if (email.isEmpty || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid email address')),
+        SnackBar(content: Text(l.validEmailError)),
       );
       return;
     }
     if (password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your password')),
+        SnackBar(content: Text(l.enterPasswordError)),
       );
       return;
     }
@@ -244,9 +246,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ── PHONE OTP UI (Android) ────────────────────────────────────
 
   List<Widget> _buildPhoneOTPFlow() {
+    final l = AppLocalizations.of(context)!;
     if (!_otpSent) {
       return [
-        Text('MOBILE NUMBER', style: AppTheme.label),
+        Text(l.mobileNumber, style: AppTheme.label),
         const SizedBox(height: 8),
         TextField(
           controller: _phoneController,
@@ -256,7 +259,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           decoration: InputDecoration(
             prefixText: '+91  ',
             prefixStyle: AppTheme.body.copyWith(fontWeight: FontWeight.bold),
-            hintText: '98765 43210',
+            hintText: l.mobileNumberHint,
             counterText: '',
             filled: true,
             fillColor: AppTheme.background,
@@ -271,15 +274,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        AppButton(text: 'Send OTP', isLoading: _isLoading, onPressed: _sendOTP),
+        AppButton(text: l.sendOTP, isLoading: _isLoading, onPressed: _sendOTP),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("Don't have an account? "),
+            Text(l.dontHaveAccount),
             TextButton(
               onPressed: () => context.go('/signup'),
-              child: const Text('Sign Up'),
+              child: Text(l.signUp),
             ),
           ],
         ),
@@ -292,7 +295,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
         ),
         const SizedBox(height: 20),
-        Text('ENTER OTP', style: AppTheme.label),
+        Text(l.enterOTP, style: AppTheme.label),
         const SizedBox(height: 8),
         TextField(
           controller: _otpController,
@@ -316,7 +319,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: 24),
         AppButton(
-          text: 'Verify & Sign In',
+          text: l.verifySignIn,
           isLoading: _isLoading,
           onPressed: _verifyOTP,
         ),
@@ -331,15 +334,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   _otpController.clear();
                 });
               },
-              child: const Text('Change Number'),
+              child: Text(l.changeNumber),
             ),
             const SizedBox(width: 16),
             TextButton(
               onPressed: _resendCountdown > 0 ? null : _sendOTP,
               child: Text(
                 _resendCountdown > 0
-                    ? 'Resend in ${_resendCountdown}s'
-                    : 'Resend OTP',
+                    ? l.resendIn(_resendCountdown)
+                    : l.resendOTP,
               ),
             ),
           ],
@@ -351,15 +354,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ── EMAIL + PASSWORD UI (iOS) ─────────────────────────────────
 
   List<Widget> _buildEmailPasswordFlow() {
+    final l = AppLocalizations.of(context)!;
     return [
-      Text('EMAIL ADDRESS', style: AppTheme.label),
+      Text(l.emailAddress, style: AppTheme.label),
       const SizedBox(height: 8),
       TextField(
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
         style: AppTheme.body,
         decoration: InputDecoration(
-          hintText: 'you@example.com',
+          hintText: l.emailHint,
           filled: true,
           fillColor: AppTheme.background,
           border: OutlineInputBorder(
@@ -373,14 +377,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
       const SizedBox(height: 20),
-      Text('PASSWORD', style: AppTheme.label),
+      Text(l.password, style: AppTheme.label),
       const SizedBox(height: 8),
       TextField(
         controller: _passwordController,
         obscureText: _obscurePassword,
         style: AppTheme.body,
         decoration: InputDecoration(
-          hintText: 'Enter your password',
+          hintText: l.passwordHint,
           filled: true,
           fillColor: AppTheme.background,
           border: OutlineInputBorder(
@@ -405,12 +409,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         alignment: Alignment.centerRight,
         child: TextButton(
           onPressed: () => context.push('/forgot-password'),
-          child: const Text('Forgot Password?'),
+          child: Text(l.forgotPassword),
         ),
       ),
       const SizedBox(height: 16),
       AppButton(
-        text: 'Sign In',
+        text: l.signIn,
         isLoading: _isLoading,
         onPressed: _loginWithPassword,
       ),
@@ -418,10 +422,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text("Don't have an account? "),
+          Text(l.dontHaveAccount),
           TextButton(
             onPressed: () => context.go('/signup'),
-            child: const Text('Sign Up'),
+            child: Text(l.signUp),
           ),
         ],
       ),

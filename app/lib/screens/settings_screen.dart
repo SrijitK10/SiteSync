@@ -14,10 +14,11 @@ class SettingsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final notifier = ref.read(appSettingsProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(title: Text(AppLocalizations.of(context)!.settingsTitle)),
+      appBar: AppBar(title: Text(l.settingsTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -25,30 +26,30 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Appearance', style: AppTheme.heading),
+                Text(l.appearance, style: AppTheme.heading),
                 const SizedBox(height: 8),
                 Text(
-                  'Choose how the app handles light and dark surfaces across web, Android, and iOS.',
+                  l.appearanceDescription,
                   style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
                 SegmentedButton<ThemeMode>(
                   showSelectedIcon: false,
-                  segments: const [
+                  segments: [
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.system,
-                      label: Text('System'),
-                      icon: Icon(Icons.brightness_auto),
+                      label: Text(l.systemTheme),
+                      icon: const Icon(Icons.brightness_auto),
                     ),
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.light,
-                      label: Text('Light'),
-                      icon: Icon(Icons.light_mode),
+                      label: Text(l.lightTheme),
+                      icon: const Icon(Icons.light_mode),
                     ),
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.dark,
-                      label: Text('Dark'),
-                      icon: Icon(Icons.dark_mode),
+                      label: Text(l.darkTheme),
+                      icon: const Icon(Icons.dark_mode),
                     ),
                   ],
                   selected: {settings.themeMode},
@@ -64,13 +65,10 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  AppLocalizations.of(context)!.languageLabel,
-                  style: AppTheme.heading,
-                ),
+                Text(l.languageLabel, style: AppTheme.heading),
                 const SizedBox(height: 8),
                 Text(
-                  'Choose the language for the App interface and dynamic translation.',
+                  l.languageDescription,
                   style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -94,10 +92,10 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Text Size', style: AppTheme.heading),
+                Text(l.textSize, style: AppTheme.heading),
                 const SizedBox(height: 8),
                 Text(
-                  'Preset font scales enlarge labels, forms, lists, dialogs, and navigation text while keeping layout shifts controlled.',
+                  l.textSizeDescription,
                   style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -179,17 +177,14 @@ class SettingsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Preview',
+                        l.preview,
                         style: AppTheme.label.copyWith(color: AppTheme.primary),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Rupayan workspace settings',
-                        style: AppTheme.heading,
-                      ),
+                      Text(l.previewHeading, style: AppTheme.heading),
                       const SizedBox(height: 4),
                       Text(
-                        'Buttons, forms, tabs, and data lists follow this scale throughout the app.',
+                        l.previewBody,
                         style: AppTheme.body.copyWith(
                           color: AppTheme.textSecondary,
                         ),

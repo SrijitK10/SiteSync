@@ -13,55 +13,6 @@ import 'app_localizations_hi.dart';
 
 /// Callers can lookup localized strings with an instance of AppLocalizations
 /// returned by `AppLocalizations.of(context)`.
-///
-/// Applications need to include `AppLocalizations.delegate()` in their app's
-/// `localizationDelegates` list, and the locales they support in the app's
-/// `supportedLocales` list. For example:
-///
-/// ```dart
-/// import 'l10n/app_localizations.dart';
-///
-/// return MaterialApp(
-///   localizationsDelegates: AppLocalizations.localizationsDelegates,
-///   supportedLocales: AppLocalizations.supportedLocales,
-///   home: MyApplicationHome(),
-/// );
-/// ```
-///
-/// ## Update pubspec.yaml
-///
-/// Please make sure to update your pubspec.yaml to include the following
-/// packages:
-///
-/// ```yaml
-/// dependencies:
-///   # Internationalization support.
-///   flutter_localizations:
-///     sdk: flutter
-///   intl: any # Use the pinned version from flutter_localizations
-///
-///   # Rest of dependencies
-/// ```
-///
-/// ## iOS Applications
-///
-/// iOS applications define key application metadata, including supported
-/// locales, in an Info.plist file that is built into the application bundle.
-/// To configure the locales supported by your app, you’ll need to edit this
-/// file.
-///
-/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
-/// Then, in the Project Navigator, open the Info.plist file under the Runner
-/// project’s Runner folder.
-///
-/// Next, select the Information Property List item, select Add Item from the
-/// Editor menu, then select Localizations from the pop-up menu.
-///
-/// Select and expand the newly-created Localizations item then, for each
-/// locale your application supports, add a new item and select the locale
-/// you wish to add from the pop-up menu in the Value field. This list should
-/// be consistent with the languages listed in the AppLocalizations.supportedLocales
-/// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
     : localeName = intl.Intl.canonicalizedLocale(locale.toString());
@@ -75,16 +26,6 @@ abstract class AppLocalizations {
   static const LocalizationsDelegate<AppLocalizations> delegate =
       _AppLocalizationsDelegate();
 
-  /// A list of this localizations delegate along with the default localizations
-  /// delegates.
-  ///
-  /// Returns a list of localizations delegates containing this delegate along with
-  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
-  /// and GlobalWidgetsLocalizations.delegate.
-  ///
-  /// Additional delegates can be added by appending to this list in
-  /// MaterialApp. This list does not have to be used at all if a custom list
-  /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
         delegate,
@@ -93,84 +34,121 @@ abstract class AppLocalizations {
         GlobalWidgetsLocalizations.delegate,
       ];
 
-  /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('bn'),
     Locale('en'),
     Locale('hi'),
   ];
 
-  /// No description provided for @appTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'SiteSync'**
   String get appTitle;
-
-  /// No description provided for @loginTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Login'**
   String get loginTitle;
-
-  /// No description provided for @emailLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Email'**
   String get emailLabel;
-
-  /// No description provided for @passwordLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Password'**
   String get passwordLabel;
-
-  /// No description provided for @submitBtn.
-  ///
-  /// In en, this message translates to:
-  /// **'Submit'**
   String get submitBtn;
-
-  /// No description provided for @tasksTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Tasks'**
   String get tasksTitle;
-
-  /// No description provided for @calendarTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Calendar'**
   String get calendarTitle;
-
-  /// No description provided for @progressTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Progress'**
   String get progressTitle;
-
-  /// No description provided for @attendanceTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Attendance'**
   String get attendanceTitle;
-
-  /// No description provided for @settingsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Settings'**
   String get settingsTitle;
-
-  /// No description provided for @activeWorkspace.
-  ///
-  /// In en, this message translates to:
-  /// **'Active Workspace'**
   String get activeWorkspace;
-
-  /// No description provided for @languageLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Language'**
   String get languageLabel;
+
+  String get appearance;
+  String get appearanceDescription;
+  String get systemTheme;
+  String get lightTheme;
+  String get darkTheme;
+  String get languageDescription;
+  String get textSize;
+  String get textSizeDescription;
+  String get preview;
+  String get previewHeading;
+  String get previewBody;
+
+  String get addFlat;
+  String get flatNumber;
+  String get flatNumberHint;
+  String get noFlatsYet;
+  String get noFlatsAdded;
+  String get downloadReports;
+  String get downloadTaskReports;
+  String get exportDaily;
+  String get exportWeekly;
+  String get exportMonthly;
+  String get exportCustom;
+  String deleteFlat(String flatNumber);
+  String get deleteFlatWarning;
+  String get markDone;
+  String get unmarkDone;
+
+  String get flat;
+  String newTaskForFlat(String flatNumber);
+  String get titleLabel;
+  String get titleHint;
+  String get notesLabel;
+  String get notesHint;
+  String get noNotesProvided;
+  String get saveTask;
+  String get editNotes;
+  String get saveNotes;
+  String get deleteTask;
+  String get deleteTaskConfirm;
+  String get noTasksYet;
+  String finished(String date);
+  String added(String date);
+  String get untitled;
+
+  String get cancel;
+  String get delete;
+  String get settings;
+  String get logOut;
+  String get changePassword;
+  String get manageUsers;
+  String get refresh;
+
+  String get deleteProject;
+  String get deleteProjectWarning;
+  String get createProject;
+  String get projectName;
+  String get projectNameHint;
+  String get projectLocation;
+  String get projectLocationHint;
+  String get commitToDatabase;
+  String get noProjectsFound;
+  String get connectionError;
+
+  String get mobileNumber;
+  String get mobileNumberHint;
+  String get sendOTP;
+  String get enterOTP;
+  String get verifySignIn;
+  String get changeNumber;
+  String get resendOTP;
+  String resendIn(int seconds);
+  String get dontHaveAccount;
+  String get signUp;
+  String get signIn;
+  String get emailAddress;
+  String get emailHint;
+  String get password;
+  String get passwordHint;
+  String get forgotPassword;
+  String get validMobileError;
+  String get enterOTPError;
+  String get validEmailError;
+  String get enterPasswordError;
+
+  String get currentPassword;
+  String get newPassword;
+  String get newPasswordHint;
+  String get confirmNewPassword;
+  String get updatePassword;
+  String get fillAllFields;
+  String get passwordMinLength;
+  String get passwordsDoNotMatch;
+  String get passwordChangedSuccess;
+  String get projectDeletedSuccess;
+  String get exportFailed;
 }
 
 class _AppLocalizationsDelegate
@@ -191,7 +169,6 @@ class _AppLocalizationsDelegate
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
-  // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'bn':
       return AppLocalizationsBn();

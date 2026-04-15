@@ -8,6 +8,7 @@ import '../state/projects_provider.dart';
 import '../state/auth_provider.dart';
 import '../services/api_client.dart';
 import '../services/platform_utils.dart';
+import '../l10n/app_localizations.dart';
 
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
@@ -17,22 +18,21 @@ class ProjectsScreen extends ConsumerWidget {
     WidgetRef ref,
     String projectId,
   ) async {
+    final l = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: Text('Delete Project', style: AppTheme.heading),
-        content: const Text(
-          'Are you sure you want to permanently delete this project? All associated tasks, calendars, and attendance records will be completely erased.',
-        ),
+        title: Text(l.deleteProject, style: AppTheme.heading),
+        content: Text(l.deleteProjectWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(l.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -44,7 +44,7 @@ class ProjectsScreen extends ConsumerWidget {
         ref.invalidate(projectsProvider);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Project structure fully deleted.')),
+            SnackBar(content: Text(l.projectDeletedSuccess)),
           );
         }
       } catch (e) {
@@ -62,6 +62,7 @@ class ProjectsScreen extends ConsumerWidget {
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
     bool isSubmitting = false;
+    final l = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -83,13 +84,13 @@ class ProjectsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Change Password', style: AppTheme.heading),
+                  Text(l.changePassword, style: AppTheme.heading),
                   const SizedBox(height: 24),
                   TextField(
                     controller: oldPasswordController,
                     obscureText: true,
                     decoration: InputDecoration(
-                      labelText: 'Current Password',
+                      labelText: l.currentPassword,
                       filled: true,
                       fillColor: AppTheme.surface,
                       border: OutlineInputBorder(
@@ -103,8 +104,8 @@ class ProjectsScreen extends ConsumerWidget {
                     controller: newPasswordController,
                     obscureText: true,
                     decoration: InputDecoration(
-                      labelText: 'New Password',
-                      hintText: 'Min. 6 characters',
+                      labelText: l.newPassword,
+                      hintText: l.newPasswordHint,
                       filled: true,
                       fillColor: AppTheme.surface,
                       border: OutlineInputBorder(
@@ -118,7 +119,7 @@ class ProjectsScreen extends ConsumerWidget {
                     controller: confirmPasswordController,
                     obscureText: true,
                     decoration: InputDecoration(
-                      labelText: 'Confirm New Password',
+                      labelText: l.confirmNewPassword,
                       filled: true,
                       fillColor: AppTheme.surface,
                       border: OutlineInputBorder(
@@ -131,7 +132,7 @@ class ProjectsScreen extends ConsumerWidget {
                   isSubmitting
                       ? const CircularProgressIndicator()
                       : AppButton(
-                          text: 'Update Password',
+                          text: l.updatePassword,
                           onPressed: () async {
                             final oldPw = oldPasswordController.text;
                             final newPw = newPasswordController.text;
@@ -139,27 +140,19 @@ class ProjectsScreen extends ConsumerWidget {
 
                             if (oldPw.isEmpty || newPw.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please fill in all fields'),
-                                ),
+                                SnackBar(content: Text(l.fillAllFields)),
                               );
                               return;
                             }
                             if (newPw.length < 6) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'New password must be at least 6 characters',
-                                  ),
-                                ),
+                                SnackBar(content: Text(l.passwordMinLength)),
                               );
                               return;
                             }
                             if (newPw != confirmPw) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Passwords do not match'),
-                                ),
+                                SnackBar(content: Text(l.passwordsDoNotMatch)),
                               );
                               return;
                             }
@@ -172,10 +165,8 @@ class ProjectsScreen extends ConsumerWidget {
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Password changed successfully',
-                                    ),
+                                  SnackBar(
+                                    content: Text(l.passwordChangedSuccess),
                                   ),
                                 );
                               }
@@ -207,6 +198,7 @@ class ProjectsScreen extends ConsumerWidget {
     final nameController = TextEditingController();
     final locationController = TextEditingController();
     bool isSubmitting = false;
+    final l = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -228,24 +220,24 @@ class ProjectsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Create Centralized Project', style: AppTheme.heading),
+                  Text(l.createProject, style: AppTheme.heading),
                   const SizedBox(height: 16),
                   AppTextField(
-                    label: 'NAME',
-                    hint: 'E.g. Downtown Plaza',
+                    label: l.projectName,
+                    hint: l.projectNameHint,
                     controller: nameController,
                   ),
                   const SizedBox(height: 16),
                   AppTextField(
-                    label: 'LOCATION',
-                    hint: '123 Main St',
+                    label: l.projectLocation,
+                    hint: l.projectLocationHint,
                     controller: locationController,
                   ),
                   const SizedBox(height: 32),
                   isSubmitting
                       ? const CircularProgressIndicator()
                       : AppButton(
-                          text: 'Commit to Database',
+                          text: l.commitToDatabase,
                           onPressed: () async {
                             if (nameController.text.trim().isEmpty) return;
 
@@ -291,6 +283,7 @@ class ProjectsScreen extends ConsumerWidget {
     final projectsAsync = ref.watch(projectsProvider);
     final user = ref.watch(authProvider).currentUser;
     final canManageProjects = user != null && user.role.isAdmin;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -301,12 +294,12 @@ class ProjectsScreen extends ConsumerWidget {
           if (canManageProjects)
             IconButton(
               icon: const Icon(Icons.people),
-              tooltip: 'Manage Users',
+              tooltip: l.manageUsers,
               onPressed: () => context.push('/users'),
             ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
+            tooltip: l.refresh,
             onPressed: () {
               ref.read(authProvider.notifier).refreshCurrentUser();
               ref.invalidate(projectsProvider);
@@ -324,33 +317,33 @@ class ProjectsScreen extends ConsumerWidget {
             },
             itemBuilder: (context) => [
               if (isApplePlatform)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'change_password',
                   child: Row(
                     children: [
-                      Icon(Icons.lock_outline, size: 20),
-                      SizedBox(width: 8),
-                      Text('Change Password'),
+                      const Icon(Icons.lock_outline, size: 20),
+                      const SizedBox(width: 8),
+                      Text(l.changePassword),
                     ],
                   ),
                 ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'settings',
                 child: Row(
                   children: [
-                    Icon(Icons.settings_outlined, size: 20),
-                    SizedBox(width: 8),
-                    Text('Settings'),
+                    const Icon(Icons.settings_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Text(l.settings),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout, size: 20),
-                    SizedBox(width: 8),
-                    Text('Log Out'),
+                    const Icon(Icons.logout, size: 20),
+                    const SizedBox(width: 8),
+                    Text(l.logOut),
                   ],
                 ),
               ),
@@ -376,7 +369,7 @@ class ProjectsScreen extends ConsumerWidget {
                 const Icon(Icons.error_outline, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
                 Text(
-                  'Connection Error',
+                  l.connectionError,
                   style: AppTheme.heading.copyWith(color: Colors.red),
                 ),
                 const SizedBox(height: 8),
@@ -391,9 +384,7 @@ class ProjectsScreen extends ConsumerWidget {
         ),
         data: (projects) {
           if (projects.isEmpty) {
-            return const Center(
-              child: Text('No projects found. Add one above!'),
-            );
+            return Center(child: Text(l.noProjectsFound));
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -428,7 +419,7 @@ class ProjectsScreen extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              p['name'] ?? 'Unnamed',
+                              p['name'] ?? l.untitled,
                               style: AppTheme.heading.copyWith(fontSize: 18),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -458,7 +449,7 @@ class ProjectsScreen extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            p['location'] ?? 'No Location',
+                            p['location'] ?? '',
                             style: AppTheme.body.copyWith(
                               color: AppTheme.textSecondary,
                             ),

@@ -6,6 +6,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
+import '../l10n/app_localizations.dart';
 
 class FlatTasksScreen extends ConsumerStatefulWidget {
   final String projectId;
@@ -61,10 +62,11 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
   }
 
   Widget _buildNotesField(TextEditingController controller) {
+    final l = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('NOTES', style: AppTheme.label),
+        Text(l.notesLabel, style: AppTheme.label),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -74,8 +76,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
           textInputAction: TextInputAction.newline,
           style: AppTheme.body,
           decoration: InputDecoration(
-            hintText:
-                'Add required materials, warnings, or descriptions...\nUse Enter to add a new line.',
+            hintText: l.notesHint,
             hintStyle: AppTheme.body.copyWith(color: AppTheme.textSecondary),
             filled: true,
             fillColor: AppTheme.surface,
@@ -98,19 +99,20 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
   }
 
   Widget _buildNotesBullets(String? description) {
+    final l = AppLocalizations.of(context)!;
     if (description == null || description.trim().isEmpty) {
       return Text(
-        'No notes provided.',
+        l.noNotesProvided,
         style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
       );
     }
     final lines = description
         .split('\n')
-        .where((l) => l.trim().isNotEmpty)
+        .where((line) => line.trim().isNotEmpty)
         .toList();
     if (lines.isEmpty) {
       return Text(
-        'No notes provided.',
+        l.noNotesProvided,
         style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
       );
     }
@@ -151,6 +153,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
       text: task['description'] ?? '',
     );
     bool isSubmitting = false;
+    final l = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -170,14 +173,14 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Edit Notes', style: AppTheme.heading),
+                  Text(l.editNotes, style: AppTheme.heading),
                   const SizedBox(height: 16),
                   _buildNotesField(notesController),
                   const SizedBox(height: 32),
                   isSubmitting
                       ? const Center(child: CircularProgressIndicator())
                       : AppButton(
-                          text: 'Save Notes',
+                          text: l.saveNotes,
                           onPressed: () async {
                             setStateLocal(() => isSubmitting = true);
                             try {
@@ -207,19 +210,20 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
   }
 
   Future<void> _deleteTask(String id) async {
+    final l = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Task'),
-        content: const Text('Are you sure you want to delete this task?'),
+        title: Text(l.deleteTask),
+        content: Text(l.deleteTaskConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(l.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -237,6 +241,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     final titleController = TextEditingController();
     final notesController = TextEditingController();
     bool isSubmitting = false;
+    final l = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -256,13 +261,13 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'New Task for Flat ${widget.flatNumber}',
+                    l.newTaskForFlat(widget.flatNumber),
                     style: AppTheme.heading,
                   ),
                   const SizedBox(height: 16),
                   AppTextField(
-                    label: 'TITLE',
-                    hint: 'E.g. Pour Foundation',
+                    label: l.titleLabel,
+                    hint: l.titleHint,
                     controller: titleController,
                   ),
                   const SizedBox(height: 16),
@@ -271,7 +276,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                   isSubmitting
                       ? const CircularProgressIndicator()
                       : AppButton(
-                          text: 'Save Task',
+                          text: l.saveTask,
                           onPressed: () async {
                             if (titleController.text.trim().isEmpty) return;
                             setStateLocal(() => isSubmitting = true);
@@ -308,12 +313,13 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authProvider).currentUser;
     final canEdit = currentUser?.role.canEdit ?? false;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Text(
-          'Flat ${widget.flatNumber}',
+          '${l.flat} ${widget.flatNumber}',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
@@ -327,9 +333,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: _tasks.isEmpty
-                  ? const Center(
-                      child: Text('No tasks created for this flat yet.'),
-                    )
+                  ? Center(child: Text(l.noTasksYet))
                   : ListView.builder(
                       itemCount: _tasks.length,
                       itemBuilder: (context, index) {
@@ -346,7 +350,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                   _toggleTaskStatus(t['id'], t['status']),
                             ),
                             title: Text(
-                              t['title'] ?? 'Untitled',
+                              t['title'] ?? l.untitled,
                               style: AppTheme.body.copyWith(
                                 fontWeight: FontWeight.bold,
                                 decoration: isDone
@@ -356,8 +360,8 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                             ),
                             subtitle: Text(
                               isDone
-                                  ? 'Finished: ${t['completed_at']}'
-                                  : 'Added: ${t['created_at']}',
+                                  ? l.finished(t['completed_at'] ?? '')
+                                  : l.added(t['created_at'] ?? ''),
                             ),
                             children: [
                               Padding(
@@ -388,7 +392,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                               color: AppTheme.primary,
                                             ),
                                             label: Text(
-                                              'Edit Notes',
+                                              l.editNotes,
                                               style: TextStyle(
                                                 color: AppTheme.primary,
                                                 fontSize: 13,
@@ -415,9 +419,9 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                               size: 16,
                                               color: Colors.red,
                                             ),
-                                            label: const Text(
-                                              'Delete',
-                                              style: TextStyle(
+                                            label: Text(
+                                              l.delete,
+                                              style: const TextStyle(
                                                 color: Colors.red,
                                                 fontSize: 13,
                                               ),

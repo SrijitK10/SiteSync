@@ -9,6 +9,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
+import '../l10n/app_localizations.dart';
 import 'flat_tasks_screen.dart';
 
 class TasksTab extends ConsumerStatefulWidget {
@@ -76,21 +77,20 @@ class _TasksTabState extends ConsumerState<TasksTab> {
   }
 
   Future<void> _deleteFlat(Map<String, dynamic> flat) async {
+    final l = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete Flat ${flat['flat_number']}'),
-        content: const Text(
-          'This will remove the flat. Tasks under this flat will be unlinked but not deleted. Continue?',
-        ),
+        title: Text(l.deleteFlat(flat['flat_number'].toString())),
+        content: Text(l.deleteFlatWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(l.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -107,6 +107,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
   void _showAddFlatSheet() {
     final controller = TextEditingController();
     bool isSubmitting = false;
+    final l = AppLocalizations.of(context)!;
 
     showModalBottomSheet(
       context: context,
@@ -125,18 +126,18 @@ class _TasksTabState extends ConsumerState<TasksTab> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Add Flat', style: AppTheme.heading),
+                  Text(l.addFlat, style: AppTheme.heading),
                   const SizedBox(height: 16),
                   AppTextField(
-                    label: 'FLAT NUMBER',
-                    hint: 'E.g. 101',
+                    label: l.flatNumber,
+                    hint: l.flatNumberHint,
                     controller: controller,
                   ),
                   const SizedBox(height: 32),
                   isSubmitting
                       ? const CircularProgressIndicator()
                       : AppButton(
-                          text: 'Add Flat',
+                          text: l.addFlat,
                           onPressed: () async {
                             if (controller.text.trim().isEmpty) return;
                             setStateLocal(() => isSubmitting = true);
@@ -204,10 +205,12 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         );
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Export extraction failed: $e')));
+        ).showSnackBar(SnackBar(content: Text('${l.exportFailed}: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -238,6 +241,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
   }
 
   void _showExportOptions(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.background,
@@ -249,16 +253,16 @@ class _TasksTabState extends ConsumerState<TasksTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'Download Task Tracking Reports',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  l.downloadTaskReports,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
               ListTile(
                 leading: Icon(Icons.today, color: AppTheme.accent),
-                title: const Text('Export Daily Created/Completed'),
+                title: Text(l.exportDaily),
                 onTap: () {
                   Navigator.pop(context);
                   _fetchAndExportExcel('daily');
@@ -266,7 +270,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
               ),
               ListTile(
                 leading: Icon(Icons.date_range, color: AppTheme.accent),
-                title: const Text('Export Weekly Summary'),
+                title: Text(l.exportWeekly),
                 onTap: () {
                   Navigator.pop(context);
                   _fetchAndExportExcel('weekly');
@@ -274,7 +278,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
               ),
               ListTile(
                 leading: Icon(Icons.calendar_month, color: AppTheme.accent),
-                title: const Text('Export Monthly Complete Tracker'),
+                title: Text(l.exportMonthly),
                 onTap: () {
                   Navigator.pop(context);
                   _fetchAndExportExcel('monthly');
@@ -282,7 +286,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
               ),
               ListTile(
                 leading: Icon(Icons.tune, color: AppTheme.primary),
-                title: const Text('Export Custom Date Range'),
+                title: Text(l.exportCustom),
                 onTap: () {
                   Navigator.pop(context);
                   _showCustomDateRangePicker();
@@ -316,6 +320,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     final currentUser = ref.watch(authProvider).currentUser;
     final isViewer = currentUser == null || currentUser.role.value == 'viewer';
     final canEdit = currentUser?.role.canEdit ?? false;
+    final l = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -325,7 +330,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
               onPressed: _showAddFlatSheet,
               icon: Icon(Icons.add, color: AppTheme.surface),
               label: Text(
-                'Add Flat',
+                l.addFlat,
                 style: TextStyle(color: AppTheme.surface),
               ),
             )
@@ -354,7 +359,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                       color: AppTheme.primary,
                     ),
                     label: Text(
-                      'Download Reports',
+                      l.downloadReports,
                       style: TextStyle(
                         color: AppTheme.primary,
                         fontWeight: FontWeight.w600,
@@ -386,9 +391,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            canEdit
-                                ? 'No flats yet.\nTap "Add Flat" to get started.'
-                                : 'No flats have been added yet.',
+                            canEdit ? l.noFlatsYet : l.noFlatsAdded,
                             textAlign: TextAlign.center,
                             style: AppTheme.body.copyWith(
                               color: AppTheme.textSecondary,
@@ -446,6 +449,7 @@ class _FlatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Material(
       color: isCompleted ? AppTheme.success.withAlpha(30) : AppTheme.surface,
       borderRadius: BorderRadius.circular(12),
@@ -507,21 +511,21 @@ class _FlatCard extends StatelessWidget {
                             color: AppTheme.textSecondary,
                           ),
                           const SizedBox(width: 8),
-                          Text(isCompleted ? 'Unmark Done' : 'Mark Done'),
+                          Text(isCompleted ? l.unmarkDone : l.markDone),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.delete_outline,
                             size: 18,
                             color: Colors.red,
                           ),
-                          SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
+                          const SizedBox(width: 8),
+                          Text(l.delete, style: const TextStyle(color: Colors.red)),
                         ],
                       ),
                     ),
