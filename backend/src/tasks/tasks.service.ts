@@ -67,6 +67,24 @@ export class TasksService {
     return savedTask;
   }
 
+  async countByProjects(projectIds: string[]): Promise<Record<string, number>> {
+    if (!projectIds.length) return {};
+
+    const results = await this.tasksRepository
+      .createQueryBuilder('task')
+      .select('task.project_id', 'projectId')
+      .addSelect('COUNT(*)', 'count')
+      .where('task.project_id IN (:...projectIds)', { projectIds })
+      .groupBy('task.project_id')
+      .getRawMany();
+
+    const counts: Record<string, number> = {};
+    for (const row of results) {
+      counts[row.projectId] = parseInt(row.count, 10);
+    }
+    return counts;
+  }
+
   async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string, flatId?: string): Promise<Task[]> {
     const whereClause: any = { project: { id: projectId } };
 

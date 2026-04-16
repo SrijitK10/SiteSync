@@ -9,8 +9,7 @@ import '../state/auth_provider.dart';
 import '../services/api_client.dart';
 import '../services/platform_utils.dart';
 import '../l10n/app_localizations.dart';
-import '../widgets/unread_badge.dart';
-import '../state/unread_tracker_provider.dart';
+import '../state/notification_count_provider.dart';
 
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
@@ -401,6 +400,7 @@ class ProjectsScreen extends ConsumerWidget {
                   extra: {'name': p['name'], 'location': p['location']},
                 ),
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -464,23 +464,39 @@ class ProjectsScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Consumer(
-                      builder: (context, ref, child) {
-                        final asyncCount = ref.watch(projectUnreadCountProvider(p['id'].toString()));
-                        return asyncCount.maybeWhen(
-                          data: (count) {
-                            if (count > 0) {
-                              return Positioned(
-                                top: 0,
-                                left: 0,
-                                child: UnreadBadge(count: count),
+                    Positioned(
+                      bottom: -6,
+                      right: -6,
+                      child: Consumer(
+                        builder: (context, ref, child) {
+                          final countsAsync = ref.watch(projectNotificationCountsProvider);
+                          return countsAsync.maybeWhen(
+                            data: (counts) {
+                              final count = counts[p['id']?.toString()] ?? 0;
+                              if (count <= 0) return const SizedBox.shrink();
+                              final label = count > 99 ? '99+' : count.toString();
+                              return Container(
+                                padding: const EdgeInsets.all(6),
+                                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                          orElse: () => const SizedBox.shrink(),
-                        );
-                      },
+                            },
+                            orElse: () => const SizedBox.shrink(),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),

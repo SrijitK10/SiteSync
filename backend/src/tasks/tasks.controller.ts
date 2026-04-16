@@ -28,6 +28,14 @@ export class TasksController {
     );
   }
 
+  @Get('counts')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
+  async getCounts(@Query('projectIds') projectIds: string) {
+    if (!projectIds) return {};
+    const ids = projectIds.split(',').map(id => id.trim()).filter(Boolean);
+    return this.tasksService.countByProjects(ids);
+  }
+
   @Get()
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findAll(
