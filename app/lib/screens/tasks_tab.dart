@@ -447,6 +447,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                       ),
                     )
                   : GridView.builder(
+                      padding: const EdgeInsets.only(bottom: 16),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -132,6 +133,15 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
     AppTheme.syncWithContext(context);
     final mediaQuery = MediaQuery.of(context);
     final brightness = Theme.of(context).brightness;
+
+    // Style the system navigation bar to blend with the app
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness:
+          brightness == Brightness.dark ? Brightness.light : Brightness.dark,
+    ));
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
     return KeyedSubtree(
       key: ValueKey(

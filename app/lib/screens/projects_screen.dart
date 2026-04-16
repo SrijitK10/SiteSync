@@ -388,8 +388,9 @@ class ProjectsScreen extends ConsumerWidget {
           if (projects.isEmpty) {
             return Center(child: Text(l.noProjectsFound));
           }
+          final bottomPadding = MediaQuery.of(context).padding.bottom;
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
             itemCount: projects.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
