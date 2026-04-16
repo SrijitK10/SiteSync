@@ -9,6 +9,8 @@ import '../state/auth_provider.dart';
 import '../services/api_client.dart';
 import '../services/platform_utils.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/unread_badge.dart';
+import '../state/unread_tracker_provider.dart';
 
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
@@ -398,67 +400,89 @@ class ProjectsScreen extends ConsumerWidget {
                   '/projects/${p['id']}',
                   extra: {'name': p['name'], 'location': p['location']},
                 ),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(10),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                child: Stack(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(10),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              p['name'] ?? l.untitled,
-                              style: AppTheme.heading.copyWith(fontSize: 18),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (canManageProjects)
-                            GestureDetector(
-                              onTap: () => _confirmDelete(
-                                context,
-                                ref,
-                                p['id'].toString(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  p['name'] ?? l.untitled,
+                                  style: AppTheme.heading.copyWith(fontSize: 18),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.delete_outline,
-                                size: 20,
+                              if (canManageProjects)
+                                GestureDetector(
+                                  onTap: () => _confirmDelete(
+                                    context,
+                                    ref,
+                                    p['id'].toString(),
+                                  ),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    size: 20,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 16,
                                 color: AppTheme.textSecondary,
                               ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 16,
-                            color: AppTheme.textSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            p['location'] ?? '',
-                            style: AppTheme.body.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
+                              const SizedBox(width: 4),
+                              Text(
+                                p['location'] ?? '',
+                                style: AppTheme.body.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final asyncCount = ref.watch(projectUnreadCountProvider(p['id'].toString()));
+                        return asyncCount.maybeWhen(
+                          data: (count) {
+                            if (count > 0) {
+                              return Positioned(
+                                top: 0,
+                                left: 0,
+                                child: UnreadBadge(count: count),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                          orElse: () => const SizedBox.shrink(),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               );
             },

@@ -11,6 +11,7 @@ import '../services/api_client.dart';
 import '../state/auth_provider.dart';
 import '../state/unread_tracker_provider.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/unread_badge.dart';
 import 'flat_tasks_screen.dart';
 
 class TasksTab extends ConsumerStatefulWidget {
@@ -519,9 +520,9 @@ class _FlatCard extends StatelessWidget {
           children: [
             if (unreadCount > 0)
               Positioned(
-                top: 8,
-                left: 8,
-                child: _UnreadBadge(count: unreadCount),
+                top: 0,
+                left: 0,
+                child: UnreadBadge(count: unreadCount),
               ),
             Center(
               child: Column(
@@ -606,36 +607,3 @@ class _FlatCard extends StatelessWidget {
   }
 }
 
-class _UnreadBadge extends StatelessWidget {
-  final int count;
-
-  const _UnreadBadge({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleCount = count > 99 ? '99+' : count.toString();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.success,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.success.withAlpha(70),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Text(
-        '$visibleCount new',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}

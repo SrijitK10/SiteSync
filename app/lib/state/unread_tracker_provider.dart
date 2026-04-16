@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_client.dart';
+import 'auth_provider.dart';
 
 const _kFlatSnapshotsKey = 'flat_unread_snapshots_v1';
 const _kProgressSnapshotsKey = 'progress_unread_snapshots_v1';
@@ -210,3 +212,52 @@ final unreadTrackerProvider =
     NotifierProvider<UnreadTrackerNotifier, UnreadTrackerState>(
       UnreadTrackerNotifier.new,
     );
+
+final projectUnreadCountProvider = FutureProvider.family.autoDispose<int, String>((ref, projectId) async {
+  final trackerState = ref.watch(unreadTrackerProvider);
+  if (!trackerState.isReady) return 0;
+
+  final currentUser = ref.watch(authProvider).currentUser;
+  if (currentUser == null) return 0;
+
+  try {
+    final responses = await Future.wait([
+      apiClient.get('/tasks?projectId=$projectId'),
+      apiClient.get('/projects/$projectId/images')
+    ]);
+
+    final tasks = List<dynamic>.from(responses[0].data);
+    final images = List<dynamic>.from(responses[1].data);
+
+    final tracker = ref.read(unreadTrackerProvider.notifier);
+
+    final tasksByFlatId = <String, List<Map<String, dynamic>>>{};
+    for (final rawTask in tasks) {
+      if (rawTask is! Map) continue;
+      final task = Map<String, dynamic>.from(rawTask);
+      final flatId = task['flat']?['id']?.toString();
+      if (flatId == null || flatId.isEmpty) continue;
+      tasksByFlatId.putIfAbsent(flatId, () => []).add(task);
+    }
+
+    int count = 0;
+    for (final entry in tasksByFlatId.entries) {
+      count += tracker.unseenFlatItemCount(
+        userId: currentUser.id,
+        projectId: projectId,
+        flatId: entry.key,
+        tasks: entry.value,
+      );
+    }
+
+    count += tracker.unseenProgressItemCount(
+      userId: currentUser.id,
+      projectId: projectId,
+      images: images,
+    );
+
+    return count;
+  } catch (e) {
+    return 0;
+  }
+});

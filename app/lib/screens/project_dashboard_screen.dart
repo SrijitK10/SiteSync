@@ -245,7 +245,7 @@ class _BottomNavUnreadIcon extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.success,
+                color: Colors.red,
                 borderRadius: BorderRadius.circular(999),
               ),
               constraints: const BoxConstraints(minWidth: 20),
