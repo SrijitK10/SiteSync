@@ -9,7 +9,7 @@ import '../state/auth_provider.dart';
 import '../services/api_client.dart';
 import '../services/platform_utils.dart';
 import '../l10n/app_localizations.dart';
-import '../state/notification_count_provider.dart';
+import '../state/unread_tracker_provider.dart';
 
 class ProjectsScreen extends ConsumerWidget {
   const ProjectsScreen({super.key});
@@ -470,10 +470,11 @@ class ProjectsScreen extends ConsumerWidget {
                       right: -6,
                       child: Consumer(
                         builder: (context, ref, child) {
-                          final countsAsync = ref.watch(projectNotificationCountsProvider);
-                          return countsAsync.maybeWhen(
-                            data: (counts) {
-                              final count = counts[p['id']?.toString()] ?? 0;
+                          final unreadCountAsync = ref.watch(
+                            projectUnreadCountProvider(p['id']?.toString() ?? ''),
+                          );
+                          return unreadCountAsync.maybeWhen(
+                            data: (count) {
                               if (count <= 0) return const SizedBox.shrink();
                               final label = count > 99 ? '99+' : count.toString();
                               return Container(

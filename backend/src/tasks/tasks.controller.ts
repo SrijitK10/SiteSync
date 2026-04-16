@@ -51,14 +51,6 @@ export class TasksController {
 
   @Get(':id')
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
-  findOne(@Param('id') id: string) {
-    return this.tasksService.findOne(id);
-  }
-
-  @Patch(':id')
-  @Roles('admin', 'super_admin', 'site_manager')
-  update(@Request() req: any, @Param('id') id: string, @Body() updateTaskDto: any) {
-    return this.tasksService.update(id, updateTaskDto, req.user?.id);
   }
 
   @Delete(':id')

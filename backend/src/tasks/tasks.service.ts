@@ -59,24 +59,6 @@ export class TasksService {
         `${savedTask.title || 'A new task'} has been assigned.`,
         ['super_admin', 'admin', 'site_manager', 'viewer'],
         userId,
-        { route: `/projects/${savedTask.project.id}` },
-        savedTask.project.id
-      );
-    }
-
-    return savedTask;
-  }
-
-  async countByProjects(projectIds: string[]): Promise<Record<string, number>> {
-    if (!projectIds.length) return {};
-
-    const results = await this.tasksRepository
-      .createQueryBuilder('task')
-      .select('task.project_id', 'projectId')
-      .addSelect('COUNT(*)', 'count')
-      .where('task.project_id IN (:...projectIds)', { projectIds })
-      .groupBy('task.project_id')
-      .getRawMany();
 
     const counts: Record<string, number> = {};
     for (const row of results) {
