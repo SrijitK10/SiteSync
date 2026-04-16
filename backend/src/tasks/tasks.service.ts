@@ -53,18 +53,18 @@ export class TasksService {
     this.translateTaskAndSave(savedTask, createTaskDto.title, createTaskDto.description);
 
     // Fire and forget notification
-    if (userId) { // userId of the creator
+    if (userId) {
       this.notificationsService.sendNotification(
         'New Task Created',
         `${savedTask.title || 'A new task'} has been assigned.`,
         ['super_admin', 'admin', 'site_manager', 'viewer'],
         userId,
-
-    const counts: Record<string, number> = {};
-    for (const row of results) {
-      counts[row.projectId] = parseInt(row.count, 10);
+        { route: `/projects/${savedTask.project?.id || createTaskDto?.projectId || ''}` },
+        savedTask.project?.id || createTaskDto?.projectId,
+      );
     }
-    return counts;
+
+    return savedTask;
   }
 
   async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string, flatId?: string): Promise<Task[]> {

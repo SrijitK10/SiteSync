@@ -28,14 +28,6 @@ export class TasksController {
     );
   }
 
-  @Get('counts')
-  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
-  async getCounts(@Query('projectIds') projectIds: string) {
-    if (!projectIds) return {};
-    const ids = projectIds.split(',').map(id => id.trim()).filter(Boolean);
-    return this.tasksService.countByProjects(ids);
-  }
-
   @Get()
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findAll(
@@ -51,6 +43,14 @@ export class TasksController {
 
   @Get(':id')
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
+  findOne(@Param('id') id: string) {
+    return this.tasksService.findOne(id);
+  }
+
+  @Patch(':id')
+  @Roles('admin', 'super_admin', 'site_manager')
+  update(@Request() req: any, @Param('id') id: string, @Body() updateTaskDto: any) {
+    return this.tasksService.update(id, updateTaskDto, req.user?.id);
   }
 
   @Delete(':id')
