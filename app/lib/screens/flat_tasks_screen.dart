@@ -6,6 +6,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
+import '../state/unread_tracker_provider.dart';
 import '../l10n/app_localizations.dart';
 
 class FlatTasksScreen extends ConsumerStatefulWidget {
@@ -39,11 +40,23 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
       final res = await apiClient.get(
         '/tasks?projectId=${widget.projectId}&flatId=${widget.flatId}',
       );
+      final tasks = List<dynamic>.from(res.data as List<dynamic>);
+      final userId = ref.read(authProvider).currentUser?.id;
       if (mounted) {
         setState(() {
-          _tasks = res.data;
+          _tasks = tasks;
           _isLoading = false;
         });
+      }
+      if (userId != null) {
+        await ref
+            .read(unreadTrackerProvider.notifier)
+            .markFlatVisited(
+              userId: userId,
+              projectId: widget.projectId,
+              flatId: widget.flatId,
+              tasks: tasks,
+            );
       }
     } catch (e) {
       debugPrint('Failed to load tasks: $e');

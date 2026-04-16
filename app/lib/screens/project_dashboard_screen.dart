@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 import '../state/auth_provider.dart';
 import '../state/projects_provider.dart';
+import '../state/unread_tracker_provider.dart';
 import '../l10n/app_localizations.dart';
 import 'attendance_screen.dart';
 import 'calendar_screen.dart';
@@ -30,10 +32,67 @@ class ProjectDashboardScreen extends ConsumerStatefulWidget {
 class _ProjectDashboardScreenState
     extends ConsumerState<ProjectDashboardScreen> {
   int _currentIndex = 0;
+  List<dynamic> _progressImages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshProgressImages();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProjectDashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.projectId != widget.projectId) {
+      _currentIndex = 0;
+      _progressImages = [];
+      _refreshProgressImages();
+    }
+  }
+
+  Future<void> _refreshProgressImages() async {
+    final currentUser = ref.read(authProvider).currentUser;
+    final canViewProgress =
+        currentUser != null && currentUser.role.value != 'viewer';
+    if (!canViewProgress) return;
+
+    try {
+      final res = await apiClient.get('/projects/${widget.projectId}/images');
+      if (!mounted) return;
+      setState(() {
+        _progressImages = List<dynamic>.from(res.data as List<dynamic>);
+      });
+    } catch (e) {
+      debugPrint('Failed to load progress badge state: $e');
+    }
+  }
+
+  void _handleProgressImagesViewed(List<dynamic> images) {
+    if (!mounted) return;
+    setState(() {
+      _progressImages = List<dynamic>.from(images);
+    });
+  }
+
+  void _onTabChanged(int index, {required bool isViewer, String? userId}) {
+    setState(() => _currentIndex = index);
+
+    final progressIndex = isViewer ? null : 3;
+    if (progressIndex != null && index == progressIndex && userId != null) {
+      ref
+          .read(unreadTrackerProvider.notifier)
+          .markProgressVisited(
+            userId: userId,
+            projectId: widget.projectId,
+            images: _progressImages,
+          );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authProvider).currentUser;
+    ref.watch(unreadTrackerProvider);
     // Treat null user as viewer (safest default while state is loading)
     final isViewer = currentUser == null || currentUser.role.value == 'viewer';
 
@@ -52,6 +111,20 @@ class _ProjectDashboardScreenState
         AppLocalizations.of(context)!.activeWorkspace;
     final resolvedProjectLocation =
         widget.projectLocation ?? (currentProject['location'] as String?);
+    final progressTabIndex = isViewer ? null : 3;
+    final progressUnreadCount = currentUser == null || isViewer
+        ? 0
+        : ref
+              .read(unreadTrackerProvider.notifier)
+              .unseenProgressItemCount(
+                userId: currentUser.id,
+                projectId: widget.projectId,
+                images: _progressImages,
+              );
+    final effectiveProgressUnreadCount =
+        progressTabIndex != null && _currentIndex == progressTabIndex
+        ? 0
+        : progressUnreadCount;
 
     // Isolated Stack mapping precise structural context directly below
     final List<Widget> pages = [
@@ -62,6 +135,7 @@ class _ProjectDashboardScreenState
         GalleryTab(
           projectId: widget.projectId,
           projectName: resolvedProjectName,
+          onImagesViewed: _handleProgressImagesViewed,
         ),
     ];
 
@@ -116,7 +190,8 @@ class _ProjectDashboardScreenState
       body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (idx) => setState(() => _currentIndex = idx),
+        onTap: (idx) =>
+            _onTabChanged(idx, isViewer: isViewer, userId: currentUser?.id),
         selectedItemColor: AppTheme.primary,
         unselectedItemColor: AppTheme.textSecondary,
         backgroundColor: AppTheme.surface,
@@ -137,11 +212,55 @@ class _ProjectDashboardScreenState
             ),
           if (!isViewer)
             BottomNavigationBarItem(
-              icon: const Icon(Icons.photo_library),
+              icon: _BottomNavUnreadIcon(
+                icon: Icons.photo_library,
+                unreadCount: effectiveProgressUnreadCount,
+              ),
               label: AppLocalizations.of(context)!.progressTitle,
             ),
         ],
       ),
+    );
+  }
+}
+
+class _BottomNavUnreadIcon extends StatelessWidget {
+  final IconData icon;
+  final int unreadCount;
+
+  const _BottomNavUnreadIcon({required this.icon, required this.unreadCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleCount = unreadCount > 99 ? '99+' : unreadCount.toString();
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(icon),
+        if (unreadCount > 0)
+          Positioned(
+            top: -6,
+            right: -12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.success,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              constraints: const BoxConstraints(minWidth: 20),
+              child: Text(
+                visibleCount,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

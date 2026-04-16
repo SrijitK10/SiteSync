@@ -9,6 +9,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
+import '../state/unread_tracker_provider.dart';
 import '../l10n/app_localizations.dart';
 import 'flat_tasks_screen.dart';
 
@@ -22,21 +23,31 @@ class TasksTab extends ConsumerStatefulWidget {
 
 class _TasksTabState extends ConsumerState<TasksTab> {
   List<dynamic> _flats = [];
+  List<dynamic> _projectTasks = [];
   bool _isLoading = true;
   bool _isExporting = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchFlats();
+    _refreshData();
   }
 
-  Future<void> _fetchFlats() async {
+  Future<void> _refreshData() async {
     try {
-      final res = await apiClient.get('/flats?projectId=${widget.projectId}');
+      final responses = await Future.wait([
+        apiClient.get('/flats?projectId=${widget.projectId}'),
+        apiClient.get('/tasks?projectId=${widget.projectId}'),
+      ]);
+
+      final flatsResponse = responses[0];
+      final tasksResponse = responses[1];
       if (mounted) {
         setState(() {
-          _flats = res.data;
+          _flats = List<dynamic>.from(flatsResponse.data as List<dynamic>);
+          _projectTasks = List<dynamic>.from(
+            tasksResponse.data as List<dynamic>,
+          );
           _isLoading = false;
         });
       }
@@ -52,7 +63,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         '/flats',
         data: {'projectId': widget.projectId, 'flat_number': flatNumber},
       );
-      _fetchFlats();
+      _refreshData();
     } catch (e) {
       debugPrint('Error creating flat: $e');
       if (mounted) {
@@ -70,7 +81,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
         '/flats/${flat['id']}',
         data: {'is_completed': !current},
       );
-      _fetchFlats();
+      _refreshData();
     } catch (e) {
       debugPrint('Error toggling flat: $e');
     }
@@ -98,7 +109,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     if (confirmed != true) return;
     try {
       await apiClient.delete('/flats/${flat['id']}');
-      _fetchFlats();
+      _refreshData();
     } catch (e) {
       debugPrint('Error deleting flat: $e');
     }
@@ -305,27 +316,59 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     );
   }
 
+  List<Map<String, dynamic>> _tasksForFlat(String flatId) {
+    return _projectTasks
+        .whereType<Map>()
+        .map((task) => Map<String, dynamic>.from(task))
+        .where((task) => task['flat']?['id']?.toString() == flatId)
+        .toList();
+  }
+
   void _openFlat(Map<String, dynamic> flat) {
+    final currentUser = ref.read(authProvider).currentUser;
+    final flatId = flat['id']?.toString();
+    if (currentUser != null && flatId != null && flatId.isNotEmpty) {
+      ref
+          .read(unreadTrackerProvider.notifier)
+          .markFlatVisited(
+            userId: currentUser.id,
+            projectId: widget.projectId,
+            flatId: flatId,
+            tasks: _tasksForFlat(flatId),
+          );
+    }
+
     Navigator.of(context)
         .push(
           MaterialPageRoute(
             builder: (_) => FlatTasksScreen(
               projectId: widget.projectId,
-              flatId: flat['id'].toString(),
+              flatId: flatId ?? '',
               flatNumber: flat['flat_number'].toString(),
             ),
           ),
         )
-        .then((_) => _fetchFlats());
+        .then((_) => _refreshData());
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     final currentUser = ref.watch(authProvider).currentUser;
+    ref.watch(unreadTrackerProvider);
     final isViewer = currentUser == null || currentUser.role.value == 'viewer';
     final canEdit = currentUser?.role.canEdit ?? false;
     final l = AppLocalizations.of(context)!;
+    final unreadTracker = ref.read(unreadTrackerProvider.notifier);
+
+    final tasksByFlatId = <String, List<Map<String, dynamic>>>{};
+    for (final rawTask in _projectTasks) {
+      if (rawTask is! Map) continue;
+      final task = Map<String, dynamic>.from(rawTask);
+      final flatId = task['flat']?['id']?.toString();
+      if (flatId == null || flatId.isEmpty) continue;
+      tasksByFlatId.putIfAbsent(flatId, () => []).add(task);
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -413,10 +456,21 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                       itemCount: _flats.length,
                       itemBuilder: (context, index) {
                         final flat = Map<String, dynamic>.from(_flats[index]);
+                        final flatId = flat['id']?.toString() ?? '';
+                        final unreadCount =
+                            currentUser == null || flatId.isEmpty
+                            ? 0
+                            : unreadTracker.unseenFlatItemCount(
+                                userId: currentUser.id,
+                                projectId: widget.projectId,
+                                flatId: flatId,
+                                tasks: tasksByFlatId[flatId] ?? const [],
+                              );
                         final bool isCompleted = flat['is_completed'] == true;
                         return _FlatCard(
                           flat: flat,
                           isCompleted: isCompleted,
+                          unreadCount: unreadCount,
                           canEdit: canEdit,
                           onTap: () => _openFlat(flat),
                           onToggleCompleted: () => _toggleFlatCompleted(flat),
@@ -435,6 +489,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
 class _FlatCard extends StatelessWidget {
   final Map<String, dynamic> flat;
   final bool isCompleted;
+  final int unreadCount;
   final bool canEdit;
   final VoidCallback onTap;
   final VoidCallback onToggleCompleted;
@@ -443,6 +498,7 @@ class _FlatCard extends StatelessWidget {
   const _FlatCard({
     required this.flat,
     required this.isCompleted,
+    required this.unreadCount,
     required this.canEdit,
     required this.onTap,
     required this.onToggleCompleted,
@@ -461,6 +517,12 @@ class _FlatCard extends StatelessWidget {
         onTap: onTap,
         child: Stack(
           children: [
+            if (unreadCount > 0)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: _UnreadBadge(count: unreadCount),
+              ),
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -538,6 +600,40 @@ class _FlatCard extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnreadBadge extends StatelessWidget {
+  final int count;
+
+  const _UnreadBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleCount = count > 99 ? '99+' : count.toString();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.success,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.success.withAlpha(70),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Text(
+        '$visibleCount new',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

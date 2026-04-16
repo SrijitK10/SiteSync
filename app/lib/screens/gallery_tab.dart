@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:share_plus/share_plus.dart';
@@ -9,26 +10,30 @@ import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
 import '../services/api_client.dart';
+import '../state/auth_provider.dart';
+import '../state/unread_tracker_provider.dart';
 import 'package:intl/intl.dart';
 
 const String cloudinaryCloudName = 'decj8mbhf';
 const String cloudinaryUploadPreset = 'rupayan';
 
-class GalleryTab extends StatefulWidget {
+class GalleryTab extends ConsumerStatefulWidget {
   final String projectId;
   final String projectName;
+  final ValueChanged<List<dynamic>>? onImagesViewed;
 
   const GalleryTab({
     super.key,
     required this.projectId,
     required this.projectName,
+    this.onImagesViewed,
   });
 
   @override
-  State<GalleryTab> createState() => _GalleryTabState();
+  ConsumerState<GalleryTab> createState() => _GalleryTabState();
 }
 
-class _GalleryTabState extends State<GalleryTab> {
+class _GalleryTabState extends ConsumerState<GalleryTab> {
   List<dynamic> _images = [];
   bool _isLoading = true;
   bool _isUploading = false;
@@ -43,16 +48,32 @@ class _GalleryTabState extends State<GalleryTab> {
   Future<void> _fetchImages() async {
     try {
       final res = await apiClient.get('/projects/${widget.projectId}/images');
+      final images = List<dynamic>.from(res.data as List<dynamic>);
       if (mounted) {
         setState(() {
-          _images = res.data;
+          _images = images;
           _isLoading = false;
         });
       }
+      await _markImagesAsViewed(images);
+      widget.onImagesViewed?.call(images);
     } catch (e) {
       debugPrint('Failed to load images: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _markImagesAsViewed(List<dynamic> images) async {
+    final userId = ref.read(authProvider).currentUser?.id;
+    if (userId == null) return;
+
+    await ref
+        .read(unreadTrackerProvider.notifier)
+        .markProgressVisited(
+          userId: userId,
+          projectId: widget.projectId,
+          images: images,
+        );
   }
 
   // Groups images by date, preserving insertion order (newest first)
@@ -171,8 +192,9 @@ class _GalleryTabState extends State<GalleryTab> {
                     final List<XFile> newImgs = await _picker.pickMultiImage(
                       imageQuality: 70,
                     );
-                    if (newImgs.isNotEmpty)
+                    if (newImgs.isNotEmpty) {
                       setDialogState(() => images = newImgs);
+                    }
                   },
                   child: Text(
                     'Reselect',
@@ -386,13 +408,15 @@ class _GalleryTabState extends State<GalleryTab> {
                                     child: Image.network(
                                       img['url'],
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, _) => Container(
-                                        color: Colors.grey[200],
-                                        child: const Icon(
-                                          Icons.broken_image,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                color: Colors.grey[200],
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
                                     ),
                                   ),
                                 ),
@@ -526,7 +550,7 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
                   child: Image.network(
                     widget.images[index]['url'],
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, _) => const Icon(
+                    errorBuilder: (context, error, stackTrace) => const Icon(
                       Icons.broken_image,
                       color: Colors.grey,
                       size: 60,
