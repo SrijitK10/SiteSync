@@ -1,9 +1,13 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
 
@@ -19,6 +23,25 @@ class TaskAttachmentsWidget extends StatefulWidget {
     required this.taskId,
     required this.canEdit,
   });
+
+  /// Returns the persistent directory path for a task's files.
+  static Future<String> taskDirPath(String taskId) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    return '${appDir.path}/Rupayan/tasks/$taskId';
+  }
+
+  /// Deletes all locally saved files for a task.
+  static Future<void> deleteLocalFiles(String taskId) async {
+    try {
+      final path = await taskDirPath(taskId);
+      final dir = Directory(path);
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+    } catch (e) {
+      debugPrint('Error deleting local files for task $taskId: $e');
+    }
+  }
 
   @override
   State<TaskAttachmentsWidget> createState() => _TaskAttachmentsWidgetState();
@@ -151,6 +174,16 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
           'fileSize': file.lengthSync(),
         });
 
+        // Save a local copy so the file can be opened without downloading
+        if (!kIsWeb) {
+          try {
+            final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+            final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
+            await Directory(taskDir).create(recursive: true);
+            await file.copy('$taskDir/$safeName');
+          } catch (_) {}
+        }
+
         if (mounted) {
           setState(() => _uploadProgress = (i + 1) / files.length);
         }
@@ -249,6 +282,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
   Future<void> _openAttachment(Map<String, dynamic> attachment) async {
     final url = attachment['url'] as String? ?? '';
     final name = attachment['display_name'] as String? ?? 'file';
+    final originalName = attachment['original_name'] as String? ?? name;
     final type = attachment['file_type'] as String? ?? 'document';
 
     if (type == 'image') {
@@ -256,15 +290,38 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       return;
     }
 
-    // Open the URL — the OS will use the default app or show an app chooser
-    try {
+    // On web, open URL in a new tab
+    if (kIsWeb) {
       final uri = Uri.parse(url);
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    // On mobile: download to persistent app dir, then open with system app
+    try {
+      // Use original name to preserve the file extension
+      final ext = _extractExtension(originalName);
+      final safeFileName = '${name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')}$ext';
+
+      final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
+      await Directory(taskDir).create(recursive: true);
+      final filePath = '$taskDir/$safeFileName';
+
+      // Skip download if already saved locally
+      if (!File(filePath).existsSync()) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open file')),
+            const SnackBar(content: Text('Downloading file...'), duration: Duration(seconds: 1)),
           );
         }
+        await Dio().download(url, filePath);
+      }
+
+      final result = await OpenFilex.open(filePath);
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No app found to open this file')),
+        );
       }
     } catch (e) {
       debugPrint('Error opening file: $e');
@@ -274,6 +331,12 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         );
       }
     }
+  }
+
+  String _extractExtension(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    if (dot == -1 || dot == fileName.length - 1) return '';
+    return fileName.substring(dot); // e.g. '.pdf'
   }
 
   void _showImageViewer(String url, String name) {

@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
@@ -69,6 +70,9 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     String newStatus = currentStatus == 'completed' ? 'todo' : 'completed';
     try {
       await apiClient.patch('/tasks/$id', data: {'status': newStatus});
+      if (newStatus == 'completed' && !kIsWeb) {
+        await TaskAttachmentsWidget.deleteLocalFiles(id);
+      }
       _fetchTasks();
     } catch (e) {
       debugPrint('Error toggling status: $e');
@@ -556,6 +560,9 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     if (confirmed != true) return;
     try {
       await apiClient.delete('/tasks/$id');
+      if (!kIsWeb) {
+        await TaskAttachmentsWidget.deleteLocalFiles(id);
+      }
       _fetchTasks();
     } catch (e) {
       debugPrint('Error deleting task: $e');
