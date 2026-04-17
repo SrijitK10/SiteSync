@@ -108,19 +108,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     } else {
       final result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
-        type: FileType.custom,
-        allowedExtensions: [
-          'pdf',
-          'doc',
-          'docx',
-          'xls',
-          'xlsx',
-          'txt',
-          'csv',
-          'png',
-          'jpg',
-          'jpeg',
-        ],
+        type: FileType.any,
       );
       if (result != null) {
         files = result.paths.whereType<String>().map((p) => File(p)).toList();
