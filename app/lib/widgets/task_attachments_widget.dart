@@ -68,6 +68,56 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     return '$sanitizedName$ext';
   }
 
+  String _cacheFileNameForAttachment(Map<String, dynamic> attachment) {
+    final attachmentId = attachment['id']?.toString().trim();
+    final originalName =
+        attachment['original_name'] as String? ??
+        attachment['display_name'] as String? ??
+        'file';
+    final ext = _extractExtension(originalName);
+
+    if (attachmentId != null && attachmentId.isNotEmpty) {
+      return '$attachmentId$ext';
+    }
+
+    final displayName = attachment['display_name'] as String? ?? 'file';
+    return _localFileName(displayName, originalName);
+  }
+
+  List<String> _legacyCacheFileNames(Map<String, dynamic> attachment) {
+    final originalName =
+        attachment['original_name'] as String? ??
+        attachment['display_name'] as String? ??
+        'file';
+    final displayName = attachment['display_name'] as String? ?? 'file';
+
+    return {
+      _localFileName(displayName, originalName),
+      _localFileName(originalName, originalName),
+      originalName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_'),
+      displayName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_'),
+    }.toList();
+  }
+
+  Future<String> _resolveLocalAttachmentPath(Map<String, dynamic> attachment) async {
+    final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
+    await Directory(taskDir).create(recursive: true);
+
+    final primaryPath = '$taskDir/${_cacheFileNameForAttachment(attachment)}';
+    if (await File(primaryPath).exists()) {
+      return primaryPath;
+    }
+
+    for (final legacyName in _legacyCacheFileNames(attachment)) {
+      final legacyPath = '$taskDir/$legacyName';
+      if (await File(legacyPath).exists()) {
+        return legacyPath;
+      }
+    }
+
+    return primaryPath;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -139,21 +189,6 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       files = picked.map((x) => File(x.path)).toList();
     } else if (choice == 'camera') {
       final picker = ImagePicker();
-
-      String _localFileName(String displayName, String originalName) {
-        final sanitizedName =
-            displayName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-        final ext = _extractExtension(originalName);
-        if (ext.isEmpty) return sanitizedName;
-
-        final lowerName = sanitizedName.toLowerCase();
-        final lowerExt = ext.toLowerCase();
-        if (lowerName.endsWith(lowerExt)) {
-          return sanitizedName;
-        }
-
-        return '$sanitizedName$ext';
-      }
       final picked = await picker.pickImage(source: ImageSource.camera);
       if (picked != null) files = [File(picked.path)];
     } else {
@@ -185,7 +220,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         final fileType = _classifyFile(name, null);
         final resourceType = fileType == 'image'
             ? CloudinaryResourceType.Image
-            : CloudinaryResourceType.Auto;
+            : CloudinaryResourceType.Raw;
 
         final response = await cloudinary.uploadFile(
           CloudinaryFile.fromFile(
@@ -195,7 +230,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
           ),
         );
 
-        await apiClient.post('/tasks/${widget.taskId}/attachments', data: {
+        final savedAttachment = await apiClient.post('/tasks/${widget.taskId}/attachments', data: {
           'url': response.secureUrl,
           'displayName': name,
           'originalName': name,
@@ -207,10 +242,13 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         // Save a local copy so the file can be opened without downloading
         if (!kIsWeb) {
           try {
-            final safeName = _localFileName(name, name);
             final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
             await Directory(taskDir).create(recursive: true);
-            await file.copy('$taskDir/$safeName');
+            final attachment = Map<String, dynamic>.from(
+              savedAttachment.data as Map,
+            );
+            final cachedPath = '$taskDir/${_cacheFileNameForAttachment(attachment)}';
+            await file.copy(cachedPath);
           } catch (_) {}
         }
 
@@ -329,14 +367,10 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
 
     // On mobile: download to persistent app dir, then open with system app
     try {
-      final safeFileName = _localFileName(name, originalName);
-
-      final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
-      await Directory(taskDir).create(recursive: true);
-      final filePath = '$taskDir/$safeFileName';
+      final filePath = await _resolveLocalAttachmentPath(attachment);
 
       // Skip download if already saved locally
-      if (!File(filePath).existsSync()) {
+      if (!await File(filePath).exists()) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Downloading file...'), duration: Duration(seconds: 1)),
