@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
 
@@ -258,12 +256,16 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       return;
     }
 
-    // Download and open with system viewer
+    // Open the URL — the OS will use the default app or show an app chooser
     try {
-      final dir = await getTemporaryDirectory();
-      final filePath = '${dir.path}/$name';
-      await Dio().download(url, filePath);
-      await OpenFilex.open(filePath);
+      final uri = Uri.parse(url);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open file')),
+          );
+        }
+      }
     } catch (e) {
       debugPrint('Error opening file: $e');
       if (mounted) {
