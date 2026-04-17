@@ -58,4 +58,37 @@ export class TasksController {
   remove(@Param('id') id: string) {
     return this.tasksService.remove(id);
   }
+
+  // ── Task Attachments ──
+
+  @Post(':taskId/attachments')
+  @Roles('admin', 'super_admin', 'site_manager')
+  addAttachment(
+    @Request() req: any,
+    @Param('taskId') taskId: string,
+    @Body() body: any,
+  ) {
+    return this.tasksService.addAttachment(taskId, body, req.user?.id);
+  }
+
+  @Get(':taskId/attachments')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
+  getAttachments(@Param('taskId') taskId: string) {
+    return this.tasksService.getAttachments(taskId);
+  }
+
+  @Patch('attachments/:attachmentId/rename')
+  @Roles('admin', 'super_admin', 'site_manager')
+  renameAttachment(
+    @Param('attachmentId') attachmentId: string,
+    @Body() body: { displayName: string },
+  ) {
+    return this.tasksService.renameAttachment(attachmentId, body.displayName);
+  }
+
+  @Delete('attachments/:attachmentId')
+  @Roles('admin', 'super_admin', 'site_manager')
+  removeAttachment(@Param('attachmentId') attachmentId: string) {
+    return this.tasksService.removeAttachment(attachmentId);
+  }
 }

@@ -3,13 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TasksService } from './tasks.service';
 import { TasksController } from './tasks.controller';
 import { Task } from './entities/task.entity';
+import { TaskAttachment } from './entities/task-attachment.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TranslationModule } from '../translation/translation.module';
 import { TranslationInterceptor } from '../translation/translation.interceptor';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task]),
+    TypeOrmModule.forFeature([Task, TaskAttachment]),
     NotificationsModule,
     TranslationModule,
   ],

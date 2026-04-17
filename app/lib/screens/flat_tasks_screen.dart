@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/task_attachments_widget.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
 import '../state/unread_tracker_provider.dart';
@@ -736,6 +737,11 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                     _buildNotesBullets(t['description']),
+                                    const SizedBox(height: 12),
+                                    TaskAttachmentsWidget(
+                                      taskId: t['id']?.toString() ?? '',
+                                      canEdit: canEdit,
+                                    ),
                                     if (canEdit) ...[
                                       const SizedBox(height: 12),
                                       Row(

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThanOrEqual, Between, In } from 'typeorm';
 import { Task } from './entities/task.entity';
+import { TaskAttachment } from './entities/task-attachment.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TranslationService } from '../translation/translation.service';
 
@@ -10,6 +11,8 @@ export class TasksService {
   constructor(
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
+    @InjectRepository(TaskAttachment)
+    private attachmentsRepository: Repository<TaskAttachment>,
     private readonly notificationsService: NotificationsService,
     private readonly translationService: TranslationService,
   ) {}
@@ -181,5 +184,45 @@ export class TasksService {
   async remove(id: string): Promise<void> {
     const result = await this.tasksRepository.delete(id);
     if (result.affected === 0) throw new NotFoundException();
+  }
+
+  // ── Task Attachments ──
+
+  async addAttachment(taskId: string, data: any, userId?: string): Promise<TaskAttachment> {
+    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+
+    const attachment = this.attachmentsRepository.create({
+      url: data.url,
+      display_name: data.displayName || data.originalName,
+      original_name: data.originalName,
+      file_type: data.fileType || 'document',
+      mime_type: data.mimeType || null,
+      file_size: data.fileSize || null,
+      task: { id: taskId } as any,
+      uploadedBy: userId ? ({ id: userId } as any) : null,
+    });
+
+    return this.attachmentsRepository.save(attachment);
+  }
+
+  async getAttachments(taskId: string): Promise<TaskAttachment[]> {
+    return this.attachmentsRepository.find({
+      where: { task: { id: taskId } },
+      relations: ['uploadedBy'],
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  async renameAttachment(attachmentId: string, displayName: string): Promise<TaskAttachment> {
+    const attachment = await this.attachmentsRepository.findOne({ where: { id: attachmentId } });
+    if (!attachment) throw new NotFoundException('Attachment not found');
+    attachment.display_name = displayName;
+    return this.attachmentsRepository.save(attachment);
+  }
+
+  async removeAttachment(attachmentId: string): Promise<void> {
+    const result = await this.attachmentsRepository.delete(attachmentId);
+    if (result.affected === 0) throw new NotFoundException('Attachment not found');
   }
 }

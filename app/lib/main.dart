@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'firebase_options.dart';
 
 import 'services/keep_alive_service.dart';
@@ -19,6 +21,7 @@ import 'screens/project_dashboard_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/projects_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/share_to_task_screen.dart';
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this.ref) {
@@ -55,6 +58,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
+    navigatorKey: _RupayanAppState.navigatorKey,
     initialLocation: '/projects',
     refreshListenable: refreshNotifier,
     redirect: refreshNotifier.redirect,
@@ -124,6 +128,10 @@ class RupayanApp extends ConsumerStatefulWidget {
 class _RupayanAppState extends ConsumerState<RupayanApp>
     with WidgetsBindingObserver {
   StreamSubscription<String>? _routeSubscription;
+  StreamSubscription<List<SharedMediaFile>>? _shareSubscription;
+
+  /// Global navigator key so we can push the share-to-task picker from any context.
+  static final navigatorKey = GlobalKey<NavigatorState>();
 
   Widget _buildAppShell({
     required BuildContext context,
@@ -163,12 +171,53 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
     _routeSubscription = NotificationService().onRoute.listen((route) {
       ref.read(routerProvider).push(route);
     });
+    _initShareListener();
+  }
+
+  void _initShareListener() {
+    // Handle files shared while app is open
+    _shareSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
+      (List<SharedMediaFile> files) {
+        if (files.isNotEmpty) _handleSharedFiles(files);
+      },
+      onError: (e) => debugPrint('Share listener error: $e'),
+    );
+
+    // Handle files shared when app was closed
+    ReceiveSharingIntent.instance.getInitialMedia().then((files) {
+      if (files.isNotEmpty) _handleSharedFiles(files);
+      ReceiveSharingIntent.instance.reset();
+    });
+  }
+
+  void _handleSharedFiles(List<SharedMediaFile> sharedFiles) {
+    final auth = ref.read(authProvider);
+    if (!auth.isAuthenticated) return;
+
+    final files = sharedFiles
+        .where((f) => f.path.isNotEmpty)
+        .map((f) => File(f.path))
+        .where((f) => f.existsSync())
+        .toList();
+
+    if (files.isEmpty) return;
+
+    // Push the share-to-task picker
+    final ctx = navigatorKey.currentContext;
+    if (ctx != null) {
+      Navigator.of(ctx).push(
+        MaterialPageRoute(
+          builder: (_) => ShareToTaskScreen(sharedFiles: files),
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _routeSubscription?.cancel();
+    _shareSubscription?.cancel();
     super.dispose();
   }
 
