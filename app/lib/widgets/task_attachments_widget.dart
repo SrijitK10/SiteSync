@@ -53,6 +53,21 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
   bool _isUploading = false;
   double _uploadProgress = 0;
 
+  String _localFileName(String displayName, String originalName) {
+    final sanitizedName =
+        displayName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final ext = _extractExtension(originalName);
+    if (ext.isEmpty) return sanitizedName;
+
+    final lowerName = sanitizedName.toLowerCase();
+    final lowerExt = ext.toLowerCase();
+    if (lowerName.endsWith(lowerExt)) {
+      return sanitizedName;
+    }
+
+    return '$sanitizedName$ext';
+  }
+
   @override
   void initState() {
     super.initState();
