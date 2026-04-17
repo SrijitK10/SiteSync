@@ -124,6 +124,21 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       files = picked.map((x) => File(x.path)).toList();
     } else if (choice == 'camera') {
       final picker = ImagePicker();
+
+      String _localFileName(String displayName, String originalName) {
+        final sanitizedName =
+            displayName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+        final ext = _extractExtension(originalName);
+        if (ext.isEmpty) return sanitizedName;
+
+        final lowerName = sanitizedName.toLowerCase();
+        final lowerExt = ext.toLowerCase();
+        if (lowerName.endsWith(lowerExt)) {
+          return sanitizedName;
+        }
+
+        return '$sanitizedName$ext';
+      }
       final picked = await picker.pickImage(source: ImageSource.camera);
       if (picked != null) files = [File(picked.path)];
     } else {
@@ -177,7 +192,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         // Save a local copy so the file can be opened without downloading
         if (!kIsWeb) {
           try {
-            final safeName = name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+            final safeName = _localFileName(name, name);
             final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
             await Directory(taskDir).create(recursive: true);
             await file.copy('$taskDir/$safeName');
@@ -299,9 +314,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
 
     // On mobile: download to persistent app dir, then open with system app
     try {
-      // Use original name to preserve the file extension
-      final ext = _extractExtension(originalName);
-      final safeFileName = '${name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')}$ext';
+      final safeFileName = _localFileName(name, originalName);
 
       final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
       await Directory(taskDir).create(recursive: true);
