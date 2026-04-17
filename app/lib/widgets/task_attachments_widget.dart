@@ -5,9 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
+import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
 
@@ -116,6 +116,26 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     }
 
     return primaryPath;
+  }
+
+  String? _mimeTypeForFileName(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.xlsx')) {
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
+    if (lower.endsWith('.xls')) return 'application/vnd.ms-excel';
+    if (lower.endsWith('.docx')) {
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+    if (lower.endsWith('.doc')) return 'application/msword';
+    if (lower.endsWith('.pptx')) {
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    }
+    if (lower.endsWith('.ppt')) return 'application/vnd.ms-powerpoint';
+    if (lower.endsWith('.csv')) return 'text/csv';
+    if (lower.endsWith('.txt')) return 'text/plain';
+    return null;
   }
 
   @override
@@ -379,12 +399,17 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         await Dio().download(url, filePath);
       }
 
-      final result = await OpenFilex.open(filePath);
-      if (result.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No app found to open this file')),
-        );
-      }
+      await Share.shareXFiles(
+        [
+          XFile(
+            filePath,
+            name: originalName,
+            mimeType: _mimeTypeForFileName(originalName),
+          ),
+        ],
+        text: originalName,
+        subject: originalName,
+      );
     } catch (e) {
       debugPrint('Error opening file: $e');
       if (mounted) {
