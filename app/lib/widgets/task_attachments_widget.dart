@@ -5,9 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
-import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
 
@@ -135,6 +135,8 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     if (lower.endsWith('.ppt')) return 'application/vnd.ms-powerpoint';
     if (lower.endsWith('.csv')) return 'text/csv';
     if (lower.endsWith('.txt')) return 'text/plain';
+    if (lower.endsWith('.zip')) return 'application/zip';
+    if (lower.endsWith('.rar')) return 'application/vnd.rar';
     return null;
   }
 
@@ -399,17 +401,16 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         await Dio().download(url, filePath);
       }
 
-      await Share.shareXFiles(
-        [
-          XFile(
-            filePath,
-            name: originalName,
-            mimeType: _mimeTypeForFileName(originalName),
-          ),
-        ],
-        text: originalName,
-        subject: originalName,
+      final result = await OpenFilex.open(
+        filePath,
+        type: _mimeTypeForFileName(originalName),
       );
+
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message.isNotEmpty ? result.message : 'Could not open file')),
+        );
+      }
     } catch (e) {
       debugPrint('Error opening file: $e');
       if (mounted) {
