@@ -185,6 +185,10 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         lower.endsWith('.xlsx');
   }
 
+  bool _isPdfFile(String fileName) {
+    return fileName.toLowerCase().endsWith('.pdf');
+  }
+
   Uri? _viewerUriForAttachment(Map<String, dynamic> attachment) {
     final url = attachment['url'] as String? ?? '';
     if (url.isEmpty) return null;
@@ -602,6 +606,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     final originalName = _attachmentOriginalName(attachment);
     final mimeType = _attachmentMimeType(attachment);
     final type = attachment['file_type'] as String? ?? 'document';
+    final isOfficeDocument = _isOfficeDocument(originalName);
 
     if (type == 'image') {
       final url = attachment['url'] as String? ?? '';
@@ -625,12 +630,14 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     }
 
     final opened =
-        await _openWithBrowserViewer(attachment) ||
         await _openWithSystemViewer(attachment) ||
-        await _openRemoteAttachment(attachment);
+        (isOfficeDocument && await _openWithBrowserViewer(attachment));
 
     if (!opened) {
-      _showMessage('Could not open file');
+      final guidance = _isPdfFile(originalName)
+          ? 'Could not open file. Please install a PDF viewer on this device.'
+          : 'Could not open file. Please install a document viewer on this device.';
+      _showMessage(guidance, duration: const Duration(seconds: 3));
     }
   }
 
