@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -26,6 +27,12 @@ class TaskAttachmentsWidget extends StatefulWidget {
 
   /// Returns the persistent directory path for a task's files.
   static Future<String> taskDirPath(String taskId) async {
+    final appDir = await getApplicationSupportDirectory();
+    return '${appDir.path}/Rupayan/tasks/$taskId';
+  }
+
+  /// Legacy storage path used by older app versions.
+  static Future<String> legacyTaskDirPath(String taskId) async {
     final appDir = await getApplicationDocumentsDirectory();
     return '${appDir.path}/Rupayan/tasks/$taskId';
   }
@@ -33,10 +40,16 @@ class TaskAttachmentsWidget extends StatefulWidget {
   /// Deletes all locally saved files for a task.
   static Future<void> deleteLocalFiles(String taskId) async {
     try {
-      final path = await taskDirPath(taskId);
-      final dir = Directory(path);
-      if (await dir.exists()) {
-        await dir.delete(recursive: true);
+      final paths = {
+        await taskDirPath(taskId),
+        await legacyTaskDirPath(taskId),
+      };
+
+      for (final path in paths) {
+        final dir = Directory(path);
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
       }
     } catch (e) {
       debugPrint('Error deleting local files for task $taskId: $e');
@@ -54,8 +67,10 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
   double _uploadProgress = 0;
 
   String _localFileName(String displayName, String originalName) {
-    final sanitizedName =
-        displayName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final sanitizedName = displayName.replaceAll(
+      RegExp(r'[^a-zA-Z0-9._-]'),
+      '_',
+    );
     final ext = _extractExtension(originalName);
     if (ext.isEmpty) return sanitizedName;
 
@@ -99,23 +114,220 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     }.toList();
   }
 
-  Future<String> _resolveLocalAttachmentPath(Map<String, dynamic> attachment) async {
+  Future<String> _resolveLocalAttachmentPath(
+    Map<String, dynamic> attachment,
+  ) async {
     final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
     await Directory(taskDir).create(recursive: true);
 
-    final primaryPath = '$taskDir/${_cacheFileNameForAttachment(attachment)}';
-    if (await File(primaryPath).exists()) {
-      return primaryPath;
-    }
+    final candidateFileNames = <String>{
+      _cacheFileNameForAttachment(attachment),
+      ..._legacyCacheFileNames(attachment),
+    }.toList();
 
-    for (final legacyName in _legacyCacheFileNames(attachment)) {
-      final legacyPath = '$taskDir/$legacyName';
-      if (await File(legacyPath).exists()) {
-        return legacyPath;
+    final candidateDirs = <String>[
+      taskDir,
+      await TaskAttachmentsWidget.legacyTaskDirPath(widget.taskId),
+    ];
+
+    for (final dir in candidateDirs) {
+      for (final fileName in candidateFileNames) {
+        final candidatePath = '$dir/$fileName';
+        if (await File(candidatePath).exists()) {
+          return candidatePath;
+        }
       }
     }
 
-    return primaryPath;
+    return '$taskDir/${candidateFileNames.first}';
+  }
+
+  String _attachmentDisplayName(Map<String, dynamic> attachment) {
+    return attachment['display_name'] as String? ?? 'file';
+  }
+
+  String _attachmentOriginalName(Map<String, dynamic> attachment) {
+    return attachment['original_name'] as String? ??
+        _attachmentDisplayName(attachment);
+  }
+
+  String? _attachmentMimeType(Map<String, dynamic> attachment) {
+    final mimeType = attachment['mime_type'] as String?;
+    if (mimeType != null && mimeType.trim().isNotEmpty) {
+      return mimeType;
+    }
+    return _mimeTypeForFileName(_attachmentOriginalName(attachment));
+  }
+
+  bool _isTextPreviewable(String fileName, String? mimeType) {
+    final lower = fileName.toLowerCase();
+    if (mimeType != null && mimeType.startsWith('text/')) {
+      return true;
+    }
+
+    return lower.endsWith('.txt') ||
+        lower.endsWith('.csv') ||
+        lower.endsWith('.json') ||
+        lower.endsWith('.xml') ||
+        lower.endsWith('.log') ||
+        lower.endsWith('.md') ||
+        lower.endsWith('.yaml') ||
+        lower.endsWith('.yml');
+  }
+
+  bool _isOfficeDocument(String fileName) {
+    final lower = fileName.toLowerCase();
+    return lower.endsWith('.doc') ||
+        lower.endsWith('.docx') ||
+        lower.endsWith('.ppt') ||
+        lower.endsWith('.pptx') ||
+        lower.endsWith('.xls') ||
+        lower.endsWith('.xlsx');
+  }
+
+  Uri? _viewerUriForAttachment(Map<String, dynamic> attachment) {
+    final url = attachment['url'] as String? ?? '';
+    if (url.isEmpty) return null;
+
+    final remoteUri = Uri.tryParse(url);
+    if (remoteUri == null || !remoteUri.hasScheme) return null;
+
+    final originalName = _attachmentOriginalName(attachment).toLowerCase();
+    if (originalName.endsWith('.pdf')) {
+      return remoteUri;
+    }
+
+    if (_isOfficeDocument(originalName)) {
+      return Uri.https('view.officeapps.live.com', '/op/view.aspx', {
+        'src': remoteUri.toString(),
+      });
+    }
+
+    return null;
+  }
+
+  void _showMessage(
+    String message, {
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), duration: duration));
+  }
+
+  Future<File> _ensureLocalAttachmentFile(
+    Map<String, dynamic> attachment, {
+    bool announceDownload = false,
+  }) async {
+    final url = attachment['url'] as String? ?? '';
+    if (url.isEmpty) {
+      throw StateError('Attachment URL is missing');
+    }
+
+    final filePath = await _resolveLocalAttachmentPath(attachment);
+    final file = File(filePath);
+    if (await file.exists()) {
+      return file;
+    }
+
+    if (announceDownload) {
+      _showMessage('Downloading file...', duration: const Duration(seconds: 1));
+    }
+
+    await Dio().download(url, filePath);
+    return file;
+  }
+
+  Future<bool> _openWithBrowserViewer(Map<String, dynamic> attachment) async {
+    final uri = _viewerUriForAttachment(attachment);
+    if (uri == null) return false;
+
+    try {
+      final preferredMode =
+          await supportsLaunchMode(LaunchMode.inAppBrowserView)
+          ? LaunchMode.inAppBrowserView
+          : LaunchMode.externalApplication;
+
+      return await launchUrl(
+        uri,
+        mode: preferredMode,
+        browserConfiguration: const BrowserConfiguration(showTitle: true),
+        webOnlyWindowName: '_blank',
+      );
+    } catch (e) {
+      debugPrint('Error opening browser viewer: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _openRemoteAttachment(Map<String, dynamic> attachment) async {
+    final url = attachment['url'] as String? ?? '';
+    if (url.isEmpty) return false;
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+
+    try {
+      return await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank',
+      );
+    } catch (e) {
+      debugPrint('Error opening remote attachment: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _openWithSystemViewer(Map<String, dynamic> attachment) async {
+    try {
+      final localFile = await _ensureLocalAttachmentFile(
+        attachment,
+        announceDownload: true,
+      );
+      final result = await OpenFilex.open(
+        localFile.path,
+        type: _attachmentMimeType(attachment),
+      );
+
+      if (result.type == ResultType.done) {
+        return true;
+      }
+
+      debugPrint(
+        'OpenFilex failed for ${localFile.path}: ${result.type} ${result.message}',
+      );
+      return false;
+    } catch (e) {
+      debugPrint('Error opening file locally: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _openTextPreview(Map<String, dynamic> attachment) async {
+    try {
+      final localFile = await _ensureLocalAttachmentFile(
+        attachment,
+        announceDownload: true,
+      );
+      final bytes = await localFile.readAsBytes();
+      final content = utf8.decode(bytes, allowMalformed: true);
+      if (!mounted) return true;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => _TextAttachmentViewerScreen(
+            title: _attachmentDisplayName(attachment),
+            content: content,
+          ),
+        ),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error opening text preview: $e');
+      return false;
+    }
   }
 
   String? _mimeTypeForFileName(String fileName) {
@@ -169,7 +381,9 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         lower.endsWith('.png') ||
         lower.endsWith('.gif') ||
         lower.endsWith('.webp') ||
-        lower.endsWith('.heic')) return 'image';
+        lower.endsWith('.heic')) {
+      return 'image';
+    }
     if (mime != null && mime.startsWith('image/')) return 'image';
     return 'document';
   }
@@ -233,7 +447,11 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       _uploadProgress = 0;
     });
 
-    final cloudinary = CloudinaryPublic(_cloudName, _uploadPreset, cache: false);
+    final cloudinary = CloudinaryPublic(
+      _cloudName,
+      _uploadPreset,
+      cache: false,
+    );
 
     for (int i = 0; i < files.length; i++) {
       try {
@@ -252,24 +470,30 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
           ),
         );
 
-        final savedAttachment = await apiClient.post('/tasks/${widget.taskId}/attachments', data: {
-          'url': response.secureUrl,
-          'displayName': name,
-          'originalName': name,
-          'fileType': fileType,
-          'mimeType': null,
-          'fileSize': file.lengthSync(),
-        });
+        final savedAttachment = await apiClient.post(
+          '/tasks/${widget.taskId}/attachments',
+          data: {
+            'url': response.secureUrl,
+            'displayName': name,
+            'originalName': name,
+            'fileType': fileType,
+            'mimeType': null,
+            'fileSize': file.lengthSync(),
+          },
+        );
 
         // Save a local copy so the file can be opened without downloading
         if (!kIsWeb) {
           try {
-            final taskDir = await TaskAttachmentsWidget.taskDirPath(widget.taskId);
+            final taskDir = await TaskAttachmentsWidget.taskDirPath(
+              widget.taskId,
+            );
             await Directory(taskDir).create(recursive: true);
             final attachment = Map<String, dynamic>.from(
               savedAttachment.data as Map,
             );
-            final cachedPath = '$taskDir/${_cacheFileNameForAttachment(attachment)}';
+            final cachedPath =
+                '$taskDir/${_cacheFileNameForAttachment(attachment)}';
             await file.copy(cachedPath);
           } catch (_) {}
         }
@@ -281,7 +505,11 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         debugPrint('Error uploading file: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to upload: ${files[i].path.split('/').last}')),
+            SnackBar(
+              content: Text(
+                'Failed to upload: ${files[i].path.split('/').last}',
+              ),
+            ),
           );
         }
       }
@@ -370,54 +598,39 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
   }
 
   Future<void> _openAttachment(Map<String, dynamic> attachment) async {
-    final url = attachment['url'] as String? ?? '';
-    final name = attachment['display_name'] as String? ?? 'file';
-    final originalName = attachment['original_name'] as String? ?? name;
+    final name = _attachmentDisplayName(attachment);
+    final originalName = _attachmentOriginalName(attachment);
+    final mimeType = _attachmentMimeType(attachment);
     final type = attachment['file_type'] as String? ?? 'document';
 
     if (type == 'image') {
+      final url = attachment['url'] as String? ?? '';
       _showImageViewer(url, name);
       return;
     }
 
-    // On web, open URL in a new tab
-    if (kIsWeb) {
-      final uri = Uri.parse(url);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (_isTextPreviewable(originalName, mimeType) &&
+        await _openTextPreview(attachment)) {
       return;
     }
 
-    // On mobile: download to persistent app dir, then open with system app
-    try {
-      final filePath = await _resolveLocalAttachmentPath(attachment);
-
-      // Skip download if already saved locally
-      if (!await File(filePath).exists()) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Downloading file...'), duration: Duration(seconds: 1)),
-          );
-        }
-        await Dio().download(url, filePath);
+    if (kIsWeb) {
+      final opened =
+          await _openWithBrowserViewer(attachment) ||
+          await _openRemoteAttachment(attachment);
+      if (!opened) {
+        _showMessage('Could not open file');
       }
+      return;
+    }
 
-      final result = await OpenFilex.open(
-        filePath,
-        type: _mimeTypeForFileName(originalName),
-      );
+    final opened =
+        await _openWithBrowserViewer(attachment) ||
+        await _openWithSystemViewer(attachment) ||
+        await _openRemoteAttachment(attachment);
 
-      if (result.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.message.isNotEmpty ? result.message : 'Could not open file')),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error opening file: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open file')),
-        );
-      }
+    if (!opened) {
+      _showMessage('Could not open file');
     }
   }
 
@@ -514,9 +727,12 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
               Padding(
                 padding: const EdgeInsets.only(left: 6),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.1),
+                    color: AppTheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -544,9 +760,12 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                       onTap: _pickAndUpload,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.1),
+                          color: AppTheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -572,7 +791,13 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         if (_isLoading)
           const Padding(
             padding: EdgeInsets.all(8),
-            child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
           )
         else if (_attachments.isEmpty)
           Padding(
@@ -598,7 +823,10 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                 onTap: () => _openAttachment(att),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(8),
@@ -610,7 +838,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: _colorForType(type).withOpacity(0.1),
+                          color: _colorForType(type).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: type == 'image'
@@ -621,11 +849,19 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                                   width: 36,
                                   height: 36,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      Icon(_iconForType(type), size: 20, color: _colorForType(type)),
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Icon(
+                                        _iconForType(type),
+                                        size: 20,
+                                        color: _colorForType(type),
+                                      ),
                                 ),
                               )
-                            : Icon(_iconForType(type), size: 20, color: _colorForType(type)),
+                            : Icon(
+                                _iconForType(type),
+                                size: 20,
+                                color: _colorForType(type),
+                              ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -657,7 +893,11 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                           onTap: () => _renameAttachment(att),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.edit_outlined, size: 16, color: AppTheme.primary),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: AppTheme.primary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 4),
@@ -665,7 +905,11 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                           onTap: () => _deleteAttachment(att),
                           child: const Padding(
                             padding: EdgeInsets.all(4),
-                            child: Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                            child: Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: Colors.red,
+                            ),
                           ),
                         ),
                       ],
@@ -676,6 +920,36 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
             );
           }),
       ],
+    );
+  }
+}
+
+class _TextAttachmentViewerScreen extends StatelessWidget {
+  final String title;
+  final String content;
+
+  const _TextAttachmentViewerScreen({
+    required this.title,
+    required this.content,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      body: Container(
+        color: AppTheme.background,
+        width: double.infinity,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: SelectableText(
+            content,
+            style: AppTheme.body.copyWith(fontFamily: 'monospace', height: 1.5),
+          ),
+        ),
+      ),
     );
   }
 }
