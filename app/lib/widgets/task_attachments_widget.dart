@@ -11,6 +11,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import '../theme/app_theme.dart';
+import '../services/browser_file_opener.dart';
 import '../services/api_client.dart';
 
 const String _cloudName = 'decj8mbhf';
@@ -360,6 +361,47 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     }
   }
 
+  Future<Uint8List?> _fetchAttachmentBytes(
+    Map<String, dynamic> attachment,
+  ) async {
+    final url = _attachmentUrl(attachment);
+    if (url.isEmpty) return null;
+
+    try {
+      final response = await apiClient.get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final data = response.data;
+      if (data == null) return null;
+      return data is Uint8List ? data : Uint8List.fromList(data);
+    } catch (e) {
+      debugPrint('Error fetching attachment bytes: $e');
+      return null;
+    }
+  }
+
+  Future<bool> _openWebAttachment(Map<String, dynamic> attachment) async {
+    final bytes = await _fetchAttachmentBytes(attachment);
+    if (bytes == null) {
+      return false;
+    }
+
+    final originalName = _attachmentOriginalName(attachment);
+    final mimeType = _attachmentMimeType(attachment);
+    final preferInline =
+        _isPdfFile(originalName) ||
+        _isTextPreviewable(originalName, mimeType) ||
+        (mimeType?.startsWith('image/') ?? false);
+
+    return openBrowserFile(
+      bytes: bytes,
+      fileName: originalName,
+      mimeType: mimeType,
+      preferInline: preferInline,
+    );
+  }
+
   Future<bool> _openTextPreview(Map<String, dynamic> attachment) async {
     try {
       final localFile = await _ensureLocalAttachmentFile(
@@ -676,13 +718,15 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       return;
     }
 
-    if (_isTextPreviewable(originalName, mimeType) &&
+    if (!kIsWeb &&
+        _isTextPreviewable(originalName, mimeType) &&
         await _openTextPreview(attachment)) {
       return;
     }
 
     if (kIsWeb) {
       final opened =
+          await _openWebAttachment(attachment) ||
           await _openWithBrowserViewer(attachment) ||
           await _openRemoteAttachment(attachment);
       if (!opened) {
