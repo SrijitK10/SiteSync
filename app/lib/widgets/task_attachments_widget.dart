@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloudinary_public/cloudinary_public.dart';
@@ -61,6 +62,10 @@ class TaskAttachmentsWidget extends StatefulWidget {
 }
 
 class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
+  static const MethodChannel _androidFileOpenerChannel = MethodChannel(
+    'com.sitesync.app/file_opener',
+  );
+
   List<dynamic> _attachments = [];
   bool _isLoading = true;
   bool _isUploading = false;
@@ -189,8 +194,23 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     return fileName.toLowerCase().endsWith('.pdf');
   }
 
+  String _attachmentUrl(Map<String, dynamic> attachment) {
+    return attachment['url'] as String? ?? '';
+  }
+
+  bool _isRelativeAttachmentUrl(String url) {
+    if (url.isEmpty) return false;
+    final uri = Uri.tryParse(url);
+    return uri != null && !uri.hasScheme;
+  }
+
+  bool _isCloudinaryAttachmentUrl(String url) {
+    final uri = Uri.tryParse(url);
+    return uri?.host.contains('cloudinary.com') ?? false;
+  }
+
   Uri? _viewerUriForAttachment(Map<String, dynamic> attachment) {
-    final url = attachment['url'] as String? ?? '';
+    final url = _attachmentUrl(attachment);
     if (url.isEmpty) return null;
 
     final remoteUri = Uri.tryParse(url);
@@ -224,7 +244,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     Map<String, dynamic> attachment, {
     bool announceDownload = false,
   }) async {
-    final url = attachment['url'] as String? ?? '';
+    final url = _attachmentUrl(attachment);
     if (url.isEmpty) {
       throw StateError('Attachment URL is missing');
     }
@@ -239,7 +259,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       _showMessage('Downloading file...', duration: const Duration(seconds: 1));
     }
 
-    await Dio().download(url, filePath);
+    await apiClient.download(url, filePath);
     return file;
   }
 
@@ -266,8 +286,9 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
   }
 
   Future<bool> _openRemoteAttachment(Map<String, dynamic> attachment) async {
-    final url = attachment['url'] as String? ?? '';
+    final url = _attachmentUrl(attachment);
     if (url.isEmpty) return false;
+    if (_isRelativeAttachmentUrl(url)) return false;
 
     final uri = Uri.tryParse(url);
     if (uri == null) return false;
@@ -290,6 +311,15 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         attachment,
         announceDownload: true,
       );
+
+      if (Platform.isAndroid &&
+          await _openWithAndroidChooser(
+            localFile.path,
+            _attachmentMimeType(attachment),
+          )) {
+        return true;
+      }
+
       final result = await OpenFilex.open(
         localFile.path,
         type: _attachmentMimeType(attachment),
@@ -305,6 +335,27 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
       return false;
     } catch (e) {
       debugPrint('Error opening file locally: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _openWithAndroidChooser(
+    String filePath,
+    String? mimeType,
+  ) async {
+    try {
+      final result = await _androidFileOpenerChannel
+          .invokeMethod<bool>('openFileChooser', {
+            'path': filePath,
+            'mimeType': mimeType ?? 'application/octet-stream',
+            'title': 'Open file with',
+          });
+      return result ?? false;
+    } on PlatformException catch (e) {
+      debugPrint('Android chooser failed: ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('Android chooser error: $e');
       return false;
     }
   }
@@ -462,29 +513,40 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         final file = files[i];
         final name = file.path.split('/').last;
         final fileType = _classifyFile(name, null);
-        final resourceType = fileType == 'image'
-            ? CloudinaryResourceType.Image
-            : CloudinaryResourceType.Raw;
+        late final Response<dynamic> savedAttachment;
 
-        final response = await cloudinary.uploadFile(
-          CloudinaryFile.fromFile(
-            file.path,
-            resourceType: resourceType,
-            folder: 'sitesync/tasks/${widget.taskId}',
-          ),
-        );
+        if (fileType == 'image') {
+          final response = await cloudinary.uploadFile(
+            CloudinaryFile.fromFile(
+              file.path,
+              resourceType: CloudinaryResourceType.Image,
+              folder: 'sitesync/tasks/${widget.taskId}',
+            ),
+          );
 
-        final savedAttachment = await apiClient.post(
-          '/tasks/${widget.taskId}/attachments',
-          data: {
-            'url': response.secureUrl,
+          savedAttachment = await apiClient.post(
+            '/tasks/${widget.taskId}/attachments',
+            data: {
+              'url': response.secureUrl,
+              'storageProvider': 'external',
+              'displayName': name,
+              'originalName': name,
+              'fileType': fileType,
+              'mimeType': null,
+              'fileSize': file.lengthSync(),
+            },
+          );
+        } else {
+          final formData = FormData.fromMap({
             'displayName': name,
-            'originalName': name,
-            'fileType': fileType,
-            'mimeType': null,
-            'fileSize': file.lengthSync(),
-          },
-        );
+            'file': await MultipartFile.fromFile(file.path, filename: name),
+          });
+
+          savedAttachment = await apiClient.post(
+            '/tasks/${widget.taskId}/attachments/upload',
+            data: formData,
+          );
+        }
 
         // Save a local copy so the file can be opened without downloading
         if (!kIsWeb) {
@@ -634,6 +696,15 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         (isOfficeDocument && await _openWithBrowserViewer(attachment));
 
     if (!opened) {
+      final url = _attachmentUrl(attachment);
+      if (_isPdfFile(originalName) && _isCloudinaryAttachmentUrl(url)) {
+        _showMessage(
+          'This PDF is coming from an older Cloudinary upload that is returning 401. Re-upload the file after updating the app.',
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+
       final guidance = _isPdfFile(originalName)
           ? 'Could not open file. Please install a PDF viewer on this device.'
           : 'Could not open file. Please install a document viewer on this device.';

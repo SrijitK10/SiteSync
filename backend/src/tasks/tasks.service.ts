@@ -17,6 +17,24 @@ export class TasksService {
     private readonly translationService: TranslationService,
   ) {}
 
+  private classifyAttachmentType(fileName: string, mimeType?: string | null): string {
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'pdf';
+    if (
+      lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.gif') ||
+      lower.endsWith('.webp') ||
+      lower.endsWith('.heic') ||
+      (mimeType?.startsWith('image/') ?? false)
+    ) {
+      return 'image';
+    }
+
+    return 'document';
+  }
+
   private async translateTaskAndSave(task: Task, title?: string, description?: string) {
     const targetLangs = ['en', 'hi', 'bn'];
     task.title_translations = task.title_translations || {};
@@ -194,16 +212,48 @@ export class TasksService {
 
     const attachment = this.attachmentsRepository.create({
       url: data.url,
+      storage_provider: data.storageProvider || 'external',
       display_name: data.displayName || data.originalName,
       original_name: data.originalName,
       file_type: data.fileType || 'document',
       mime_type: data.mimeType || null,
       file_size: data.fileSize || null,
+      file_data: null,
       task: { id: taskId } as any,
       uploadedBy: userId ? ({ id: userId } as any) : null,
     });
 
     return this.attachmentsRepository.save(attachment);
+  }
+
+  async addUploadedAttachment(
+    taskId: string,
+    file: any,
+    displayName?: string,
+    userId?: string,
+  ): Promise<TaskAttachment> {
+    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+    if (!file?.buffer?.length) {
+      throw new NotFoundException('Attachment file is missing');
+    }
+
+    const attachment = this.attachmentsRepository.create({
+      url: '',
+      storage_provider: 'database',
+      display_name: displayName?.trim() || file.originalname,
+      original_name: file.originalname,
+      file_type: this.classifyAttachmentType(file.originalname, file.mimetype),
+      mime_type: file.mimetype || null,
+      file_size: file.size || null,
+      file_data: file.buffer,
+      task: { id: taskId } as any,
+      uploadedBy: userId ? ({ id: userId } as any) : null,
+    });
+
+    const savedAttachment = await this.attachmentsRepository.save(attachment);
+    savedAttachment.url = `/tasks/attachments/${savedAttachment.id}/file`;
+    return this.attachmentsRepository.save(savedAttachment);
   }
 
   async getAttachments(taskId: string): Promise<TaskAttachment[]> {
@@ -219,6 +269,24 @@ export class TasksService {
     if (!attachment) throw new NotFoundException('Attachment not found');
     attachment.display_name = displayName;
     return this.attachmentsRepository.save(attachment);
+  }
+
+  async getAttachmentFile(attachmentId: string): Promise<TaskAttachment> {
+    const attachment = await this.attachmentsRepository
+      .createQueryBuilder('attachment')
+      .addSelect('attachment.file_data')
+      .where('attachment.id = :attachmentId', { attachmentId })
+      .getOne();
+
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    if (attachment.storage_provider !== 'database' || !attachment.file_data) {
+      throw new NotFoundException('Attachment file not stored on server');
+    }
+
+    return attachment;
   }
 
   async removeAttachment(attachmentId: string): Promise<void> {

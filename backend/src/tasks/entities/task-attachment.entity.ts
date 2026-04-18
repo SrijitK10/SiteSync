@@ -10,6 +10,9 @@ export class TaskAttachment {
   @Column({ type: 'text' })
   url: string;
 
+  @Column({ type: 'text', default: 'external' })
+  storage_provider: string;
+
   @Column({ type: 'text' })
   display_name: string;
 
@@ -24,6 +27,9 @@ export class TaskAttachment {
 
   @Column({ type: 'bigint', nullable: true })
   file_size: number;
+
+  @Column({ type: 'bytea', nullable: true, select: false })
+  file_data: Buffer | null;
 
   @ManyToOne(() => Task, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'task_id' })

@@ -1,5 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, UseInterceptors, Request } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Request,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { TasksService } from './tasks.service';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -71,10 +87,51 @@ export class TasksController {
     return this.tasksService.addAttachment(taskId, body, req.user?.id);
   }
 
+  @Post(':taskId/attachments/upload')
+  @Roles('admin', 'super_admin', 'site_manager')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadAttachment(
+    @Request() req: any,
+    @Param('taskId') taskId: string,
+    @UploadedFile() file: any,
+    @Body('displayName') displayName?: string,
+  ) {
+    return this.tasksService.addUploadedAttachment(
+      taskId,
+      file,
+      displayName,
+      req.user?.id,
+    );
+  }
+
   @Get(':taskId/attachments')
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   getAttachments(@Param('taskId') taskId: string) {
     return this.tasksService.getAttachments(taskId);
+  }
+
+  @Get('attachments/:attachmentId/file')
+  @Roles('admin', 'super_admin', 'site_manager', 'viewer')
+  async getAttachmentFile(
+    @Param('attachmentId') attachmentId: string,
+    @Res() res: Response,
+  ) {
+    const attachment = await this.tasksService.getAttachmentFile(attachmentId);
+    const fileName = attachment.original_name || attachment.display_name || 'file';
+
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    );
+    res.setHeader(
+      'Content-Type',
+      attachment.mime_type || 'application/octet-stream',
+    );
+    if (attachment.file_size) {
+      res.setHeader('Content-Length', String(attachment.file_size));
+    }
+
+    return res.send(attachment.file_data);
   }
 
   @Patch('attachments/:attachmentId/rename')
