@@ -20,7 +20,8 @@ class AttendanceScreen extends ConsumerStatefulWidget {
   ConsumerState<AttendanceScreen> createState() => _AttendanceScreenState();
 }
 
-class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
+class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
+    with WidgetsBindingObserver {
   static final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
   static final DateFormat _timeFormatter = DateFormat('hh:mm a');
 
@@ -41,40 +42,76 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   String _projectName = 'Loading Project...';
   bool _isLoadingProject = true;
 
-  String get _draftKey => 'attendance_draft_${widget.projectId}';
+  String get _temporaryRosterStorageKey =>
+      'attendance_temp_roster_${widget.projectId}';
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _restoreTemporaryRoster();
     _loadProjectDetails();
     _fetchContractors();
-    _loadDraftRecords();
   }
 
-  Future<void> _loadDraftRecords() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_draftKey);
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final List<dynamic> decoded = jsonDecode(raw);
-        if (mounted) {
-          setState(() {
-            _records.addAll(decoded.cast<Map<String, dynamic>>());
-          });
-        }
-      } catch (_) {
-        // Corrupted data – discard
-        prefs.remove(_draftKey);
-      }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _labourersController.dispose();
+    _mistrisController.dispose();
+    _workDescriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _persistTemporaryRoster();
     }
   }
 
-  Future<void> _saveDraftRecords() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_records.isEmpty) {
-      prefs.remove(_draftKey);
-    } else {
-      prefs.setString(_draftKey, jsonEncode(_records));
+  Future<void> _restoreTemporaryRoster() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_temporaryRosterStorageKey);
+      if (raw == null || raw.isEmpty) return;
+
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return;
+
+      final restoredRecords = decoded
+          .whereType<Map>()
+          .map((record) => Map<String, dynamic>.from(record))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _records
+          ..clear()
+          ..addAll(restoredRecords);
+      });
+    } catch (e) {
+      debugPrint('Failed to restore temporary roster: $e');
+    }
+  }
+
+  Future<void> _persistTemporaryRoster() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_records.isEmpty) {
+        await prefs.remove(_temporaryRosterStorageKey);
+        return;
+      }
+
+      await prefs.setString(
+        _temporaryRosterStorageKey,
+        jsonEncode(_records),
+      );
+    } catch (e) {
+      debugPrint('Failed to persist temporary roster: $e');
     }
   }
 
@@ -132,7 +169,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _mistrisController.clear();
       _workDescriptionController.clear();
     });
-    _saveDraftRecords();
+
+    _persistTemporaryRoster();
   }
 
   void _editRecordLocal(int index) {
@@ -144,14 +182,16 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _workDescriptionController.text = record['work_description'] ?? '';
       _records.removeAt(index);
     });
-    _saveDraftRecords();
+
+    _persistTemporaryRoster();
   }
 
   void _removeRecordLocal(int index) {
     setState(() {
       _records.removeAt(index);
     });
-    _saveDraftRecords();
+
+    _persistTemporaryRoster();
   }
 
   Future<void> _submitAttendanceToCloud() async {
@@ -198,7 +238,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           _mistrisController.clear();
           _workDescriptionController.clear();
         });
-        _saveDraftRecords();
+        await _persistTemporaryRoster();
       }
     } catch (e) {
       if (mounted) {
