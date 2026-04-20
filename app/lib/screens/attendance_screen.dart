@@ -1,9 +1,11 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/file_export.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
@@ -39,11 +41,41 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   String _projectName = 'Loading Project...';
   bool _isLoadingProject = true;
 
+  String get _draftKey => 'attendance_draft_${widget.projectId}';
+
   @override
   void initState() {
     super.initState();
     _loadProjectDetails();
     _fetchContractors();
+    _loadDraftRecords();
+  }
+
+  Future<void> _loadDraftRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_draftKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final List<dynamic> decoded = jsonDecode(raw);
+        if (mounted) {
+          setState(() {
+            _records.addAll(decoded.cast<Map<String, dynamic>>());
+          });
+        }
+      } catch (_) {
+        // Corrupted data – discard
+        prefs.remove(_draftKey);
+      }
+    }
+  }
+
+  Future<void> _saveDraftRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_records.isEmpty) {
+      prefs.remove(_draftKey);
+    } else {
+      prefs.setString(_draftKey, jsonEncode(_records));
+    }
   }
 
   Future<void> _fetchContractors() async {
@@ -100,6 +132,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _mistrisController.clear();
       _workDescriptionController.clear();
     });
+    _saveDraftRecords();
   }
 
   void _editRecordLocal(int index) {
@@ -111,12 +144,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
       _workDescriptionController.text = record['work_description'] ?? '';
       _records.removeAt(index);
     });
+    _saveDraftRecords();
   }
 
   void _removeRecordLocal(int index) {
     setState(() {
       _records.removeAt(index);
     });
+    _saveDraftRecords();
   }
 
   Future<void> _submitAttendanceToCloud() async {
@@ -163,6 +198,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
           _mistrisController.clear();
           _workDescriptionController.clear();
         });
+        _saveDraftRecords();
       }
     } catch (e) {
       if (mounted) {

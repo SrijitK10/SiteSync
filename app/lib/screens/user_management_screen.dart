@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -118,13 +119,21 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                               }
                             } catch (e) {
                               setState(() => isSubmitting = false);
+                              String msg = 'Failed to create user';
+                              if (e is DioException) {
+                                final data = e.response?.data;
+                                if (data is Map && data['message'] != null) {
+                                  msg = data['message'].toString();
+                                }
+                              }
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Submission failed: $e',
-                                      style: const TextStyle(color: Colors.red),
+                                      msg,
+                                      style: const TextStyle(color: Colors.white),
                                     ),
+                                    backgroundColor: Colors.red,
                                   ),
                                 );
                               }

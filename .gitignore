@@ -6,7 +6,7 @@
 *.log
 .env
 .env.*
-
+graphify-out
 # --- Backend (Node.js/NestJS) ---
 backend/node_modules/
 backend/dist/
