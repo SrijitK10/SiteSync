@@ -239,44 +239,47 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: AppCard(
-              padding: const EdgeInsets.symmetric(
-                vertical: 32.0,
-                horizontal: 24.0,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(Icons.lock_reset, size: 48, color: AppTheme.accent),
-                  const SizedBox(height: 16),
-                  Text(
-                    _step == 1
-                        ? 'Enter your phone number'
-                        : _step == 2
-                        ? 'Verify your identity'
-                        : 'Set new password',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.heading.copyWith(fontSize: 20),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _step == 1
-                        ? 'We\'ll send an SMS to verify your identity.'
-                        : _step == 2
-                        ? 'Enter the 6-digit code sent to +91 ${_phoneController.text}'
-                        : 'Choose a strong password for your account.',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.body.copyWith(
-                      color: AppTheme.textSecondary,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 450),
+              child: AppCard(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 32.0,
+                  horizontal: 24.0,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(Icons.lock_reset, size: 48, color: AppTheme.accent),
+                    const SizedBox(height: 16),
+                    Text(
+                      _step == 1
+                          ? 'Enter your phone number'
+                          : _step == 2
+                          ? 'Verify your identity'
+                          : 'Set new password',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.heading.copyWith(fontSize: 20),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  if (_step == 1) ..._buildPhoneStep(),
-                  if (_step == 2) ..._buildOtpStep(),
-                  if (_step == 3) ..._buildPasswordStep(),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      _step == 1
+                          ? 'We\'ll send an SMS to verify your identity.'
+                          : _step == 2
+                          ? 'Enter the 6-digit code sent to +91 ${_phoneController.text}'
+                          : 'Choose a strong password for your account.',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.body.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+  
+                    if (_step == 1) ..._buildPhoneStep(),
+                    if (_step == 2) ..._buildOtpStep(),
+                    if (_step == 3) ..._buildPasswordStep(),
+                  ],
+                ),
               ),
             ),
           ),

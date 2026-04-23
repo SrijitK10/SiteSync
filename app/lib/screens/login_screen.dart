@@ -218,23 +218,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: AppCard(
-              padding: const EdgeInsets.symmetric(
-                vertical: 32.0,
-                horizontal: 24.0,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Image.asset('assets/images/rppl.png', height: 100),
-                  const SizedBox(height: 40),
-
-                  if (isApplePlatform)
-                    ..._buildEmailPasswordFlow()
-                  else
-                    ..._buildPhoneOTPFlow(),
-                ],
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 450),
+              child: AppCard(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 32.0,
+                  horizontal: 24.0,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Image.asset('assets/images/rppl.png', height: 100),
+                    const SizedBox(height: 40),
+  
+                    if (isApplePlatform)
+                      ..._buildEmailPasswordFlow()
+                    else
+                      ..._buildPhoneOTPFlow(),
+                  ],
+                ),
               ),
             ),
           ),

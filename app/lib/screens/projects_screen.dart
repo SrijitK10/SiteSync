@@ -388,120 +388,138 @@ class ProjectsScreen extends ConsumerWidget {
           if (projects.isEmpty) {
             return Center(child: Text(l.noProjectsFound));
           }
-          final bottomPadding = MediaQuery.of(context).padding.bottom;
-          return ListView.separated(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
-            itemCount: projects.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final p = projects[index];
-              return GestureDetector(
-                onTap: () => context.push(
-                  '/projects/${p['id']}',
-                  extra: {'name': p['name'], 'location': p['location']},
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(10),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  p['name'] ?? l.untitled,
-                                  style: AppTheme.heading.copyWith(fontSize: 18),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+          Widget buildProjectCard(Map<String, dynamic> p) {
+            return GestureDetector(
+              onTap: () => context.push(
+                '/projects/${p['id']}',
+                extra: {'name': p['name'], 'location': p['location']},
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(10),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                p['name'] ?? l.untitled,
+                                style: AppTheme.heading.copyWith(fontSize: 18),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              if (canManageProjects)
-                                GestureDetector(
-                                  onTap: () => _confirmDelete(
-                                    context,
-                                    ref,
-                                    p['id'].toString(),
-                                  ),
-                                  child: Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
-                                    color: AppTheme.textSecondary,
-                                  ),
+                            ),
+                            if (canManageProjects)
+                              GestureDetector(
+                                onTap: () => _confirmDelete(
+                                  context,
+                                  ref,
+                                  p['id'].toString(),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: AppTheme.textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                p['location'] ?? '',
-                                style: AppTheme.body.copyWith(
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 20,
                                   color: AppTheme.textSecondary,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: 16,
+                              color: AppTheme.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              p['location'] ?? '',
+                              style: AppTheme.body.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    Positioned(
-                      bottom: -6,
-                      right: -6,
-                      child: Consumer(
-                        builder: (context, ref, child) {
-                          final unreadCountAsync = ref.watch(
-                            projectUnreadCountProvider(p['id']?.toString() ?? ''),
-                          );
-                          return unreadCountAsync.maybeWhen(
-                            data: (count) {
-                              if (count <= 0) return const SizedBox.shrink();
-                              final label = count > 99 ? '99+' : count.toString();
-                              return Container(
-                                padding: const EdgeInsets.all(6),
-                                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
+                  ),
+                  Positioned(
+                    bottom: -6,
+                    right: -6,
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        final unreadCountAsync = ref.watch(
+                          projectUnreadCountProvider(p['id']?.toString() ?? ''),
+                        );
+                        return unreadCountAsync.maybeWhen(
+                          data: (count) {
+                            if (count <= 0) return const SizedBox.shrink();
+                            final label = count > 99 ? '99+' : count.toString();
+                            return Container(
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                label,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  label,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              );
-                            },
-                            orElse: () => const SizedBox.shrink(),
-                          );
-                        },
-                      ),
+                              ),
+                            );
+                          },
+                          orElse: () => const SizedBox.shrink(),
+                        );
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final bottomPadding = MediaQuery.of(context).padding.bottom;
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > 600) {
+                return GridView.builder(
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomPadding),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 380,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    mainAxisExtent: 110,
+                  ),
+                  itemCount: projects.length,
+                  itemBuilder: (context, index) => buildProjectCard(projects[index]),
+                );
+              }
+              return ListView.separated(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
+                itemCount: projects.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) => buildProjectCard(projects[index]),
               );
             },
           );

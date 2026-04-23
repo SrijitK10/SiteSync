@@ -187,39 +187,86 @@ class _ProjectDashboardScreenState
           ),
         ],
       ),
-      body: pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (idx) =>
-            _onTabChanged(idx, isViewer: isViewer, userId: currentUser?.id),
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: AppTheme.textSecondary,
-        backgroundColor: AppTheme.surface,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.assignment),
-            label: AppLocalizations.of(context)!.tasksTitle,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.calendar_month),
-            label: AppLocalizations.of(context)!.calendarTitle,
-          ),
-          if (!isViewer)
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.co_present),
-              label: AppLocalizations.of(context)!.attendanceTitle,
-            ),
-          if (!isViewer)
-            BottomNavigationBarItem(
-              icon: _BottomNavUnreadIcon(
-                icon: Icons.photo_library,
-                unreadCount: effectiveProgressUnreadCount,
-              ),
-              label: AppLocalizations.of(context)!.progressTitle,
-            ),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 600) {
+            return Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: (idx) => _onTabChanged(idx, isViewer: isViewer, userId: currentUser?.id),
+                  labelType: NavigationRailLabelType.all,
+                  backgroundColor: AppTheme.surface,
+                  selectedIconTheme: IconThemeData(color: AppTheme.primary),
+                  selectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.primary),
+                  unselectedIconTheme: IconThemeData(color: AppTheme.textSecondary),
+                  unselectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.textSecondary),
+                  destinations: [
+                    NavigationRailDestination(
+                      icon: const Icon(Icons.assignment),
+                      label: Text(AppLocalizations.of(context)!.tasksTitle),
+                    ),
+                    NavigationRailDestination(
+                      icon: const Icon(Icons.calendar_month),
+                      label: Text(AppLocalizations.of(context)!.calendarTitle),
+                    ),
+                    if (!isViewer)
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.co_present),
+                        label: Text(AppLocalizations.of(context)!.attendanceTitle),
+                      ),
+                    if (!isViewer)
+                      NavigationRailDestination(
+                        icon: _BottomNavUnreadIcon(
+                          icon: Icons.photo_library,
+                          unreadCount: effectiveProgressUnreadCount,
+                        ),
+                        label: Text(AppLocalizations.of(context)!.progressTitle),
+                      ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(child: pages[_currentIndex]),
+              ],
+            );
+          }
+          return pages[_currentIndex];
+        },
       ),
+      bottomNavigationBar: MediaQuery.of(context).size.width <= 600
+          ? BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (idx) =>
+                  _onTabChanged(idx, isViewer: isViewer, userId: currentUser?.id),
+              selectedItemColor: AppTheme.primary,
+              unselectedItemColor: AppTheme.textSecondary,
+              backgroundColor: AppTheme.surface,
+              type: BottomNavigationBarType.fixed,
+              items: [
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.assignment),
+                  label: AppLocalizations.of(context)!.tasksTitle,
+                ),
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.calendar_month),
+                  label: AppLocalizations.of(context)!.calendarTitle,
+                ),
+                if (!isViewer)
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.co_present),
+                    label: AppLocalizations.of(context)!.attendanceTitle,
+                  ),
+                if (!isViewer)
+                  BottomNavigationBarItem(
+                    icon: _BottomNavUnreadIcon(
+                      icon: Icons.photo_library,
+                      unreadCount: effectiveProgressUnreadCount,
+                    ),
+                    label: AppLocalizations.of(context)!.progressTitle,
+                  ),
+              ],
+            )
+          : null,
     );
   }
 }
