@@ -278,6 +278,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     if (_step == 1) ..._buildPhoneStep(),
                     if (_step == 2) ..._buildOtpStep(),
                     if (_step == 3) ..._buildPasswordStep(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.label.copyWith(fontSize: 10),
+                    ),
                   ],
                 ),
               ),

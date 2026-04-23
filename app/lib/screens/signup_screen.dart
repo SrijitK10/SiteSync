@@ -272,6 +272,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       ..._buildEmailPasswordFlow()
                     else
                       ..._buildPhoneOTPFlow(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.label.copyWith(fontSize: 10),
+                    ),
                   ],
                 ),
               ),
