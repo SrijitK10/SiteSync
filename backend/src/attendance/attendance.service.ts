@@ -15,6 +15,8 @@ export class AttendanceService {
       contractor_name: r.contractor_name,
       labourers_count: r.labourers_count ?? 0,
       mistris_count: r.mistris_count ?? 0,
+      maati_kata_count: r.maati_kata_count ?? 0,
+      santras_count: r.santras_count ?? 0,
       work_description: r.work_description ?? null,
       site_address: createDto.siteAddress,
       project: { id: createDto.projectId } as any,

@@ -27,6 +27,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
   final _labourersController = TextEditingController();
   final _mistrisController = TextEditingController();
+  final _maatiKataController = TextEditingController();
+  final _santrasController = TextEditingController();
   final _workDescriptionController = TextEditingController();
   String? _selectedContractor;
 
@@ -59,6 +61,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     WidgetsBinding.instance.removeObserver(this);
     _labourersController.dispose();
     _mistrisController.dispose();
+    _maatiKataController.dispose();
+    _santrasController.dispose();
     _workDescriptionController.dispose();
     super.dispose();
   }
@@ -152,6 +156,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
 
     final labourers = int.tryParse(_labourersController.text.trim()) ?? 0;
     final mistris = int.tryParse(_mistrisController.text.trim()) ?? 0;
+    final maatiKata = int.tryParse(_maatiKataController.text.trim()) ?? 0;
+    final santras = int.tryParse(_santrasController.text.trim()) ?? 0;
 
     final workDesc = _workDescriptionController.text.trim();
 
@@ -160,6 +166,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         'contractor_name': _selectedContractor,
         'labourers_count': labourers,
         'mistris_count': mistris,
+        'maati_kata_count': maatiKata,
+        'santras_count': santras,
         'work_description': workDesc.isNotEmpty ? workDesc : null,
         'date': DateTime.now().toIso8601String(),
         'project': _projectName,
@@ -167,6 +175,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       _selectedContractor = null;
       _labourersController.clear();
       _mistrisController.clear();
+      _maatiKataController.clear();
+      _santrasController.clear();
       _workDescriptionController.clear();
     });
 
@@ -179,6 +189,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       _selectedContractor = record['contractor_name'];
       _labourersController.text = record['labourers_count'].toString();
       _mistrisController.text = record['mistris_count'].toString();
+      _maatiKataController.text =
+          (record['maati_kata_count'] ?? 0).toString();
+      _santrasController.text = (record['santras_count'] ?? 0).toString();
       _workDescriptionController.text = record['work_description'] ?? '';
       _records.removeAt(index);
     });
@@ -210,6 +223,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               'contractor_name': r['contractor_name'],
               'labourers_count': r['labourers_count'],
               'mistris_count': r['mistris_count'],
+              'maati_kata_count': r['maati_kata_count'],
+              'santras_count': r['santras_count'],
               'work_description': r['work_description'],
             },
           )
@@ -236,6 +251,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           _selectedContractor = null;
           _labourersController.clear();
           _mistrisController.clear();
+          _maatiKataController.clear();
+          _santrasController.clear();
           _workDescriptionController.clear();
         });
         await _persistTemporaryRoster();
@@ -299,6 +316,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         TextCellValue('Contractor'),
         TextCellValue('Labourers'),
         TextCellValue('Mistris'),
+        TextCellValue('Maati Kata'),
+        TextCellValue('Santras'),
         TextCellValue('Work Done'),
         TextCellValue('Mapped Project Location'),
         TextCellValue('Date'),
@@ -319,6 +338,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
           TextCellValue(r['contractor_name'] ?? 'Unknown'),
           TextCellValue(r['labourers_count']?.toString() ?? '0'),
           TextCellValue(r['mistris_count']?.toString() ?? '0'),
+          TextCellValue(r['maati_kata_count']?.toString() ?? '0'),
+          TextCellValue(r['santras_count']?.toString() ?? '0'),
           TextCellValue(r['work_description'] ?? ''),
           TextCellValue(r['site_address'] ?? 'No Address'),
           TextCellValue(dateText),
@@ -694,6 +715,28 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                               ],
                             ),
                             const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AppTextField(
+                                    label: 'MAATI KATA',
+                                    hint: '0',
+                                    controller: _maatiKataController,
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: AppTextField(
+                                    label: 'SANTRAS',
+                                    hint: '0',
+                                    controller: _santrasController,
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
                             AppTextField(
                               label: 'WORK DONE',
                               hint: 'Describe what the contractor did today...',
@@ -756,7 +799,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Labourers: ${r['labourers_count']} • Mistris: ${r['mistris_count']}',
+                                        'Labourers: ${r['labourers_count'] ?? 0} • Mistris: ${r['mistris_count'] ?? 0} • Maati Kata: ${r['maati_kata_count'] ?? 0} • Santras: ${r['santras_count'] ?? 0}',
                                       ),
                                       if (r['work_description'] != null && r['work_description'].toString().isNotEmpty)
                                         Padding(

@@ -16,6 +16,12 @@ export class Attendance {
   @Column({ default: 0 })
   mistris_count: number;
 
+  @Column({ default: 0 })
+  maati_kata_count: number;
+
+  @Column({ default: 0 })
+  santras_count: number;
+
   @Column({ type: 'text', nullable: true })
   work_description: string | null;
 
