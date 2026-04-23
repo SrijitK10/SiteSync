@@ -6,9 +6,11 @@ import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
+import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/desktop_section_shell.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
 import '../state/unread_tracker_provider.dart';
@@ -310,6 +312,169 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
     final posts = _groupByPost();
+    final isWindows = isWindowsDesktop;
+
+    Widget buildFeed({required bool desktop}) {
+      if (_images.isEmpty) {
+        final emptyBody = Center(
+          child: Text(
+            'No progress images recorded.',
+            style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+          ),
+        );
+        return desktop ? DesktopSurfaceCard(child: emptyBody) : emptyBody;
+      }
+
+      return RefreshIndicator(
+        onRefresh: _fetchImages,
+        child: ListView.builder(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, desktop ? 16 : 80),
+          itemCount: posts.length,
+          itemBuilder: (context, groupIndex) {
+            final groupImages = posts[groupIndex];
+            final rawDate = groupImages.first['date'] ?? 'Unknown';
+            final dateFormatted = rawDate != 'Unknown' && rawDate.isNotEmpty
+                ? DateFormat('MMM dd, yyyy  h:mm a')
+                    .format(DateTime.parse(rawDate).toLocal())
+                : 'Unknown Date';
+            final uploaderName =
+                groupImages.first['uploadedBy']?['name'] ?? 'Unknown User';
+            final caption = groupImages.first['caption']?.toString() ?? '';
+
+            final postContent = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      dateFormatted,
+                      style: AppTheme.label.copyWith(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '· ${groupImages.length} photo${groupImages.length > 1 ? 's' : ''}',
+                      style: AppTheme.label.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => _shareImages(groupImages, caption),
+                      icon: Icon(
+                        Icons.share,
+                        size: 18,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: desktop ? 220 : 160,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: groupImages.length,
+                    itemBuilder: (context, imgIndex) {
+                      final img = groupImages[imgIndex];
+                      return GestureDetector(
+                        onTap: () => _openFullscreen(groupImages, imgIndex),
+                        child: Container(
+                          width: desktop ? 220 : 160,
+                          margin: EdgeInsets.only(
+                            right: imgIndex < groupImages.length - 1 ? 10 : 0,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(desktop ? 16 : 10),
+                            child: Image.network(
+                              img['url'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (caption.isNotEmpty)
+                  Text(
+                    caption,
+                    style: AppTheme.body.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  'By $uploaderName',
+                  style: AppTheme.label.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            );
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: desktop
+                  ? DesktopSurfaceCard(child: postContent)
+                  : postContent,
+            );
+          },
+        ),
+      );
+    }
+
+    if (isWindows) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: DesktopSectionShell(
+          eyebrow: 'Visual progress',
+          title: 'Project gallery',
+          subtitle:
+              'Review grouped image updates, verify upload cadence, and share progress without compressing the visual history into a narrow feed.',
+          actions: [
+            OutlinedButton.icon(
+              onPressed: _fetchImages,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Refresh feed'),
+            ),
+            FilledButton.icon(
+              onPressed: _isUploading ? null : _pickAndUploadImage,
+              icon: const Icon(Icons.add_a_photo_rounded),
+              label: Text(_isUploading ? 'Uploading...' : 'Add photos'),
+            ),
+          ],
+          metrics: [
+            DesktopSectionMetric(
+              label: 'Posts',
+              value: '${posts.length}',
+              icon: Icons.view_stream_outlined,
+            ),
+            DesktopSectionMetric(
+              label: 'Images',
+              value: '${_images.length}',
+              icon: Icons.photo_library_outlined,
+              accent: Theme.of(context).colorScheme.secondary,
+            ),
+            DesktopSectionMetric(
+              label: 'Project',
+              value: widget.projectName,
+              icon: Icons.workspaces_outline,
+              accent: AppTheme.success,
+            ),
+          ],
+          child: buildFeed(desktop: true),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -327,125 +492,7 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
               )
             : Icon(Icons.add_a_photo, color: AppTheme.surface),
       ),
-      body: _images.isEmpty
-          ? Center(
-              child: Text('No progress images recorded.', style: AppTheme.body),
-            )
-          : RefreshIndicator(
-              onRefresh: _fetchImages,
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                itemCount: posts.length,
-                itemBuilder: (context, groupIndex) {
-                  final groupImages = posts[groupIndex];
-                  final rawDate = groupImages.first['date'] ?? 'Unknown';
-                  final dateFormatted =
-                      rawDate != 'Unknown' && rawDate.isNotEmpty
-                      ? DateFormat(
-                          'MMM dd, yyyy  h:mm a',
-                        ).format(DateTime.parse(rawDate).toLocal())
-                      : 'Unknown Date';
-                  final uploaderName =
-                      groupImages.first['uploadedBy']?['name'] ??
-                      'Unknown User';
-                  final caption =
-                      groupImages.first['caption']?.toString() ?? '';
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Date header
-                        Row(
-                          children: [
-                            Text(
-                              dateFormatted,
-                              style: AppTheme.label.copyWith(
-                                color: AppTheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '· ${groupImages.length} photo${groupImages.length > 1 ? 's' : ''}',
-                              style: AppTheme.label.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: () => _shareImages(groupImages, caption),
-                              child: Icon(
-                                Icons.share,
-                                size: 18,
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Horizontal image strip
-                        SizedBox(
-                          height: 160,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: groupImages.length,
-                            itemBuilder: (context, imgIndex) {
-                              final img = groupImages[imgIndex];
-                              return GestureDetector(
-                                onTap: () =>
-                                    _openFullscreen(groupImages, imgIndex),
-                                child: Container(
-                                  width: 160,
-                                  margin: EdgeInsets.only(
-                                    right: imgIndex < groupImages.length - 1
-                                        ? 8
-                                        : 0,
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
-                                      img['url'],
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                                color: Colors.grey[200],
-                                                child: const Icon(
-                                                  Icons.broken_image,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Caption + uploader
-                        if (caption.isNotEmpty)
-                          Text(
-                            caption,
-                            style: AppTheme.body.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'By $uploaderName',
-                          style: AppTheme.label.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+      body: buildFeed(desktop: false),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:excel/excel.dart';
 import '../services/file_export.dart';
+import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
@@ -11,6 +12,7 @@ import '../services/api_client.dart';
 import '../state/auth_provider.dart';
 import '../state/unread_tracker_provider.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/desktop_section_shell.dart';
 import '../widgets/unread_badge.dart';
 import 'flat_tasks_screen.dart';
 
@@ -361,6 +363,9 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     final canEdit = currentUser?.role.canEdit ?? false;
     final l = AppLocalizations.of(context)!;
     final unreadTracker = ref.read(unreadTrackerProvider.notifier);
+    final isWindows = isWindowsDesktop;
+    final completedFlats = _flats.where((flat) => flat['is_completed'] == true).length;
+    final pendingFlats = _flats.length - completedFlats;
 
     final tasksByFlatId = <String, List<Map<String, dynamic>>>{};
     for (final rawTask in _projectTasks) {
@@ -369,6 +374,106 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       final flatId = task['flat']?['id']?.toString();
       if (flatId == null || flatId.isEmpty) continue;
       tasksByFlatId.putIfAbsent(flatId, () => []).add(task);
+    }
+
+    if (isWindows) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: DesktopSectionShell(
+          eyebrow: 'Flat execution',
+          title: 'Flat workspaces',
+          subtitle:
+              'Jump into flat-level task lists, export reports, and manage delivery progress through a denser Windows layout.',
+          actions: [
+            if (!isViewer)
+              OutlinedButton.icon(
+                onPressed: _isExporting ? null : () => _showExportOptions(context),
+                icon: const Icon(Icons.download_rounded),
+                label: Text(l.downloadReports),
+              ),
+            if (canEdit)
+              FilledButton.icon(
+                onPressed: _showAddFlatSheet,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l.addFlat),
+              ),
+          ],
+          metrics: [
+            DesktopSectionMetric(
+              label: 'Total flats',
+              value: '${_flats.length}',
+              icon: Icons.apartment_rounded,
+            ),
+            DesktopSectionMetric(
+              label: 'Completed',
+              value: '$completedFlats',
+              icon: Icons.task_alt_rounded,
+              accent: AppTheme.success,
+            ),
+            DesktopSectionMetric(
+              label: 'Pending',
+              value: '$pendingFlats',
+              icon: Icons.pending_actions_rounded,
+              accent: AppTheme.warning,
+            ),
+          ],
+          child: _flats.isEmpty
+              ? DesktopSurfaceCard(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.apartment_outlined,
+                          size: 54,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          canEdit ? l.noFlatsYet : l.noFlatsAdded,
+                          textAlign: TextAlign.center,
+                          style: AppTheme.body.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 280,
+                    mainAxisExtent: 180,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                  ),
+                  itemCount: _flats.length,
+                  itemBuilder: (context, index) {
+                    final flat = Map<String, dynamic>.from(_flats[index]);
+                    final flatId = flat['id']?.toString() ?? '';
+                    final unreadCount = currentUser == null || flatId.isEmpty
+                        ? 0
+                        : unreadTracker.unseenFlatItemCount(
+                            userId: currentUser.id,
+                            projectId: widget.projectId,
+                            flatId: flatId,
+                            tasks: tasksByFlatId[flatId] ?? const [],
+                          );
+                    final bool isCompleted = flat['is_completed'] == true;
+                    return _FlatCard(
+                      flat: flat,
+                      isCompleted: isCompleted,
+                      unreadCount: unreadCount,
+                      canEdit: canEdit,
+                      onTap: () => _openFlat(flat),
+                      onToggleCompleted: () => _toggleFlatCompleted(flat),
+                      onDelete: () => _deleteFlat(flat),
+                    );
+                  },
+                ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -510,12 +615,13 @@ class _FlatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final isWindows = isWindowsDesktop;
     return Material(
       color: isCompleted ? AppTheme.success.withAlpha(30) : AppTheme.surface,
-      borderRadius: BorderRadius.circular(12),
-      elevation: 1,
+      borderRadius: BorderRadius.circular(isWindows ? 22 : 12),
+      elevation: isWindows ? 0 : 1,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isWindows ? 22 : 12),
         onTap: onTap,
         child: Stack(
           children: [
@@ -532,13 +638,13 @@ class _FlatCard extends StatelessWidget {
                   Icon(
                     isCompleted ? Icons.check_circle : Icons.apartment,
                     color: isCompleted ? AppTheme.success : AppTheme.primary,
-                    size: 28,
+                    size: isWindows ? 34 : 28,
                   ),
                   const SizedBox(height: 6),
                   Text(
                     flat['flat_number']?.toString() ?? '?',
                     style: AppTheme.heading.copyWith(
-                      fontSize: 20,
+                      fontSize: isWindows ? 24 : 20,
                       color: isCompleted
                           ? AppTheme.success
                           : AppTheme.textPrimary,

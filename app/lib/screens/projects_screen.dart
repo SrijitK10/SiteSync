@@ -11,8 +11,22 @@ import '../services/platform_utils.dart';
 import '../l10n/app_localizations.dart';
 import '../state/unread_tracker_provider.dart';
 
-class ProjectsScreen extends ConsumerWidget {
+class ProjectsScreen extends ConsumerStatefulWidget {
   const ProjectsScreen({super.key});
+
+  @override
+  ConsumerState<ProjectsScreen> createState() => _ProjectsScreenState();
+}
+
+class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _confirmDelete(
     BuildContext context,
@@ -44,9 +58,9 @@ class ProjectsScreen extends ConsumerWidget {
         await apiClient.delete('/projects/$projectId');
         ref.invalidate(projectsProvider);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.projectDeletedSuccess)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l.projectDeletedSuccess)));
         }
       } catch (e) {
         if (context.mounted) {
@@ -180,8 +194,9 @@ class ProjectsScreen extends ConsumerWidget {
                                 );
                               }
                             } finally {
-                              if (context.mounted)
+                              if (context.mounted) {
                                 setState(() => isSubmitting = false);
+                              }
                             }
                           },
                         ),
@@ -264,8 +279,9 @@ class ProjectsScreen extends ConsumerWidget {
                                 );
                               }
                             } finally {
-                              if (context.mounted)
+                              if (context.mounted) {
                                 setState(() => isSubmitting = false);
+                              }
                             }
                           },
                         ),
@@ -279,18 +295,229 @@ class ProjectsScreen extends ConsumerWidget {
     );
   }
 
+  List<Map<String, dynamic>> _filterProjects(
+    List<Map<String, dynamic>> projects,
+  ) {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return projects;
+
+    return projects.where((project) {
+      final name = (project['name'] ?? '').toString().toLowerCase();
+      final location = (project['location'] ?? '').toString().toLowerCase();
+      return name.contains(query) || location.contains(query);
+    }).toList();
+  }
+
+  Widget _buildDesktopHeader(
+    BuildContext context,
+    AppLocalizations l, {
+    required int totalProjects,
+    required int visibleProjects,
+    required bool canManageProjects,
+  }) {
+    final queryIsActive = _searchQuery.trim().isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: AppTheme.desktopPaneDecoration(
+        context,
+        radius: 32,
+        emphasized: true,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 1080;
+          final left = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Windows workspace',
+                style: AppTheme.label.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.3,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Project operations with cleaner hierarchy and faster scanning',
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Use search, jump between workspaces, and surface the most relevant actions without forcing desktop users through mobile layouts.',
+                style: AppTheme.body.copyWith(
+                  fontSize: 15,
+                  color: AppTheme.textSecondary,
+                  height: 1.55,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _DesktopMetricPill(
+                    icon: Icons.folder_copy_outlined,
+                    label:
+                        '$totalProjects ${totalProjects == 1 ? l.projectName : 'projects'}',
+                  ),
+                  _DesktopMetricPill(
+                    icon: Icons.filter_alt_outlined,
+                    label: queryIsActive
+                        ? '$visibleProjects matching search'
+                        : 'All workspaces visible',
+                  ),
+                  _DesktopMetricPill(
+                    icon: canManageProjects
+                        ? Icons.admin_panel_settings_outlined
+                        : Icons.visibility_outlined,
+                    label: canManageProjects
+                        ? 'Admin controls available'
+                        : 'Viewer workspace mode',
+                  ),
+                ],
+              ),
+            ],
+          );
+
+          final right = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _DesktopSearchBox(
+                controller: _searchController,
+                hintText: 'Search by project or location',
+                onChanged: (value) => setState(() => _searchQuery = value),
+                onClear: _searchQuery.isEmpty
+                    ? null
+                    : () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      ref.read(authProvider.notifier).refreshCurrentUser();
+                      ref.invalidate(projectsProvider);
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: Text(l.refresh),
+                  ),
+                  if (canManageProjects)
+                    FilledButton.icon(
+                      onPressed: () => _showAddProjectBottomSheet(context, ref),
+                      icon: const Icon(Icons.add),
+                      label: Text(l.createProject),
+                    ),
+                ],
+              ),
+            ],
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [left, const SizedBox(height: 22), right],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 11, child: left),
+              const SizedBox(width: 24),
+              Expanded(flex: 7, child: right),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDesktopEmptyState(
+    BuildContext context, {
+    required bool searching,
+  }) {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 520),
+        padding: const EdgeInsets.all(28),
+        decoration: AppTheme.desktopPaneDecoration(context, radius: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(
+                searching
+                    ? Icons.search_off_rounded
+                    : Icons.folder_open_rounded,
+                size: 30,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              searching
+                  ? 'No projects match your search'
+                  : 'No projects found yet',
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              searching
+                  ? 'Try a different project name or location to surface the workspace you need.'
+                  : 'Create the first workspace to give your team a cleaner desktop hub for tasks, attendance, and progress tracking.',
+              style: AppTheme.body.copyWith(
+                color: AppTheme.textSecondary,
+                height: 1.55,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final projectsAsync = ref.watch(projectsProvider);
     final user = ref.watch(authProvider).currentUser;
     final canManageProjects = user != null && user.role.isAdmin;
     final l = AppLocalizations.of(context)!;
+    final showPasswordActions = usesPasswordAuth;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
+        backgroundColor: isWindowsDesktop
+            ? AppTheme.surface.withValues(alpha: 0.76)
+            : AppTheme.surface,
         centerTitle: false,
         toolbarHeight: 72,
+        titleSpacing: isWindowsDesktop ? 24 : null,
         title: Image.asset('assets/images/rppl.png', height: 56),
         actions: [
           if (canManageProjects)
@@ -318,7 +545,7 @@ class ProjectsScreen extends ConsumerWidget {
               }
             },
             itemBuilder: (context) => [
-              if (isApplePlatform)
+              if (showPasswordActions)
                 PopupMenuItem(
                   value: 'change_password',
                   child: Row(
@@ -353,7 +580,7 @@ class ProjectsScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: canManageProjects
+      floatingActionButton: canManageProjects && !isWindowsDesktop
           ? FloatingActionButton(
               backgroundColor: AppTheme.primary,
               onPressed: () => _showAddProjectBottomSheet(context, ref),
@@ -385,6 +612,66 @@ class ProjectsScreen extends ConsumerWidget {
           ),
         ),
         data: (projects) {
+          final filteredProjects = _filterProjects(projects);
+
+          if (isWindowsDesktop) {
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
+                child: Column(
+                  children: [
+                    _buildDesktopHeader(
+                      context,
+                      l,
+                      totalProjects: projects.length,
+                      visibleProjects: filteredProjects.length,
+                      canManageProjects: canManageProjects,
+                    ),
+                    const SizedBox(height: 22),
+                    Expanded(
+                      child: filteredProjects.isEmpty
+                          ? _buildDesktopEmptyState(
+                              context,
+                              searching: _searchQuery.trim().isNotEmpty,
+                            )
+                          : Scrollbar(
+                              child: GridView.builder(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                gridDelegate:
+                                    const SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: 380,
+                                      mainAxisSpacing: 18,
+                                      crossAxisSpacing: 18,
+                                      mainAxisExtent: 220,
+                                    ),
+                                itemCount: filteredProjects.length,
+                                itemBuilder: (context, index) => _DesktopProjectCard(
+                                  project: filteredProjects[index],
+                                  canManageProjects: canManageProjects,
+                                  onOpen: () => context.push(
+                                    '/projects/${filteredProjects[index]['id']}',
+                                    extra: {
+                                      'name': filteredProjects[index]['name'],
+                                      'location':
+                                          filteredProjects[index]['location'],
+                                    },
+                                  ),
+                                  onDelete: () => _confirmDelete(
+                                    context,
+                                    ref,
+                                    filteredProjects[index]['id'].toString(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           if (projects.isEmpty) {
             return Center(child: Text(l.noProjectsFound));
           }
@@ -473,7 +760,10 @@ class ProjectsScreen extends ConsumerWidget {
                             final label = count > 99 ? '99+' : count.toString();
                             return Container(
                               padding: const EdgeInsets.all(6),
-                              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                              constraints: const BoxConstraints(
+                                minWidth: 24,
+                                minHeight: 24,
+                              ),
                               decoration: const BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
@@ -512,18 +802,263 @@ class ProjectsScreen extends ConsumerWidget {
                     mainAxisExtent: 110,
                   ),
                   itemCount: projects.length,
-                  itemBuilder: (context, index) => buildProjectCard(projects[index]),
+                  itemBuilder: (context, index) =>
+                      buildProjectCard(projects[index]),
                 );
               }
               return ListView.separated(
                 padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
                 itemCount: projects.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) => buildProjectCard(projects[index]),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemBuilder: (context, index) =>
+                    buildProjectCard(projects[index]),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _DesktopMetricPill extends StatelessWidget {
+  const _DesktopMetricPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTheme.body.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopSearchBox extends StatelessWidget {
+  const _DesktopSearchBox({
+    required this.controller,
+    required this.hintText,
+    required this.onChanged,
+    this.onClear,
+  });
+
+  final TextEditingController controller;
+  final String hintText;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      style: AppTheme.body.copyWith(fontSize: 15),
+      decoration: InputDecoration(
+        hintText: hintText,
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: onClear == null
+            ? null
+            : IconButton(
+                onPressed: onClear,
+                icon: const Icon(Icons.close_rounded),
+              ),
+        filled: true,
+        fillColor: Theme.of(
+          context,
+        ).colorScheme.surface.withValues(alpha: 0.68),
+      ),
+    );
+  }
+}
+
+class _DesktopProjectCard extends ConsumerStatefulWidget {
+  const _DesktopProjectCard({
+    required this.project,
+    required this.canManageProjects,
+    required this.onOpen,
+    required this.onDelete,
+  });
+
+  final Map<String, dynamic> project;
+  final bool canManageProjects;
+  final VoidCallback onOpen;
+  final VoidCallback onDelete;
+
+  @override
+  ConsumerState<_DesktopProjectCard> createState() =>
+      _DesktopProjectCardState();
+}
+
+class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final projectId = widget.project['id']?.toString() ?? '';
+    final unreadCountAsync = ref.watch(projectUnreadCountProvider(projectId));
+    final unreadCount = unreadCountAsync.asData?.value ?? 0;
+    final name = (widget.project['name'] ?? 'Untitled').toString();
+    final location = (widget.project['location'] ?? '').toString();
+    final primary = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, _isHovered ? -6 : 0, 0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: _isHovered ? 0.96 : 0.9),
+              Color.lerp(
+                Theme.of(context).colorScheme.surface,
+                primary,
+                _isHovered ? (isDark ? 0.1 : 0.05) : (isDark ? 0.06 : 0.03),
+              )!,
+            ],
+          ),
+          border: Border.all(
+            color: _isHovered
+                ? primary.withValues(alpha: 0.18)
+                : AppTheme.textSecondary.withValues(alpha: 0.14),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.1),
+              blurRadius: _isHovered ? 28 : 18,
+              offset: Offset(0, _isHovered ? 16 : 10),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(28),
+            onTap: widget.onOpen,
+            child: Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _DesktopMetricPill(
+                              icon: Icons.workspaces_outline,
+                              label: 'Active workspace',
+                            ),
+                            if (unreadCount > 0)
+                              _DesktopMetricPill(
+                                icon: Icons.mark_chat_unread_outlined,
+                                label: unreadCount > 99
+                                    ? '99+ updates'
+                                    : '$unreadCount updates',
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (widget.canManageProjects)
+                        IconButton(
+                          tooltip: 'Delete project',
+                          onPressed: widget.onDelete,
+                          icon: const Icon(Icons.delete_outline_rounded),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 18,
+                        color: AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          location.isEmpty ? 'Location not set' : location,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTheme.body.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Tasks, calendars, attendance, and progress are grouped into one desktop workspace.',
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.textSecondary,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        'Open workspace',
+                        style: AppTheme.body.copyWith(
+                          color: primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_outward_rounded,
+                        size: 18,
+                        color: primary,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

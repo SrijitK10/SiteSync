@@ -1,10 +1,18 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 bool get isApplePlatform {
   if (kIsWeb) return false;
   return defaultTargetPlatform == TargetPlatform.iOS ||
-         defaultTargetPlatform == TargetPlatform.macOS;
+      defaultTargetPlatform == TargetPlatform.macOS;
 }
+
+bool get isWindowsDesktop {
+  if (kIsWeb) return false;
+  return defaultTargetPlatform == TargetPlatform.windows;
+}
+
+bool get usesPasswordAuth => isApplePlatform || isWindowsDesktop;
 
 String extractErrorMessage(dynamic error) {
   if (error is Exception) {

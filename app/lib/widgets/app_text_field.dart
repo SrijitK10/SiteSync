@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/platform_utils.dart';
 
 class AppTextField extends StatelessWidget {
   final String label;
@@ -21,10 +22,19 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWindows = isWindowsDesktop;
+    final borderRadius = BorderRadius.circular(isWindows ? 18 : 8);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTheme.label),
+        Text(
+          label,
+          style: AppTheme.label.copyWith(
+            fontSize: isWindows ? 11 : 12,
+            letterSpacing: isWindows ? 1.2 : 1.0,
+          ),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -36,18 +46,23 @@ class AppTextField extends StatelessWidget {
             hintText: hint,
             hintStyle: AppTheme.body.copyWith(color: AppTheme.textSecondary),
             filled: true,
-            fillColor: AppTheme.surface,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
+            fillColor: Theme.of(
+              context,
+            ).colorScheme.surface.withValues(alpha: isWindows ? 0.92 : 1),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isWindows ? 18 : 16,
+              vertical: isWindows ? 18 : 14,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+              borderRadius: borderRadius,
+              borderSide: BorderSide(color: Theme.of(context).dividerColor),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: AppTheme.accent, width: 2),
+              borderRadius: borderRadius,
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: isWindows ? 1.6 : 2,
+              ),
             ),
           ),
         ),

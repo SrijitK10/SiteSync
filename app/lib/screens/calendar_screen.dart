@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
 import '../services/api_client.dart';
+import '../widgets/desktop_section_shell.dart';
 
 class CalendarScreen extends StatefulWidget {
   final String projectId;
@@ -80,6 +83,177 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final selectedTasks = _selectedDay != null
         ? _getTasksForDay(_selectedDay!)
         : [];
+    final isWindows = isWindowsDesktop;
+    final selectedLabel = _selectedDay == null
+        ? 'No date selected'
+        : DateFormat('dd MMM yyyy').format(_selectedDay!);
+
+    Widget buildTaskList() {
+      return selectedTasks.isEmpty
+          ? Center(
+              child: Text(
+                isWindows
+                    ? 'No assignments are active for $selectedLabel.'
+                    : 'No tracking events logically spanning this bound.',
+                style: AppTheme.body.copyWith(
+                  color: AppTheme.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+              itemCount: selectedTasks.length,
+              itemBuilder: (context, index) {
+                final t = selectedTasks[index];
+                final bool isDone = t['status'] == 'completed';
+                final bool completedToday =
+                    isDone &&
+                    t['completed_at'] ==
+                        _selectedDay!.toIso8601String().split('T')[0];
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    tileColor: AppTheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(isWindows ? 18 : 8),
+                    ),
+                    leading: CircleAvatar(
+                      backgroundColor: isDone
+
+                          ? AppTheme.success.withAlpha(50)
+                          : AppTheme.accent.withAlpha(50),
+                      child: Icon(
+                        isDone ? Icons.check : Icons.local_fire_department,
+                        color: isDone ? AppTheme.success : AppTheme.accent,
+                      ),
+                    ),
+                    title: Text(
+                      () {
+                        final title = t['title'] ?? 'Untitled';
+                        final flatNumber = t['flat']?['flat_number']?.toString();
+                        return flatNumber != null && flatNumber.isNotEmpty
+                            ? '$flatNumber: $title'
+                            : title;
+                      }(),
+                      style: AppTheme.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                        decoration: isDone ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    subtitle: Text(
+                      completedToday
+                          ? 'Checked off today'
+                          : (isDone
+                              ? 'Completed earlier'
+                              : 'Still active for this date'),
+                      style: AppTheme.label,
+                    ),
+                  ),
+                );
+              },
+            );
+    }
+
+    if (isWindows) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: DesktopSectionShell(
+          eyebrow: 'Timeline view',
+          title: 'Project calendar',
+          subtitle:
+              'Use a wider schedule view to track what is active on any day without compressing the task context into a phone-sized column.',
+          metrics: [
+            DesktopSectionMetric(
+              label: 'Selected day',
+              value: selectedLabel,
+              icon: Icons.today_outlined,
+            ),
+            DesktopSectionMetric(
+              label: 'Active items',
+              value: '${selectedTasks.length}',
+              icon: Icons.assignment_outlined,
+            ),
+            DesktopSectionMetric(
+              label: 'Tracked tasks',
+              value: '${_rawTasks.length}',
+              icon: Icons.calendar_month_outlined,
+            ),
+          ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 7,
+                    child: DesktopSurfaceCard(
+                      child: TableCalendar(
+                        firstDay: DateTime.utc(2020, 1, 1),
+                        lastDay: DateTime.utc(2030, 12, 31),
+                        focusedDay: _focusedDay,
+                        selectedDayPredicate: (day) =>
+                            isSameDay(_selectedDay, day),
+                        onDaySelected: (selectedDay, focusedDay) {
+                          setState(() {
+                            _selectedDay = selectedDay;
+                            _focusedDay = focusedDay;
+                          });
+                        },
+                        eventLoader: _getTasksForDay,
+                        calendarStyle: CalendarStyle(
+                          selectedDecoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          todayDecoration: BoxDecoration(
+                            color: AppTheme.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          markerDecoration: BoxDecoration(
+                            color: AppTheme.textSecondary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        headerStyle: const HeaderStyle(
+                          formatButtonVisible: false,
+                          titleCentered: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  Expanded(
+                    flex: 5,
+                    child: DesktopSurfaceCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Assignments for $selectedLabel',
+                            style: AppTheme.heading.copyWith(fontSize: 20),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Open, completed, and rolling tasks stay visible for the selected day.',
+                            style: AppTheme.body.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Expanded(child: buildTaskList()),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -132,74 +306,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 const SizedBox(height: 8),
                 Expanded(
-                  child: selectedTasks.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No tracking events logically spanning this bound.',
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                          itemCount: selectedTasks.length,
-                          itemBuilder: (context, index) {
-                            final t = selectedTasks[index];
-                            final bool isDone = t['status'] == 'completed';
-                            final bool completedToday =
-                                isDone &&
-                                t['completed_at'] ==
-                                    _selectedDay!.toIso8601String().split(
-                                      'T',
-                                    )[0];
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                tileColor: AppTheme.surface,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                leading: CircleAvatar(
-                                  backgroundColor: isDone
-                                      ? AppTheme.success.withAlpha(50)
-                                      : AppTheme.accent.withAlpha(50),
-                                  child: Icon(
-                                    isDone
-                                        ? Icons.check
-                                        : Icons.local_fire_department,
-                                    color: isDone
-                                        ? AppTheme.success
-                                        : AppTheme.accent,
-                                  ),
-                                ),
-                                title: Text(
-                                  () {
-                                    final title = t['title'] ?? 'Untitled';
-                                    final flatNumber = t['flat']?['flat_number']
-                                        ?.toString();
-                                    return flatNumber != null &&
-                                            flatNumber.isNotEmpty
-                                        ? '$flatNumber: $title'
-                                        : title;
-                                  }(),
-                                  style: AppTheme.body.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    decoration: isDone
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  completedToday
-                                      ? 'Checked off today!'
-                                      : (isDone
-                                            ? 'Checked off historically'
-                                            : 'Pending & Rolling over'),
-                                  style: AppTheme.label,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    child: buildTaskList(),
+                  ),
                 ),
               ],
             ),

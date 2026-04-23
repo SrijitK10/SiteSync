@@ -3,13 +3,15 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/file_export.dart';
+import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/desktop_section_shell.dart';
 import '../services/api_client.dart';
 
 class AttendanceScreen extends ConsumerStatefulWidget {
@@ -583,8 +585,292 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     );
   }
 
+  Widget _buildAttendanceForm({required bool desktop}) {
+    final formContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          desktop ? _projectName : 'Attendance entry',
+          style: AppTheme.heading.copyWith(fontSize: desktop ? 22 : 18),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          desktop
+              ? _siteAddress
+              : 'Stage contractor headcounts and work descriptions before syncing the roster to the database.',
+          style: AppTheme.body.copyWith(
+            color: AppTheme.textSecondary,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 20),
+        _isLoadingContractors
+            ? const LinearProgressIndicator()
+            : DropdownButtonFormField<String>(
+                value: _selectedContractor,
+                decoration: InputDecoration(
+                  labelText: 'CONTRACTOR',
+                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.textSecondary),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primary),
+                  ),
+                ),
+                dropdownColor: AppTheme.surface,
+                style: TextStyle(color: AppTheme.textPrimary),
+                items: _contractors.map((contractor) {
+                  return DropdownMenuItem<String>(
+                    value: contractor['name'],
+                    child: Text(contractor['name']),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedContractor = value;
+                  });
+                },
+              ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: AppTextField(
+                label: 'LABOURERS',
+                hint: '0',
+                controller: _labourersController,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: AppTextField(
+                label: 'MISTRIS',
+                hint: '0',
+                controller: _mistrisController,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: AppTextField(
+                label: 'MAATI KATA',
+                hint: '0',
+                controller: _maatiKataController,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: AppTextField(
+                label: 'SANTRAS',
+                hint: '0',
+                controller: _santrasController,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        AppTextField(
+          label: 'WORK DONE',
+          hint: 'Describe what the contractor did today...',
+          controller: _workDescriptionController,
+          maxLines: desktop ? 3 : 2,
+        ),
+        const SizedBox(height: 16),
+        AppButton(
+          text: 'Add to Temporary Roster',
+          onPressed: _addRecordLocal,
+        ),
+      ],
+    );
+
+    return desktop ? SingleChildScrollView(child: formContent) : formContent;
+  }
+
+  Widget _buildRosterPanel({required bool desktop}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Today\'s Roster',
+              style: AppTheme.heading.copyWith(fontSize: desktop ? 22 : 18),
+            ),
+            if (_records.isNotEmpty)
+              Text(
+                '${_records.length} Pending Sync',
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (desktop)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'Review staged entries before sending the full roster to the backend.',
+              style: AppTheme.body.copyWith(
+                color: AppTheme.textSecondary,
+                height: 1.45,
+              ),
+            ),
+          ),
+        Expanded(
+          child: _records.isEmpty
+              ? Center(
+                  child: Text(
+                    'No attendance recorded yet today.',
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _records.length,
+                  itemBuilder: (context, index) {
+                    final record = _records[index];
+                    return Card(
+                      color: AppTheme.surface,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.engineering,
+                          color: AppTheme.accent,
+                        ),
+                        title: Text(
+                          record['contractor_name']!,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Labourers: ${record['labourers_count'] ?? 0} • Mistris: ${record['mistris_count'] ?? 0} • Maati Kata: ${record['maati_kata_count'] ?? 0} • Santras: ${record['santras_count'] ?? 0}',
+                            ),
+                            if (record['work_description'] != null &&
+                                record['work_description'].toString().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  record['work_description'],
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: AppTheme.primary),
+                              onPressed: () => _editRecordLocal(index),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.redAccent,
+                              ),
+                              onPressed: () => _removeRecordLocal(index),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        const SizedBox(height: 16),
+        _isSyncing
+            ? const Center(child: CircularProgressIndicator())
+            : AppButton(
+                text: 'Submit ALL to Database',
+                onPressed: _submitAttendanceToCloud,
+              ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isWindowsDesktop) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: _isLoadingProject
+            ? const Center(child: CircularProgressIndicator())
+            : DesktopSectionShell(
+                eyebrow: 'Attendance studio',
+                title: 'Capture labour rosters with a calmer desktop workflow',
+                subtitle:
+                    'Keep contractor inputs, temporary roster edits, and final sync actions visible together on the Windows layout instead of stacking them into one mobile column.',
+                actions: [
+                  OutlinedButton.icon(
+                    onPressed: () => _showManageContractorsDialog(context),
+                    icon: const Icon(Icons.group_outlined),
+                    label: const Text('Contractors'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _showExportOptions(context),
+                    icon: const Icon(Icons.download_rounded),
+                    label: const Text('Reports'),
+                  ),
+                ],
+                metrics: [
+                  DesktopSectionMetric(
+                    label: 'Project',
+                    value: _projectName,
+                    icon: Icons.business_outlined,
+                  ),
+                  DesktopSectionMetric(
+                    label: 'Pending sync',
+                    value: _records.length.toString(),
+                    icon: Icons.cloud_upload_outlined,
+                    accent: AppTheme.warning,
+                  ),
+                  DesktopSectionMetric(
+                    label: 'Contractors',
+                    value: _contractors.length.toString(),
+                    icon: Icons.groups_rounded,
+                    accent: AppTheme.success,
+                  ),
+                ],
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: DesktopSurfaceCard(
+                        child: _buildAttendanceForm(desktop: true),
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      flex: 5,
+                      child: DesktopSurfaceCard(
+                        child: _buildRosterPanel(desktop: true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       // We remove the AppBar completely because it's tightly embedded inside the ProjectDashboardScreen IndexedStack natively!
@@ -646,208 +932,10 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     ),
                   const SizedBox(height: 8),
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _isLoadingContractors
-                                ? const LinearProgressIndicator()
-                                : DropdownButtonFormField<String>(
-                                    value: _selectedContractor,
-                                    decoration: InputDecoration(
-                                      labelText: 'CONTRACTOR',
-                                      labelStyle: TextStyle(
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                      enabledBorder: UnderlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: AppTheme.textSecondary,
-                                        ),
-                                      ),
-                                      focusedBorder: UnderlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: AppTheme.primary,
-                                        ),
-                                      ),
-                                    ),
-                                    dropdownColor: AppTheme.surface,
-                                    style: TextStyle(
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                    items: _contractors.map((c) {
-                                      return DropdownMenuItem<String>(
-                                        value: c['name'],
-                                        child: Text(c['name']),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _selectedContractor = val;
-                                      });
-                                    },
-                                  ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AppTextField(
-                                    label: 'LABOURERS',
-                                    hint: '0',
-                                    controller: _labourersController,
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: AppTextField(
-                                    label: 'MISTRIS',
-                                    hint: '0',
-                                    controller: _mistrisController,
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AppTextField(
-                                    label: 'MAATI KATA',
-                                    hint: '0',
-                                    controller: _maatiKataController,
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: AppTextField(
-                                    label: 'SANTRAS',
-                                    hint: '0',
-                                    controller: _santrasController,
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            AppTextField(
-                              label: 'WORK DONE',
-                              hint: 'Describe what the contractor did today...',
-                              controller: _workDescriptionController,
-                              maxLines: 2,
-                            ),
-                            const SizedBox(height: 16),
-                            AppButton(
-                              text: 'Add to Temporary Roster',
-                              onPressed: _addRecordLocal,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    child: _buildAttendanceForm(desktop: false),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Today\'s Roster',
-                        style: AppTheme.heading.copyWith(fontSize: 18),
-                      ),
-                      if (_records.isNotEmpty)
-                        Text(
-                          '${_records.length} Pending Sync',
-                          style: const TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: _records.isEmpty
-                        ? const Center(
-                            child: Text('No attendance recorded yet today.'),
-                          )
-                        : ListView.builder(
-                            itemCount: _records.length,
-                            itemBuilder: (context, index) {
-                              final r = _records[index];
-                              return Card(
-                                color: AppTheme.surface,
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.engineering,
-                                    color: AppTheme.accent,
-                                  ),
-                                  title: Text(
-                                    r['contractor_name']!,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Labourers: ${r['labourers_count'] ?? 0} • Mistris: ${r['mistris_count'] ?? 0} • Maati Kata: ${r['maati_kata_count'] ?? 0} • Santras: ${r['santras_count'] ?? 0}',
-                                      ),
-                                      if (r['work_description'] != null && r['work_description'].toString().isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 4),
-                                          child: Text(
-                                            r['work_description'],
-                                            style: TextStyle(
-                                              color: AppTheme.textSecondary,
-                                              fontSize: 12,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.edit,
-                                          color: AppTheme.primary,
-                                        ),
-                                        onPressed: () =>
-                                            _editRecordLocal(index),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.redAccent,
-                                        ),
-                                        onPressed: () =>
-                                            _removeRecordLocal(index),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                  const SizedBox(height: 16),
-                  _isSyncing
-                      ? const Center(child: CircularProgressIndicator())
-                      : AppButton(
-                          text: 'Submit ALL to Database',
-                          onPressed: _submitAttendanceToCloud,
-                        ),
+                  Expanded(child: _buildRosterPanel(desktop: false)),
                 ],
               ),
             ),

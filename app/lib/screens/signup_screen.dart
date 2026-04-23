@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
+import '../widgets/desktop_auth_shell.dart';
 import '../state/auth_provider.dart';
 import '../services/platform_utils.dart';
 import '../services/phone_auth_service.dart';
@@ -242,6 +243,54 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showPasswordAuth = usesPasswordAuth;
+
+    if (isWindowsDesktop) {
+      return DesktopAuthShell(
+        eyebrow: 'Create account',
+        title: 'Set up your desktop access',
+        subtitle:
+            'Create a Windows-ready account experience with clearer input flows, stronger validation hierarchy, and less visual noise.',
+        panelTitle: 'A polished entry point for site coordination',
+        panelSubtitle:
+            'The desktop onboarding flow is tuned for larger screens, deliberate spacing, and lower-friction account setup before teams jump into work.',
+        highlights: const [
+          DesktopAuthHighlight(
+            icon: Icons.person_add_alt_1_rounded,
+            title: 'Guided setup',
+            description:
+                'Important fields are grouped and paced for desktop keyboard-and-mouse entry.',
+          ),
+          DesktopAuthHighlight(
+            icon: Icons.verified_user_outlined,
+            title: 'Safer validation',
+            description:
+                'Clear feedback and better hierarchy reduce the chance of avoidable sign-up mistakes.',
+          ),
+          DesktopAuthHighlight(
+            icon: Icons.window_rounded,
+            title: 'Desktop polish',
+            description:
+                'The account flow now feels native to the wider Windows workspace instead of a stretched phone screen.',
+          ),
+        ],
+        form: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _buildEmailPasswordFlow(),
+        ),
+        footer: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Already have an account? '),
+            TextButton(
+              onPressed: () => context.go('/login'),
+              child: const Text('Log In'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -267,17 +316,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       style: AppTheme.heading.copyWith(fontSize: 28),
                     ),
                     const SizedBox(height: 40),
-  
-                    if (isApplePlatform)
+
+                    if (showPasswordAuth)
                       ..._buildEmailPasswordFlow()
                     else
                       ..._buildPhoneOTPFlow(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.label.copyWith(fontSize: 10),
-                    ),
+                    if (!showPasswordAuth) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.label.copyWith(fontSize: 10),
+                      ),
+                    ],
                   ],
                 ),
               ),

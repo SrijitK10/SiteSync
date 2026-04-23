@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_card.dart';
+import '../widgets/desktop_auth_shell.dart';
 import '../state/auth_provider.dart';
 import '../services/platform_utils.dart';
 import '../services/phone_auth_service.dart';
@@ -41,9 +42,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final l = AppLocalizations.of(context)!;
     final phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.validMobileError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.validMobileError)));
       return;
     }
 
@@ -122,9 +123,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final l = AppLocalizations.of(context)!;
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.enterOTPError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.enterOTPError)));
       return;
     }
 
@@ -173,15 +174,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.validEmailError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.validEmailError)));
       return;
     }
     if (password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.enterPasswordError)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.enterPasswordError)));
       return;
     }
 
@@ -212,6 +213,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showPasswordAuth = usesPasswordAuth;
+
+    if (isWindowsDesktop) {
+      return DesktopAuthShell(
+        logoAsset: 'assets/images/rppl.png',
+        eyebrow: 'Sign in',
+        title: 'Welcome back',
+        subtitle:
+            'Access projects, tasks, and team activity through a Windows workspace tuned for fast desktop navigation.',
+        panelTitle: 'Project operations with a clearer desktop rhythm',
+        panelSubtitle:
+            'This Windows experience emphasizes calm hierarchy, stronger contrast, and faster movement between the decisions your team makes every day.',
+        highlights: const [
+          DesktopAuthHighlight(
+            icon: Icons.dashboard_customize_rounded,
+            title: 'Focused layouts',
+            description:
+                'Stronger spacing and clearer grouping reduce scan time across dense project screens.',
+          ),
+          DesktopAuthHighlight(
+            icon: Icons.speed_rounded,
+            title: 'Faster actions',
+            description:
+                'Desktop-friendly controls keep common actions obvious without crowding the interface.',
+          ),
+          DesktopAuthHighlight(
+            icon: Icons.visibility_rounded,
+            title: 'Better visibility',
+            description:
+                'More deliberate contrast and surfacing make key information easier to track at a glance.',
+          ),
+        ],
+        form: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _buildEmailPasswordFlow(showForgotPassword: false),
+        ),
+        footer: Text(
+          'Use the email and password provisioned for your account. Password recovery is handled through verified mobile recovery flows.',
+          style: AppTheme.body.copyWith(
+            color: AppTheme.textSecondary,
+            height: 1.45,
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -231,17 +278,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     Image.asset('assets/images/rppl.png', height: 100),
                     const SizedBox(height: 40),
-  
-                    if (isApplePlatform)
+
+                    if (showPasswordAuth)
                       ..._buildEmailPasswordFlow()
                     else
                       ..._buildPhoneOTPFlow(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.label.copyWith(fontSize: 10),
-                    ),
+                    if (!showPasswordAuth) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.label.copyWith(fontSize: 10),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -362,7 +411,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // ── EMAIL + PASSWORD UI (iOS) ─────────────────────────────────
 
-  List<Widget> _buildEmailPasswordFlow() {
+  List<Widget> _buildEmailPasswordFlow({bool showForgotPassword = true}) {
     final l = AppLocalizations.of(context)!;
     return [
       Text(l.emailAddress, style: AppTheme.label),
@@ -414,14 +463,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
       const SizedBox(height: 8),
-      Align(
-        alignment: Alignment.centerRight,
-        child: TextButton(
-          onPressed: () => context.push('/forgot-password'),
-          child: Text(l.forgotPassword),
+      if (showForgotPassword)
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => context.push('/forgot-password'),
+            child: Text(l.forgotPassword),
+          ),
         ),
-      ),
-      const SizedBox(height: 16),
+      SizedBox(height: showForgotPassword ? 16 : 12),
       AppButton(
         text: l.signIn,
         isLoading: _isLoading,

@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../state/auth_provider.dart';
 import '../state/projects_provider.dart';
 import '../state/unread_tracker_provider.dart';
+import '../services/platform_utils.dart';
 import '../l10n/app_localizations.dart';
 import 'attendance_screen.dart';
 import 'calendar_screen.dart';
@@ -91,6 +92,7 @@ class _ProjectDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isWindows = isWindowsDesktop;
     final currentUser = ref.watch(authProvider).currentUser;
     ref.watch(unreadTrackerProvider);
     // Treat null user as viewer (safest default while state is loading)
@@ -149,21 +151,30 @@ class _ProjectDashboardScreenState
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
+        backgroundColor: isWindows
+            ? AppTheme.surface.withValues(alpha: 0.76)
+            : AppTheme.surface,
+        titleSpacing: isWindows ? 20 : null,
+        centerTitle: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               resolvedProjectName,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: AppTheme.body.copyWith(
+                fontSize: isWindows ? 18 : 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
             ),
             if (resolvedProjectLocation != null &&
                 resolvedProjectLocation.isNotEmpty)
               Text(
                 resolvedProjectLocation,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
+                style: AppTheme.label.copyWith(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
                 ),
               ),
           ],
@@ -190,17 +201,114 @@ class _ProjectDashboardScreenState
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 600) {
+            if (isWindows) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                child: Row(
+                  children: [
+                    Container(
+                      decoration: AppTheme.desktopPaneDecoration(
+                        context,
+                        radius: 28,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: NavigationRail(
+                        selectedIndex: _currentIndex,
+                        onDestinationSelected: (idx) => _onTabChanged(
+                          idx,
+                          isViewer: isViewer,
+                          userId: currentUser?.id,
+                        ),
+                        labelType: NavigationRailLabelType.all,
+                        useIndicator: true,
+                        indicatorColor: AppTheme.primary.withValues(
+                          alpha: 0.12,
+                        ),
+                        minWidth: 104,
+                        minExtendedWidth: 164,
+                        backgroundColor: Colors.transparent,
+                        selectedIconTheme: IconThemeData(
+                          color: AppTheme.primary,
+                        ),
+                        selectedLabelTextStyle: AppTheme.label.copyWith(
+                          color: AppTheme.primary,
+                        ),
+                        unselectedIconTheme: IconThemeData(
+                          color: AppTheme.textSecondary,
+                        ),
+                        unselectedLabelTextStyle: AppTheme.label.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                        destinations: [
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.assignment),
+                            label: Text(
+                              AppLocalizations.of(context)!.tasksTitle,
+                            ),
+                          ),
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.calendar_month),
+                            label: Text(
+                              AppLocalizations.of(context)!.calendarTitle,
+                            ),
+                          ),
+                          if (!isViewer)
+                            NavigationRailDestination(
+                              icon: const Icon(Icons.co_present),
+                              label: Text(
+                                AppLocalizations.of(context)!.attendanceTitle,
+                              ),
+                            ),
+                          if (!isViewer)
+                            NavigationRailDestination(
+                              icon: _BottomNavUnreadIcon(
+                                icon: Icons.photo_library,
+                                unreadCount: effectiveProgressUnreadCount,
+                              ),
+                              label: Text(
+                                AppLocalizations.of(context)!.progressTitle,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Container(
+                        decoration: AppTheme.desktopPaneDecoration(
+                          context,
+                          radius: 28,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: pages[_currentIndex],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             return Row(
               children: [
                 NavigationRail(
                   selectedIndex: _currentIndex,
-                  onDestinationSelected: (idx) => _onTabChanged(idx, isViewer: isViewer, userId: currentUser?.id),
+                  onDestinationSelected: (idx) => _onTabChanged(
+                    idx,
+                    isViewer: isViewer,
+                    userId: currentUser?.id,
+                  ),
                   labelType: NavigationRailLabelType.all,
                   backgroundColor: AppTheme.surface,
                   selectedIconTheme: IconThemeData(color: AppTheme.primary),
-                  selectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.primary),
-                  unselectedIconTheme: IconThemeData(color: AppTheme.textSecondary),
-                  unselectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.textSecondary),
+                  selectedLabelTextStyle: AppTheme.label.copyWith(
+                    color: AppTheme.primary,
+                  ),
+                  unselectedIconTheme: IconThemeData(
+                    color: AppTheme.textSecondary,
+                  ),
+                  unselectedLabelTextStyle: AppTheme.label.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
                   destinations: [
                     NavigationRailDestination(
                       icon: const Icon(Icons.assignment),
@@ -213,7 +321,9 @@ class _ProjectDashboardScreenState
                     if (!isViewer)
                       NavigationRailDestination(
                         icon: const Icon(Icons.co_present),
-                        label: Text(AppLocalizations.of(context)!.attendanceTitle),
+                        label: Text(
+                          AppLocalizations.of(context)!.attendanceTitle,
+                        ),
                       ),
                     if (!isViewer)
                       NavigationRailDestination(
@@ -221,7 +331,9 @@ class _ProjectDashboardScreenState
                           icon: Icons.photo_library,
                           unreadCount: effectiveProgressUnreadCount,
                         ),
-                        label: Text(AppLocalizations.of(context)!.progressTitle),
+                        label: Text(
+                          AppLocalizations.of(context)!.progressTitle,
+                        ),
                       ),
                   ],
                 ),
@@ -236,8 +348,11 @@ class _ProjectDashboardScreenState
       bottomNavigationBar: MediaQuery.of(context).size.width <= 600
           ? BottomNavigationBar(
               currentIndex: _currentIndex,
-              onTap: (idx) =>
-                  _onTabChanged(idx, isViewer: isViewer, userId: currentUser?.id),
+              onTap: (idx) => _onTabChanged(
+                idx,
+                isViewer: isViewer,
+                userId: currentUser?.id,
+              ),
               selectedItemColor: AppTheme.primary,
               unselectedItemColor: AppTheme.textSecondary,
               backgroundColor: AppTheme.surface,
