@@ -92,9 +92,9 @@ BEGIN
             VALUE "CompanyName", "SrijitK10" "\0"
             VALUE "FileDescription", "Rupayan SiteSync for Windows" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "RupayanSiteSync" "\0"
+            VALUE "InternalName", "rupayan" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 SrijitK10. All rights reserved." "\0"
-            VALUE "OriginalFilename", "RupayanSiteSync.exe" "\0"
+            VALUE "OriginalFilename", "rupayan.exe" "\0"
             VALUE "ProductName", "Rupayan SiteSync" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

@@ -1,0 +1,55 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - app/**
+      - .github/workflows/windows-installer.yml
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop support
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\packaging\rupayan_sitesync_installer.iss"
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rupayan-windows-installer
+          path: app/build/windows-installer/RupayanSetup.exe
+
+      - name: Upload raw Windows release folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: rupayan-windows-release
+          path: app/build/windows/x64/runner/Release/

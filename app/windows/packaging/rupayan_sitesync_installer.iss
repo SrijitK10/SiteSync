@@ -2,7 +2,7 @@
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "SrijitK10"
 #define MyAppURL "https://github.com/SrijitK10/SiteSync"
-#define MyAppExeName "RupayanSiteSync.exe"
+#define MyAppExeName "rupayan.exe"
 
 [Setup]
 AppId={{FA3D7C77-9706-4E53-BE7B-8A4C957AD1D4}
@@ -22,7 +22,7 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 OutputDir=..\build\windows-installer
-OutputBaseFilename=RupayanSiteSyncSetup
+OutputBaseFilename=RupayanSetup
 SetupIconFile=..\runner\resources\app_icon.ico
 
 [Languages]
