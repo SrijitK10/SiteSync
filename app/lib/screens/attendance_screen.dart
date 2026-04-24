@@ -590,7 +590,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          desktop ? _projectName : 'Attendance entry',
+          'Attendance entry',
           style: AppTheme.heading.copyWith(fontSize: desktop ? 22 : 18),
         ),
         const SizedBox(height: 8),

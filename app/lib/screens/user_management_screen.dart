@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../services/platform_utils.dart';
 import '../state/users_provider.dart';
 import '../state/auth_provider.dart';
 import '../services/api_client.dart';
@@ -90,7 +91,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                       DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
                     ],
                     onChanged: (val) {
-                      if (val != null) selectedRole = val;
+                      if (val != null) {
+                        selectedRole = val;
+                      }
                     },
                   ),
                   const SizedBox(height: 24),
@@ -100,8 +103,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                           text: 'Create User',
                           onPressed: () async {
                             if (nameController.text.isEmpty ||
-                                phoneController.text.isEmpty)
+                                phoneController.text.isEmpty) {
                               return;
+                            }
                             setState(() => isSubmitting = true);
                             try {
                               final phone = '+91${phoneController.text.trim()}';
@@ -211,6 +215,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     final usersAsync = ref.watch(usersProvider);
     final currentUser = authState.currentUser;
     final canEditRoles = currentUser != null && currentUser.role.isAdmin;
+    final isWindows = isWindowsDesktop;
 
     if (authState.isLoading || currentUser == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -244,9 +249,10 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (users) {
-          if (users.isEmpty)
+              if (users.isEmpty) {
             return const Center(child: Text('No users found.'));
-          return ListView.separated(
+              }
+              return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: users.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
@@ -256,6 +262,174 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
               final isNonAdmin =
                   user.role.value == 'site_manager' ||
                   user.role.value == 'viewer';
+              Future<void> updateRole(String? newRole) async {
+                if (newRole == null || newRole == user.role.value) return;
+                try {
+                  await apiClient.patch(
+                    '/users/${user.id}',
+                    data: {'role': newRole},
+                  );
+                  ref.invalidate(usersProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Role updated successfully.'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Failed to update role: $e',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    );
+                  }
+                }
+              }
+
+              final roleControl = canEditRoles && !isSelf
+                  ? DropdownButton<String>(
+                      value: user.role.value,
+                      style: AppTheme.label.copyWith(
+                        color: AppTheme.primary,
+                        fontSize: isWindows ? 12 : 10,
+                      ),
+                      underline: const SizedBox(),
+                      icon: Icon(
+                        Icons.arrow_drop_down,
+                        color: AppTheme.primary,
+                        size: 20,
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'super_admin',
+                          child: Text('SUPER ADMIN'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'admin',
+                          child: Text('ADMIN'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'site_manager',
+                          child: Text('SITE MANAGER'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'viewer',
+                          child: Text('VIEWER'),
+                        ),
+                      ],
+                      onChanged: updateRole,
+                    )
+                  : Chip(
+                      label: Text(user.role.value.toUpperCase()),
+                      labelStyle: AppTheme.label,
+                      backgroundColor: AppTheme.background,
+                    );
+
+              if (isWindows) {
+                return InkWell(
+                  borderRadius: BorderRadius.circular(22),
+                  onTap: canEditRoles && isNonAdmin && !isSelf
+                      ? () => _showProjectAssignmentSheet(context, user)
+                      : null,
+                  child: Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: AppTheme.desktopPaneDecoration(
+                      context,
+                      radius: 22,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppTheme.accent,
+                          radius: 24,
+                          child: Text(
+                            user.name.isNotEmpty
+                                ? user.name[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(color: AppTheme.surface),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.name,
+                                style: AppTheme.body.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                user.phone ?? user.email ?? '',
+                                style: AppTheme.body.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.background.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      user.role.value.toUpperCase(),
+                                      style: AppTheme.label,
+                                    ),
+                                  ),
+                                  if (canEditRoles && isNonAdmin && !isSelf)
+                                    OutlinedButton.icon(
+                                      onPressed: () =>
+                                          _showProjectAssignmentSheet(
+                                            context,
+                                            user,
+                                          ),
+                                      icon: const Icon(Icons.folder_shared),
+                                      label: const Text('Project access'),
+                                    ),
+                                  if (!isSelf)
+                                    OutlinedButton.icon(
+                                      onPressed: () => _deleteUser(context, user),
+                                      icon: const Icon(Icons.delete_outline),
+                                      label: const Text('Delete'),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minWidth: 150),
+                          child: Align(
+                            alignment: Alignment.topRight,
+                            child: roleControl,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
               return ListTile(
                 tileColor: AppTheme.surface,
                 shape: RoundedRectangleBorder(
@@ -297,74 +471,16 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                         onPressed: () =>
                             _showProjectAssignmentSheet(context, user),
                       ),
-                    // Role dropdown or chip
-                    if (canEditRoles && !isSelf)
-                      DropdownButton<String>(
-                        value: user.role.value,
-                        style: AppTheme.label.copyWith(
-                          color: AppTheme.primary,
-                          fontSize: 10,
+                    if (!isSelf)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
                         ),
-                        underline: const SizedBox(),
-                        icon: Icon(
-                          Icons.arrow_drop_down,
-                          color: AppTheme.primary,
-                          size: 20,
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'super_admin',
-                            child: Text('SUPER ADMIN'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'admin',
-                            child: Text('ADMIN'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'site_manager',
-                            child: Text('SITE MANAGER'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'viewer',
-                            child: Text('VIEWER'),
-                          ),
-                        ],
-                        onChanged: (newRole) async {
-                          if (newRole != null && newRole != user.role.value) {
-                            try {
-                              await apiClient.patch(
-                                '/users/${user.id}',
-                                data: {'role': newRole},
-                              );
-                              ref.invalidate(usersProvider);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Role updated successfully.'),
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Failed to update role: $e',
-                                      style: const TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                          }
-                        },
-                      )
-                    else
-                      Chip(
-                        label: Text(user.role.value.toUpperCase()),
-                        labelStyle: AppTheme.label,
-                        backgroundColor: AppTheme.background,
+                        tooltip: 'Delete user',
+                        onPressed: () => _deleteUser(context, user),
                       ),
+                    roleControl,
                   ],
                 ),
               );
@@ -478,7 +594,7 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -549,12 +665,12 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
                               color: isAssigned
-                                  ? AppTheme.primary.withOpacity(0.08)
+                                  ? AppTheme.primary.withValues(alpha: 0.08)
                                   : AppTheme.surface,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: isAssigned
-                                    ? AppTheme.primary.withOpacity(0.3)
+                                    ? AppTheme.primary.withValues(alpha: 0.3)
                                     : Colors.transparent,
                                 width: 1.2,
                               ),
@@ -579,7 +695,7 @@ class _ProjectAssignmentSheetState extends State<_ProjectAssignmentSheet> {
                                 ),
                               ),
                               value: isAssigned,
-                              activeColor: AppTheme.primary,
+                              activeThumbColor: AppTheme.primary,
                               onChanged: (val) {
                                 setState(() {
                                   if (val) {

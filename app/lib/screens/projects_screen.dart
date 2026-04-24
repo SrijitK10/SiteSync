@@ -400,10 +400,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                       },
               ),
               const SizedBox(height: 16),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 12,
-                runSpacing: 12,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton.icon(
                     onPressed: () {
@@ -413,12 +411,14 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                     icon: const Icon(Icons.refresh),
                     label: Text(l.refresh),
                   ),
-                  if (canManageProjects)
+                  if (canManageProjects) ...[
+                    const SizedBox(width: 12),
                     FilledButton.icon(
                       onPressed: () => _showAddProjectBottomSheet(context, ref),
                       icon: const Icon(Icons.add),
                       label: Text(l.createProject),
                     ),
+                  ],
                 ],
               ),
             ],
@@ -823,28 +823,48 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 }
 
 class _DesktopMetricPill extends StatelessWidget {
-  const _DesktopMetricPill({required this.icon, required this.label});
+  const _DesktopMetricPill({
+    required this.icon,
+    required this.label,
+    this.iconColor,
+    this.textColor,
+    this.backgroundColor,
+    this.borderColor,
+  });
 
   final IconData icon;
   final String label;
+  final Color? iconColor;
+  final Color? textColor;
+  final Color? backgroundColor;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedIconColor = iconColor ?? Theme.of(context).colorScheme.primary;
+    final resolvedTextColor = textColor ?? AppTheme.textPrimary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+        color: backgroundColor ??
+            Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withValues(alpha: 0.1),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+          Icon(icon, size: 16, color: resolvedIconColor),
           const SizedBox(width: 8),
           Text(
             label,
-            style: AppTheme.body.copyWith(fontWeight: FontWeight.w600),
+            style: AppTheme.body.copyWith(
+              fontWeight: FontWeight.w600,
+              color: resolvedTextColor,
+            ),
           ),
         ],
       ),
@@ -974,26 +994,30 @@ class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
                           spacing: 10,
                           runSpacing: 10,
                           children: [
-                            _DesktopMetricPill(
-                              icon: Icons.workspaces_outline,
-                              label: 'Active workspace',
-                            ),
-                            if (unreadCount > 0)
+                            if (location.isNotEmpty)
                               _DesktopMetricPill(
-                                icon: Icons.mark_chat_unread_outlined,
-                                label: unreadCount > 99
-                                    ? '99+ updates'
-                                    : '$unreadCount updates',
+                                icon: Icons.location_on_outlined,
+                                label: location,
                               ),
+                            _DesktopUnreadPill(unreadCountAsync: unreadCountAsync),
                           ],
                         ),
                       ),
-                      if (widget.canManageProjects)
-                        IconButton(
-                          tooltip: 'Delete project',
-                          onPressed: widget.onDelete,
-                          icon: const Icon(Icons.delete_outline_rounded),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (unreadCount > 0) ...[
+                            _DesktopUnreadBadge(count: unreadCount),
+                            const SizedBox(width: 8),
+                          ],
+                          if (widget.canManageProjects)
+                            IconButton(
+                              tooltip: 'Delete project',
+                              onPressed: widget.onDelete,
+                              icon: const Icon(Icons.delete_outline_rounded),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 18),
@@ -1008,39 +1032,54 @@ class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  Text(
+                    location.isEmpty ? 'Location not added yet' : location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
                   Row(
                     children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 18,
-                        color: AppTheme.textSecondary,
-                      ),
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          location.isEmpty ? 'Location not set' : location,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTheme.body.copyWith(
-                            color: AppTheme.textSecondary,
+                        child: unreadCountAsync.when(
+                          data: (count) {
+                            final label = count <= 0
+                                ? 'All caught up'
+                                : count == 1
+                                ? '1 unread update'
+                                : '$count unread updates';
+                            return Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTheme.body.copyWith(
+                                color: count > 0
+                                    ? const Color(0xFFD94B4B)
+                                    : AppTheme.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          },
+                          loading: () => Text(
+                            'Checking updates…',
+                            style: AppTheme.body.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          error: (_, _) => Text(
+                            'Open project',
+                            style: AppTheme.body.copyWith(
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    'Tasks, calendars, attendance, and progress are grouped into one desktop workspace.',
-                    style: AppTheme.body.copyWith(
-                      color: AppTheme.textSecondary,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
+                      const SizedBox(width: 8),
                       Text(
-                        'Open workspace',
+                        'Open project',
                         style: AppTheme.body.copyWith(
                           color: primary,
                           fontWeight: FontWeight.w700,
@@ -1058,6 +1097,72 @@ class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopUnreadPill extends StatelessWidget {
+  const _DesktopUnreadPill({required this.unreadCountAsync});
+
+  final AsyncValue<int> unreadCountAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return unreadCountAsync.when(
+      data: (count) {
+        if (count <= 0) {
+          return _DesktopMetricPill(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'All caught up',
+          );
+        }
+
+        return _DesktopMetricPill(
+          icon: Icons.notifications_active_outlined,
+          label: count > 99 ? '99+ unread' : '$count unread',
+          iconColor: const Color(0xFFD94B4B),
+          textColor: const Color(0xFFD94B4B),
+          backgroundColor: const Color(0xFFD94B4B).withAlpha(22),
+          borderColor: const Color(0xFFD94B4B).withAlpha(56),
+        );
+      },
+      loading: () => _DesktopMetricPill(
+        icon: Icons.sync_rounded,
+        label: 'Checking updates',
+      ),
+      error: (_, _) => _DesktopMetricPill(
+        icon: Icons.workspaces_outline,
+        label: 'Project ready',
+      ),
+    );
+  }
+}
+
+class _DesktopUnreadBadge extends StatelessWidget {
+  const _DesktopUnreadBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count > 99 ? '99+' : count.toString();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      constraints: const BoxConstraints(minWidth: 34, minHeight: 30),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD94B4B),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
