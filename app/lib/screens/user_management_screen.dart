@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/desktop_section_shell.dart';
 import '../services/platform_utils.dart';
 import '../state/users_provider.dart';
 import '../state/auth_provider.dart';
@@ -19,133 +19,163 @@ class UserManagementScreen extends ConsumerStatefulWidget {
 }
 
 class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(usersProvider);
-    });
-  }
-
-  // ── Add User ────────────────────────────────────────────────────
   void _showAddUserBottomSheet(BuildContext context) {
     final nameController = TextEditingController();
+    final emailController = TextEditingController();
     final phoneController = TextEditingController();
     String selectedRole = 'site_manager';
+    bool isSubmitting = false;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.background,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        bool isSubmitting = false;
-
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (context, setState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24,
-                right: 24,
-                top: 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Add New Teammate', style: AppTheme.heading),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    label: 'NAME',
-                    hint: 'Rajesh Kumar',
-                    controller: nameController,
+          builder: (context, setSheetState) {
+            Future<void> submit() async {
+              final name = nameController.text.trim();
+              final email = emailController.text.trim();
+              final phone = phoneController.text.trim();
+
+              if (name.isEmpty || (email.isEmpty && phone.isEmpty)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Add a name and either an email or phone number.'),
                   ),
-                  const SizedBox(height: 12),
-                  AppTextField(
-                    label: 'PHONE NUMBER',
-                    hint: '9876543210',
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedRole,
-                    decoration: InputDecoration(
-                      labelText: 'ROLE',
-                      labelStyle: AppTheme.label,
-                      filled: true,
-                      fillColor: AppTheme.background,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                      DropdownMenuItem(
-                        value: 'site_manager',
-                        child: Text('Site Manager'),
-                      ),
-                      DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        selectedRole = val;
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  isSubmitting
-                      ? const CircularProgressIndicator()
-                      : AppButton(
-                          text: 'Create User',
-                          onPressed: () async {
-                            if (nameController.text.isEmpty ||
-                                phoneController.text.isEmpty) {
-                              return;
-                            }
-                            setState(() => isSubmitting = true);
-                            try {
-                              final phone = '+91${phoneController.text.trim()}';
-                              await apiClient.post(
-                                '/users',
-                                data: {
-                                  'name': nameController.text.trim(),
-                                  'phone': phone,
-                                  'role': selectedRole,
-                                },
-                              );
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                                ref.invalidate(usersProvider);
-                              }
-                            } catch (e) {
-                              setState(() => isSubmitting = false);
-                              String msg = 'Failed to create user';
-                              if (e is DioException) {
-                                final data = e.response?.data;
-                                if (data is Map && data['message'] != null) {
-                                  msg = data['message'].toString();
-                                }
-                              }
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      msg,
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
+                );
+                return;
+              }
+
+              setSheetState(() => isSubmitting = true);
+              try {
+                await apiClient.post(
+                  '/users',
+                  data: {
+                    'name': name,
+                    if (email.isNotEmpty) 'email': email,
+                    if (phone.isNotEmpty) 'phone': phone,
+                    'role': selectedRole,
+                  },
+                );
+                ref.invalidate(usersProvider);
+                if (!mounted || !sheetContext.mounted) return;
+                Navigator.of(sheetContext).pop();
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  const SnackBar(content: Text('Teammate added successfully.')),
+                );
+              } on DioException catch (error) {
+                if (!sheetContext.mounted) return;
+                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                  SnackBar(content: Text(extractErrorMessage(error))),
+                );
+              } catch (error) {
+                if (!sheetContext.mounted) return;
+                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                  SnackBar(content: Text('Failed to add teammate: $error')),
+                );
+              } finally {
+                if (sheetContext.mounted) {
+                  setSheetState(() => isSubmitting = false);
+                }
+              }
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  20,
+                  20,
+                  MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: AppTheme.desktopPaneDecoration(context, radius: 28),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add teammate',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create a team profile and assign the starting role.',
+                          style: AppTheme.body.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        AppTextField(
+                          label: 'FULL NAME',
+                          hint: 'Enter the teammate name',
+                          controller: nameController,
+                        ),
+                        const SizedBox(height: 16),
+                        AppTextField(
+                          label: 'EMAIL',
+                          hint: 'name@example.com',
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+                        AppTextField(
+                          label: 'PHONE',
+                          hint: '+91...',
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 16),
+                        Text('ROLE', style: AppTheme.label),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedRole,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.surface,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'super_admin',
+                              child: Text('Super Admin'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'admin',
+                              child: Text('Admin'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'site_manager',
+                              child: Text('Site Manager'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'viewer',
+                              child: Text('Viewer'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setSheetState(() => selectedRole = value);
                             }
                           },
                         ),
-                  const SizedBox(height: 24),
-                ],
+                        const SizedBox(height: 24),
+                        AppButton(
+                          text: 'Create teammate',
+                          isLoading: isSubmitting,
+                          onPressed: submit,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             );
           },
@@ -154,337 +184,362 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     );
   }
 
-  // ── Project Assignment Sheet ────────────────────────────────────
-  void _showProjectAssignmentSheet(BuildContext context, User user) async {
-    // Fetch all projects and user's current assignments in parallel
-    showModalBottomSheet(
+  void _showProjectAssignmentSheet(BuildContext context, User user) {
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.background,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) {
-        return _ProjectAssignmentSheet(user: user);
-      },
-    );
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ProjectAssignmentSheet(user: user),
+    ).then((_) => ref.invalidate(usersProvider));
   }
 
-  // ── Delete User ────────────────────────────────────────────────
   Future<void> _deleteUser(BuildContext context, User user) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete ${user.name}?'),
-        content: const Text(
-          'This action cannot be undone. The user will lose all access.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete teammate'),
+          content: Text('Remove ${user.name} from the workspace?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
+
     if (confirmed != true) return;
+
     try {
       await apiClient.delete('/users/${user.id}');
       ref.invalidate(usersProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('User deleted.')));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${user.name} removed from the workspace.')),
+      );
+    } on DioException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(extractErrorMessage(error))),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete teammate: $error')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
     final usersAsync = ref.watch(usersProvider);
-    final currentUser = authState.currentUser;
-    final canEditRoles = currentUser != null && currentUser.role.isAdmin;
+    final currentUser = ref.watch(authProvider).currentUser;
     final isWindows = isWindowsDesktop;
+    final canManageUsers = currentUser?.role.isAdmin ?? false;
+    final canDeleteUsers = currentUser?.role.canDelete ?? false;
 
-    if (authState.isLoading || currentUser == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    if (!currentUser.role.isAdmin) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/projects');
-      });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    Widget buildUserTile(User user) {
+      final isSelf = currentUser != null && user.id == currentUser.id;
+      final canManageAccess =
+          canManageUsers && !user.role.isAdmin && !isSelf;
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('Manage Team'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(usersProvider);
-            },
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppTheme.primary,
-        onPressed: () => _showAddUserBottomSheet(context),
-        child: Icon(Icons.add, color: AppTheme.surface),
-      ),
-      body: usersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-        data: (users) {
-              if (users.isEmpty) {
-            return const Center(child: Text('No users found.'));
-              }
-              return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: users.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final user = users[index];
-              final isSelf = user.id == currentUser.id;
-              final isNonAdmin =
-                  user.role.value == 'site_manager' ||
-                  user.role.value == 'viewer';
-              Future<void> updateRole(String? newRole) async {
-                if (newRole == null || newRole == user.role.value) return;
-                try {
-                  await apiClient.patch(
-                    '/users/${user.id}',
-                    data: {'role': newRole},
-                  );
-                  ref.invalidate(usersProvider);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Role updated successfully.'),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Failed to update role: $e',
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    );
-                  }
-                }
-              }
+      Future<void> updateRole(String? newRole) async {
+        if (!canManageUsers || isSelf || newRole == null || newRole == user.role.value) {
+          return;
+        }
 
-              final roleControl = canEditRoles && !isSelf
-                  ? DropdownButton<String>(
-                      value: user.role.value,
-                      style: AppTheme.label.copyWith(
-                        color: AppTheme.primary,
-                        fontSize: isWindows ? 12 : 10,
-                      ),
-                      underline: const SizedBox(),
-                      icon: Icon(
-                        Icons.arrow_drop_down,
-                        color: AppTheme.primary,
-                        size: 20,
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'super_admin',
-                          child: Text('SUPER ADMIN'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'admin',
-                          child: Text('ADMIN'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'site_manager',
-                          child: Text('SITE MANAGER'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'viewer',
-                          child: Text('VIEWER'),
-                        ),
-                      ],
-                      onChanged: updateRole,
-                    )
-                  : Chip(
-                      label: Text(user.role.value.toUpperCase()),
-                      labelStyle: AppTheme.label,
-                      backgroundColor: AppTheme.background,
-                    );
+        try {
+          await apiClient.patch(
+            '/users/${user.id}',
+            data: {'role': newRole},
+          );
+          ref.invalidate(usersProvider);
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Role updated successfully.')),
+          );
+        } on DioException catch (error) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(extractErrorMessage(error))),
+          );
+        } catch (error) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update role: $error')),
+          );
+        }
+      }
 
-              if (isWindows) {
-                return InkWell(
-                  borderRadius: BorderRadius.circular(22),
-                  onTap: canEditRoles && isNonAdmin && !isSelf
-                      ? () => _showProjectAssignmentSheet(context, user)
-                      : null,
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: AppTheme.desktopPaneDecoration(
-                      context,
-                      radius: 22,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppTheme.accent,
-                          radius: 24,
-                          child: Text(
-                            user.name.isNotEmpty
-                                ? user.name[0].toUpperCase()
-                                : '?',
-                            style: TextStyle(color: AppTheme.surface),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user.name,
-                                style: AppTheme.body.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                user.phone ?? user.email ?? '',
-                                style: AppTheme.body.copyWith(
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.background.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      user.role.value.toUpperCase(),
-                                      style: AppTheme.label,
-                                    ),
-                                  ),
-                                  if (canEditRoles && isNonAdmin && !isSelf)
-                                    OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _showProjectAssignmentSheet(
-                                            context,
-                                            user,
-                                          ),
-                                      icon: const Icon(Icons.folder_shared),
-                                      label: const Text('Project access'),
-                                    ),
-                                  if (!isSelf)
-                                    OutlinedButton.icon(
-                                      onPressed: () => _deleteUser(context, user),
-                                      icon: const Icon(Icons.delete_outline),
-                                      label: const Text('Delete'),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(minWidth: 150),
-                          child: Align(
-                            alignment: Alignment.topRight,
-                            child: roleControl,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              return ListTile(
-                tileColor: AppTheme.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+      final roleControl = canManageUsers && !isSelf
+          ? DropdownButton<String>(
+              value: user.role.value,
+              style: AppTheme.label.copyWith(
+                color: AppTheme.primary,
+                fontSize: isWindows ? 12 : 10,
+              ),
+              underline: const SizedBox(),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: AppTheme.primary,
+                size: 20,
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'super_admin',
+                  child: Text('SUPER ADMIN'),
                 ),
-                leading: CircleAvatar(
+                DropdownMenuItem(
+                  value: 'admin',
+                  child: Text('ADMIN'),
+                ),
+                DropdownMenuItem(
+                  value: 'site_manager',
+                  child: Text('SITE MANAGER'),
+                ),
+                DropdownMenuItem(
+                  value: 'viewer',
+                  child: Text('VIEWER'),
+                ),
+              ],
+              onChanged: updateRole,
+            )
+          : Chip(
+              label: Text(user.role.value.toUpperCase()),
+              labelStyle: AppTheme.label,
+              backgroundColor: AppTheme.background,
+            );
+
+      if (isWindows) {
+        return InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: canManageAccess
+              ? () => _showProjectAssignmentSheet(context, user)
+              : null,
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: AppTheme.desktopPaneDecoration(context, radius: 22),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
                   backgroundColor: AppTheme.accent,
+                  radius: 24,
                   child: Text(
                     user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
                     style: TextStyle(color: AppTheme.surface),
                   ),
                 ),
-                title: Text(
-                  user.name,
-                  style: AppTheme.body.copyWith(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(
-                  user.phone ?? user.email ?? '',
-                  style: AppTheme.label.copyWith(
-                    textBaseline: TextBaseline.alphabetic,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name,
+                        style: AppTheme.body.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        user.phone ?? user.email ?? '',
+                        style: AppTheme.body.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.background.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              user.role.value.toUpperCase(),
+                              style: AppTheme.label,
+                            ),
+                          ),
+                          if (canManageAccess)
+                            OutlinedButton.icon(
+                              onPressed: () => _showProjectAssignmentSheet(context, user),
+                              icon: const Icon(Icons.folder_shared),
+                              label: const Text('Project access'),
+                            ),
+                          if (canDeleteUsers && !isSelf)
+                            OutlinedButton.icon(
+                              onPressed: () => _deleteUser(context, user),
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('Delete'),
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                // Tap to manage project access for non-admin users
-                onTap: canEditRoles && isNonAdmin && !isSelf
-                    ? () => _showProjectAssignmentSheet(context, user)
-                    : null,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Project access indicator for non-admins
-                    if (canEditRoles && isNonAdmin && !isSelf)
-                      IconButton(
-                        icon: Icon(
-                          Icons.folder_shared,
-                          color: AppTheme.primary,
-                          size: 20,
-                        ),
-                        tooltip: 'Manage Project Access',
-                        onPressed: () =>
-                            _showProjectAssignmentSheet(context, user),
-                      ),
-                    if (!isSelf)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.redAccent,
-                        ),
-                        tooltip: 'Delete user',
-                        onPressed: () => _deleteUser(context, user),
-                      ),
-                    roleControl,
-                  ],
+                const SizedBox(width: 16),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 150),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: roleControl,
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
+          ),
+        );
+      }
+
+      return ListTile(
+        tileColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        leading: CircleAvatar(
+          backgroundColor: AppTheme.accent,
+          child: Text(
+            user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+            style: TextStyle(color: AppTheme.surface),
+          ),
+        ),
+        title: Text(
+          user.name,
+          style: AppTheme.body.copyWith(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          user.phone ?? user.email ?? '',
+          style: AppTheme.label.copyWith(
+            textBaseline: TextBaseline.alphabetic,
+          ),
+        ),
+        onTap: canManageAccess
+            ? () => _showProjectAssignmentSheet(context, user)
+            : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (canManageAccess)
+              IconButton(
+                icon: Icon(
+                  Icons.folder_shared,
+                  color: AppTheme.primary,
+                  size: 20,
+                ),
+                tooltip: 'Manage Project Access',
+                onPressed: () => _showProjectAssignmentSheet(context, user),
+              ),
+            if (canDeleteUsers && !isSelf)
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.redAccent,
+                ),
+                tooltip: 'Delete user',
+                onPressed: () => _deleteUser(context, user),
+              ),
+            roleControl,
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: const Text('Team Management'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(usersProvider),
+          ),
+        ],
+      ),
+      floatingActionButton: canManageUsers && !isWindows
+          ? FloatingActionButton(
+              backgroundColor: AppTheme.primary,
+              onPressed: () => _showAddUserBottomSheet(context),
+              child: Icon(Icons.add, color: AppTheme.surface),
+            )
+          : null,
+      body: usersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (users) {
+          if (users.isEmpty) {
+            return const Center(child: Text('No users found.'));
+          }
+
+          final adminCount = users.where((user) => user.role.isAdmin).length;
+          final restrictedCount = users.where((user) => !user.role.isAdmin).length;
+
+          final userList = ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: users.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) => buildUserTile(users[index]),
+          );
+
+          if (!isWindows) {
+            return userList;
+          }
+
+          final actions = <Widget>[
+            OutlinedButton.icon(
+              onPressed: () => ref.invalidate(usersProvider),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh list'),
+            ),
+          ];
+
+          if (canManageUsers) {
+            actions.add(
+              FilledButton.icon(
+                onPressed: () => _showAddUserBottomSheet(context),
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('Add teammate'),
+              ),
+            );
+          }
+
+          return DesktopSectionShell(
+            eyebrow: 'Team access',
+            title: 'Manage roles and project access without leaving the desktop workspace',
+            subtitle:
+                'Review who has access, update responsibilities, and assign project visibility from one place.',
+            actions: actions,
+            metrics: [
+              DesktopSectionMetric(
+                label: 'Team members',
+                value: users.length.toString(),
+                icon: Icons.groups_rounded,
+              ),
+              DesktopSectionMetric(
+                label: 'Admin roles',
+                value: adminCount.toString(),
+                icon: Icons.admin_panel_settings_outlined,
+              ),
+              DesktopSectionMetric(
+                label: 'Restricted roles',
+                value: restrictedCount.toString(),
+                icon: Icons.shield_outlined,
+              ),
+            ],
+            child: userList,
           );
         },
       ),

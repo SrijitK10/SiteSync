@@ -331,7 +331,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Windows workspace',
+                'Project workspace',
                 style: AppTheme.label.copyWith(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w700,
@@ -340,7 +340,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               ),
               const SizedBox(height: 14),
               Text(
-                'Project operations with cleaner hierarchy and faster scanning',
+                'All projects in one desktop view',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
@@ -349,7 +349,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Use search, jump between workspaces, and surface the most relevant actions without forcing desktop users through mobile layouts.',
+                'Search projects quickly, open the right workspace faster, and keep unread activity visible without stretching a mobile layout across a desktop screen.',
                 style: AppTheme.body.copyWith(
                   fontSize: 15,
                   color: AppTheme.textSecondary,
@@ -370,15 +370,15 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                     icon: Icons.filter_alt_outlined,
                     label: queryIsActive
                         ? '$visibleProjects matching search'
-                        : 'All workspaces visible',
+                        : 'Showing all projects',
                   ),
                   _DesktopMetricPill(
                     icon: canManageProjects
                         ? Icons.admin_panel_settings_outlined
                         : Icons.visibility_outlined,
                     label: canManageProjects
-                        ? 'Admin controls available'
-                        : 'Viewer workspace mode',
+                        ? 'Project admin access'
+                        : 'Viewer access',
                   ),
                 ],
               ),
