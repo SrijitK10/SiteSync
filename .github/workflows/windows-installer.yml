@@ -38,12 +38,29 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release
 
-      - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
+      - name: Verify Windows release output
+        run: |
+          if (!(Test-Path "build/windows/x64/runner/Release/rupayan.exe")) {
+            throw "Expected build/windows/x64/runner/Release/rupayan.exe to exist after flutter build windows --release"
+          }
+
+      - name: Ensure Inno Setup is available
+        run: |
+          if (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe") {
+            Write-Host "Inno Setup already available."
+          } else {
+            choco install innosetup --no-progress -y
+          }
 
       - name: Build installer
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\packaging\rupayan_sitesync_installer.iss"
+
+      - name: Verify installer output
+        run: |
+          if (!(Test-Path "build/windows-installer/RupayanSetup.exe")) {
+            throw "Expected build/windows-installer/RupayanSetup.exe to exist after Inno Setup packaging"
+          }
 
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
