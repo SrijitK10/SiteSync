@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'platform_utils.dart';
+
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // If you're going to use other Firebase services in the background, such as Firestore,
   // make sure you call `Firebase.initializeApp()` before using other Firebase services.
-  print('Handling a background message: ${message.messageId}');
+  debugPrint('Handling a background message: ${message.messageId}');
 }
 
 class NotificationService {
@@ -16,14 +18,18 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  FirebaseMessaging get _firebaseMessaging => FirebaseMessaging.instance;
   
   // Stream to listen for navigation routes when a notification is tapped
   final StreamController<String> _routeController = StreamController<String>.broadcast();
   Stream<String> get onRoute => _routeController.stream;
 
   Future<void> initialize() async {
+    if (isWindowsDesktop) {
+      return;
+    }
+
     // Background message handler isn't supported on web
     if (!kIsWeb) {
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -38,7 +44,7 @@ class NotificationService {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission');
+      debugPrint('User granted permission');
     }
 
     if (!kIsWeb) {
@@ -118,6 +124,10 @@ class NotificationService {
   }
 
   Future<String?> getToken() async {
+    if (isWindowsDesktop) {
+      return null;
+    }
+
     return await _firebaseMessaging.getToken(
       vapidKey: 'BJNt00XCDiEsjEznVjFLbqgDjwPU5m6c3MfydPidyy36FWeTPqSoUcEVSg4hIrVeIC526LPO9vOE2bYnN3jJ7AE',
     );

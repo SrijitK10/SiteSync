@@ -10,6 +10,7 @@ import 'firebase_options.dart';
 
 import 'services/keep_alive_service.dart';
 import 'services/notification_service.dart';
+import 'services/platform_utils.dart';
 import 'theme/app_theme.dart';
 import 'state/auth_provider.dart';
 import 'state/settings_provider.dart';
@@ -109,10 +110,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (!isWindowsDesktop) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Initialize NotificationService
-  await NotificationService().initialize();
+    await NotificationService().initialize();
+  }
 
   KeepAliveService.start();
   runApp(ProviderScope(child: RupayanApp()));
@@ -171,7 +175,9 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
     _routeSubscription = NotificationService().onRoute.listen((route) {
       ref.read(routerProvider).push(route);
     });
-    _initShareListener();
+    if (!isWindowsDesktop) {
+      _initShareListener();
+    }
   }
 
   void _initShareListener() {
