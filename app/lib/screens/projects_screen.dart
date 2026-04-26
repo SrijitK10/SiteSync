@@ -801,18 +801,18 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                     crossAxisSpacing: 16,
                     mainAxisExtent: 110,
                   ),
-                  itemCount: projects.length,
+                  itemCount: filteredProjects.length,
                   itemBuilder: (context, index) =>
-                      buildProjectCard(projects[index]),
+                      buildProjectCard(filteredProjects[index]),
                 );
               }
               return ListView.separated(
                 padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
-                itemCount: projects.length,
+                itemCount: filteredProjects.length,
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: 12),
                 itemBuilder: (context, index) =>
-                    buildProjectCard(projects[index]),
+                    buildProjectCard(filteredProjects[index]),
               );
             },
           );

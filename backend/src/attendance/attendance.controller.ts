@@ -18,7 +18,6 @@ export class AttendanceController {
   }
 
   @Get()
-  @UseInterceptors(CacheInterceptor)
   @Roles('admin', 'super_admin', 'site_manager')
   findAll(
     @Query('projectId') projectId: string, 

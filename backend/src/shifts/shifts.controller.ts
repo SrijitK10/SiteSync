@@ -18,7 +18,6 @@ export class ShiftsController {
 
   // Workers fetching their own shifts
   @Get('my')
-  @UseInterceptors(CacheInterceptor)
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findMyShifts(@Request() req: any) {
     return this.shiftsService.findAllByUser(req.user.userId);
@@ -26,7 +25,6 @@ export class ShiftsController {
 
   // Managers fetching shifts for a project
   @Get()
-  @UseInterceptors(CacheInterceptor)
   @Roles('admin', 'super_admin', 'site_manager')
   findAll(@Query('projectId') projectId: string) {
     if (projectId) {
