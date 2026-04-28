@@ -24,9 +24,10 @@ export class AttendanceController {
     @Query('range') range: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('contractorName') contractorName?: string,
   ) {
     if (!projectId) return [];
-    return this.attendanceService.findAllByProject(projectId, range, startDate, endDate);
+    return this.attendanceService.findAllByProject(projectId, range, startDate, endDate, contractorName);
   }
 
   @Delete(':id')

@@ -276,6 +276,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     String range, {
     String? startDate,
     String? endDate,
+    String? contractorName,
   }) async {
     setState(() => _isExporting = true);
 
@@ -283,6 +284,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       String url = '/attendance?projectId=${widget.projectId}&range=$range';
       if (range == 'custom' && startDate != null && endDate != null) {
         url += '&startDate=$startDate&endDate=$endDate';
+      }
+      if (contractorName != null) {
+        url += '&contractorName=${Uri.encodeComponent(contractorName)}';
       }
       final res = await apiClient.get(url);
       final List<dynamic> remoteRecords = List<dynamic>.from(res.data);
@@ -353,8 +357,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       final List<int>? fileBytes = excel.save();
 
       if (fileBytes != null) {
+        final prefix = contractorName != null ? contractorName.replaceAll(' ', '_') : 'All_Contractors';
         final fileName =
-            'Rupayan_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+            'Rupayan_${prefix}_${range}_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx';
         await exportFile(
           bytes: Uint8List.fromList(fileBytes),
           fileName: fileName,
@@ -389,7 +394,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     return null;
   }
 
-  Future<void> _showCustomDateRangePicker() async {
+  Future<void> _showCustomDateRangePicker({String? contractorName}) async {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2020),
@@ -409,7 +414,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
     if (picked != null) {
       final start = picked.start.toIso8601String().split('T')[0];
       final end = picked.end.toIso8601String().split('T')[0];
-      _fetchAndExportExcel('custom', startDate: start, endDate: end);
+      _fetchAndExportExcel('custom', startDate: start, endDate: end, contractorName: contractorName);
     }
   }
 
@@ -527,6 +532,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
   }
 
   void _showExportOptions(BuildContext context) {
+    String? exportContractor;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.background,
@@ -534,53 +541,101 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'Download Central Database Reports',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+        return StatefulBuilder(builder: (context, setModalState) {
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      'Download Central Database Reports',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: DropdownButtonFormField<String>(
+                      value: exportContractor,
+                      decoration: InputDecoration(
+                        labelText: 'FILTER BY CONTRACTOR',
+                        labelStyle: TextStyle(color: AppTheme.textSecondary),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.textSecondary),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppTheme.primary),
+                        ),
+                      ),
+                      dropdownColor: AppTheme.surface,
+                      style: TextStyle(color: AppTheme.textPrimary),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('All Contractors'),
+                        ),
+                        ..._contractors.map((contractor) {
+                          return DropdownMenuItem<String>(
+                            value: contractor['name'],
+                            child: Text(contractor['name']),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setModalState(() {
+                          exportContractor = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    leading: Icon(Icons.sync, color: AppTheme.accent),
+                    title: const Text('Export All Data (Live)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _fetchAndExportExcel('all', contractorName: exportContractor);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.today, color: AppTheme.accent),
+                    title: const Text('Export Daily Roster'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _fetchAndExportExcel('daily', contractorName: exportContractor);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.date_range, color: AppTheme.accent),
+                    title: const Text('Export Weekly Roster'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _fetchAndExportExcel('weekly', contractorName: exportContractor);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.calendar_month, color: AppTheme.accent),
+                    title: const Text('Export Monthly Complete Tracker'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _fetchAndExportExcel('monthly', contractorName: exportContractor);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.tune, color: AppTheme.primary),
+                    title: const Text('Export Custom Date Range'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showCustomDateRangePicker(contractorName: exportContractor);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
-              ListTile(
-                leading: Icon(Icons.today, color: AppTheme.accent),
-                title: const Text('Export Daily Roster'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _fetchAndExportExcel('daily');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.date_range, color: AppTheme.accent),
-                title: const Text('Export Weekly Roster'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _fetchAndExportExcel('weekly');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.calendar_month, color: AppTheme.accent),
-                title: const Text('Export Monthly Complete Tracker'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _fetchAndExportExcel('monthly');
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.tune, color: AppTheme.primary),
-                title: const Text('Export Custom Date Range'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showCustomDateRangePicker();
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
+            ),
+          );
+        });
       },
     );
   }

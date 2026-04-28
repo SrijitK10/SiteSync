@@ -26,10 +26,14 @@ export class AttendanceService {
     await this.attendanceRepository.insert(formattedRecords);
   }
 
-  async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string): Promise<Attendance[]> {
+  async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string, contractorName?: string): Promise<Attendance[]> {
     const whereClause: any = { project: { id: projectId } };
     
-    if (range) {
+    if (contractorName) {
+      whereClause.contractor_name = contractorName;
+    }
+
+    if (range && range !== 'all') {
       if (range === 'custom' && startDate && endDate) {
         whereClause.date = Between(startDate, endDate);
       } else {
