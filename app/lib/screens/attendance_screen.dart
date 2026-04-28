@@ -782,17 +782,91 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
               ),
             ),
           ),
-        Expanded(
-          child: _records.isEmpty
-              ? Center(
-                  child: Text(
-                    'No attendance recorded yet today.',
-                    style: AppTheme.body.copyWith(
-                      color: AppTheme.textSecondary,
+        if (desktop)
+          Expanded(
+            child: _records.isEmpty
+                ? Center(
+                    child: Text(
+                      'No attendance recorded yet today.',
+                      style: AppTheme.body.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _records.length,
+                    itemBuilder: (context, index) {
+                      final record = _records[index];
+                      return Card(
+                        color: AppTheme.surface,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.engineering,
+                            color: AppTheme.accent,
+                          ),
+                          title: Text(
+                            record['contractor_name']!,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Labourers: ${record['labourers_count'] ?? 0} • Mistris: ${record['mistris_count'] ?? 0} • Maati Kata: ${record['maati_kata_count'] ?? 0} • Santras: ${record['santras_count'] ?? 0}',
+                              ),
+                              if (record['work_description'] != null &&
+                                  record['work_description'].toString().isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    record['work_description'],
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit, color: AppTheme.primary),
+                                onPressed: () => _editRecordLocal(index),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.redAccent,
+                                ),
+                                onPressed: () => _removeRecordLocal(index),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          )
+        else
+          _records.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Text(
+                      'No attendance recorded yet today.',
+                      style: AppTheme.body.copyWith(
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ),
                 )
               : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   itemCount: _records.length,
                   itemBuilder: (context, index) {
                     final record = _records[index];
@@ -849,7 +923,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     );
                   },
                 ),
-        ),
         const SizedBox(height: 16),
         _isSyncing
             ? const Center(child: CircularProgressIndicator())
@@ -931,7 +1004,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
       // We remove the AppBar completely because it's tightly embedded inside the ProjectDashboardScreen IndexedStack natively!
       body: _isLoadingProject
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -986,11 +1059,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                       ),
                     ),
                   const SizedBox(height: 8),
-                  Expanded(
-                    child: _buildAttendanceForm(desktop: false),
-                  ),
+                  _buildAttendanceForm(desktop: false),
                   const SizedBox(height: 16),
-                  Expanded(child: _buildRosterPanel(desktop: false)),
+                  _buildRosterPanel(desktop: false),
                 ],
               ),
             ),
