@@ -111,11 +111,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!isWindowsDesktop) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-
-    await NotificationService().initialize();
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      await NotificationService().initialize();
+    } catch (e) {
+      debugPrint('Firebase initialization error: $e');
+    }
   }
 
   KeepAliveService.start();

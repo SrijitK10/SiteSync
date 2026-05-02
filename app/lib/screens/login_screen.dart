@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:go_router/go_router.dart';
@@ -30,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   int? _resendToken;
   int _resendCountdown = 0;
   bool _preferRecaptcha = false;
+  fb.ConfirmationResult? _webConfirmationResult;
 
   // Email + Password (iOS)
   final _emailController = TextEditingController();
@@ -52,54 +54,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await PhoneAuthService.verifyPhoneNumber(
-        phoneNumber: fullPhone,
-        preferRecaptcha: _preferRecaptcha,
-        verificationCompleted: (fb.PhoneAuthCredential credential) async {
-          await _signInWithCredential(credential);
-        },
-        verificationFailed:
-            (
-              fb.FirebaseAuthException e, {
-              required bool usedRecaptchaFallback,
-            }) {
-              if (mounted) {
-                setState(() => _isLoading = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      usedRecaptchaFallback
-                          ? 'Verification failed even after retrying with browser verification: ${e.message}'
-                          : 'Verification failed: ${e.message}',
+      if (kIsWeb) {
+        final confirmationResult = await fb.FirebaseAuth.instance.signInWithPhoneNumber(fullPhone);
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _otpSent = true;
+            _webConfirmationResult = confirmationResult;
+            _resendCountdown = 30;
+          });
+          _startResendTimer();
+        }
+      } else {
+        await PhoneAuthService.verifyPhoneNumber(
+          phoneNumber: fullPhone,
+          preferRecaptcha: _preferRecaptcha,
+          verificationCompleted: (fb.PhoneAuthCredential credential) async {
+            await _signInWithCredential(credential);
+          },
+          verificationFailed:
+              (
+                fb.FirebaseAuthException e, {
+                required bool usedRecaptchaFallback,
+              }) {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        usedRecaptchaFallback
+                            ? 'Verification failed even after retrying with browser verification: ${e.message}'
+                            : 'Verification failed: ${e.message}',
+                      ),
                     ),
-                  ),
-                );
-              }
-            },
-        codeSent: (String verificationId, int? resendToken) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _otpSent = true;
-              _verificationId = verificationId;
-              _resendToken = resendToken;
-              _resendCountdown = 30;
-            });
-            _startResendTimer();
-          }
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          _verificationId = verificationId;
-        },
-        forceResendingToken: _resendToken,
-        onRecaptchaFallbackEnabled: () {
-          if (mounted) {
-            setState(() => _preferRecaptcha = true);
-          } else {
-            _preferRecaptcha = true;
-          }
-        },
-      );
+                  );
+                }
+              },
+          codeSent: (String verificationId, int? resendToken) {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _otpSent = true;
+                _verificationId = verificationId;
+                _resendToken = resendToken;
+                _resendCountdown = 30;
+              });
+              _startResendTimer();
+            }
+          },
+          codeAutoRetrievalTimeout: (String verificationId) {
+            _verificationId = verificationId;
+          },
+          forceResendingToken: _resendToken,
+          onRecaptchaFallbackEnabled: () {
+            if (mounted) {
+              setState(() => _preferRecaptcha = true);
+            } else {
+              _preferRecaptcha = true;
+            }
+          },
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -132,11 +147,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final credential = fb.PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: otp,
-      );
-      await _signInWithCredential(credential);
+      if (kIsWeb && _webConfirmationResult != null) {
+        final userCredential = await _webConfirmationResult!.confirm(otp);
+        final idToken = await userCredential.user?.getIdToken();
+        if (idToken != null && mounted) {
+          await ref.read(authProvider.notifier).loginWithFirebaseToken(idToken);
+        } else if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      } else {
+        final credential = fb.PhoneAuthProvider.credential(
+          verificationId: _verificationId!,
+          smsCode: otp,
+        );
+        await _signInWithCredential(credential);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);

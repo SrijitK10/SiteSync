@@ -30,96 +30,100 @@ class NotificationService {
       return;
     }
 
-    // Background message handler isn't supported on web
-    if (!kIsWeb) {
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    }
+    try {
+      // Background message handler isn't supported on web
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      }
 
-    // Request permissions (primarily for iOS & Web)
-    NotificationSettings settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      debugPrint('User granted permission');
-    }
-
-    if (!kIsWeb) {
-      // Initialize local notifications for foreground display
-      const AndroidInitializationSettings initializationSettingsAndroid =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
-      const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
-      );
-      const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsIOS,
+      // Request permissions (primarily for iOS & Web)
+      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
       );
 
-      await _localNotifications.initialize(
-        initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-          if (response.payload != null) {
-            _routeController.add(response.payload!);
-          }
-        },
-      );
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        debugPrint('User granted permission');
+      }
 
-      // Create a high importance channel for Android
-      const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'high_importance_channel', // id
-        'High Importance Notifications', // title
-        description: 'This channel is used for important notifications.', // description
-        importance: Importance.max,
-      );
-
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
-    }
-
-    // Foreground message listener
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      final notification = message.notification;
-      final android = message.notification?.android;
-
-      if (notification != null && android != null) {
-        _localNotifications.show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'high_importance_channel',
-              'High Importance Notifications',
-              icon: '@mipmap/ic_launcher',
-            ),
-            iOS: DarwinNotificationDetails(),
-          ),
-          payload: message.data['route'], // Deep link route from backend
+      if (!kIsWeb) {
+        // Initialize local notifications for foreground display
+        const AndroidInitializationSettings initializationSettingsAndroid =
+            AndroidInitializationSettings('@mipmap/ic_launcher');
+        const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
         );
-      }
-    });
+        const InitializationSettings initializationSettings = InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsIOS,
+        );
 
-    // When the app is opened from a background state by tapping a notification
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      if (message.data['route'] != null) {
-        _routeController.add(message.data['route']);
-      }
-    });
+        await _localNotifications.initialize(
+          initializationSettings,
+          onDidReceiveNotificationResponse: (NotificationResponse response) {
+            if (response.payload != null) {
+              _routeController.add(response.payload!);
+            }
+          },
+        );
 
-    // If the app is launched from terminated state by a notification
-    final RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null && initialMessage.data['route'] != null) {
-      // Small delay to let the app initialize before routing
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _routeController.add(initialMessage.data['route']);
+        // Create a high importance channel for Android
+        const AndroidNotificationChannel channel = AndroidNotificationChannel(
+          'high_importance_channel', // id
+          'High Importance Notifications', // title
+          description: 'This channel is used for important notifications.', // description
+          importance: Importance.max,
+        );
+
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(channel);
+      }
+
+      // Foreground message listener
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        final notification = message.notification;
+        final android = message.notification?.android;
+
+        if (notification != null && android != null) {
+          _localNotifications.show(
+            notification.hashCode,
+            notification.title,
+            notification.body,
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'high_importance_channel',
+                'High Importance Notifications',
+                icon: '@mipmap/ic_launcher',
+              ),
+              iOS: DarwinNotificationDetails(),
+            ),
+            payload: message.data['route'], // Deep link route from backend
+          );
+        }
       });
+
+      // When the app is opened from a background state by tapping a notification
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        if (message.data['route'] != null) {
+          _routeController.add(message.data['route']);
+        }
+      });
+
+      // If the app is launched from terminated state by a notification
+      final RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null && initialMessage.data['route'] != null) {
+        // Small delay to let the app initialize before routing
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _routeController.add(initialMessage.data['route']);
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to initialize notifications: $e');
     }
   }
 
