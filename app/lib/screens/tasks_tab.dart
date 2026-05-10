@@ -47,10 +47,12 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       final tasksResponse = responses[1];
       if (mounted) {
         setState(() {
-          _flats = List<dynamic>.from(flatsResponse.data as List<dynamic>);
-          _projectTasks = List<dynamic>.from(
-            tasksResponse.data as List<dynamic>,
-          );
+          _flats = flatsResponse.data is List
+              ? List<dynamic>.from(flatsResponse.data)
+              : [];
+          _projectTasks = tasksResponse.data is List
+              ? List<dynamic>.from(tasksResponse.data)
+              : [];
           _isLoading = false;
         });
       }
@@ -364,7 +366,9 @@ class _TasksTabState extends ConsumerState<TasksTab> {
     final l = AppLocalizations.of(context)!;
     final unreadTracker = ref.read(unreadTrackerProvider.notifier);
     final isWindows = isWindowsDesktop;
-    final completedFlats = _flats.where((flat) => flat['is_completed'] == true).length;
+    final completedFlats = _flats
+        .where((flat) => flat['is_completed'] == true)
+        .length;
     final pendingFlats = _flats.length - completedFlats;
 
     final tasksByFlatId = <String, List<Map<String, dynamic>>>{};
@@ -387,7 +391,9 @@ class _TasksTabState extends ConsumerState<TasksTab> {
           actions: [
             if (!isViewer)
               OutlinedButton.icon(
-                onPressed: _isExporting ? null : () => _showExportOptions(context),
+                onPressed: _isExporting
+                    ? null
+                    : () => _showExportOptions(context),
                 icon: const Icon(Icons.download_rounded),
                 label: Text(l.downloadReports),
               ),
@@ -530,61 +536,73 @@ class _TasksTabState extends ConsumerState<TasksTab> {
             ],
             const SizedBox(height: 8),
             Expanded(
-              child: _flats.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.apartment,
-                            size: 48,
-                            color: AppTheme.textSecondary,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            canEdit ? l.noFlatsYet : l.noFlatsAdded,
-                            textAlign: TextAlign.center,
-                            style: AppTheme.body.copyWith(
-                              color: AppTheme.textSecondary,
+              child: RefreshIndicator(
+                onRefresh: _refreshData,
+                child: _flats.isEmpty
+                    ? CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.apartment,
+                                    size: 48,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    canEdit ? l.noFlatsYet : l.noFlatsAdded,
+                                    textAlign: TextAlign.center,
+                                    style: AppTheme.body.copyWith(
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
+                      )
+                    : GridView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 16),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              childAspectRatio: 1.0,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                            ),
+                        itemCount: _flats.length,
+                        itemBuilder: (context, index) {
+                          final flat = Map<String, dynamic>.from(_flats[index]);
+                          final flatId = flat['id']?.toString() ?? '';
+                          final unreadCount =
+                              currentUser == null || flatId.isEmpty
+                              ? 0
+                              : unreadTracker.unseenFlatItemCount(
+                                  userId: currentUser.id,
+                                  projectId: widget.projectId,
+                                  flatId: flatId,
+                                  tasks: tasksByFlatId[flatId] ?? const [],
+                                );
+                          final bool isCompleted = flat['is_completed'] == true;
+                          return _FlatCard(
+                            flat: flat,
+                            isCompleted: isCompleted,
+                            unreadCount: unreadCount,
+                            canEdit: canEdit,
+                            onTap: () => _openFlat(flat),
+                            onToggleCompleted: () => _toggleFlatCompleted(flat),
+                            onDelete: () => _deleteFlat(flat),
+                          );
+                        },
                       ),
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            childAspectRatio: 1.0,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                      itemCount: _flats.length,
-                      itemBuilder: (context, index) {
-                        final flat = Map<String, dynamic>.from(_flats[index]);
-                        final flatId = flat['id']?.toString() ?? '';
-                        final unreadCount =
-                            currentUser == null || flatId.isEmpty
-                            ? 0
-                            : unreadTracker.unseenFlatItemCount(
-                                userId: currentUser.id,
-                                projectId: widget.projectId,
-                                flatId: flatId,
-                                tasks: tasksByFlatId[flatId] ?? const [],
-                              );
-                        final bool isCompleted = flat['is_completed'] == true;
-                        return _FlatCard(
-                          flat: flat,
-                          isCompleted: isCompleted,
-                          unreadCount: unreadCount,
-                          canEdit: canEdit,
-                          onTap: () => _openFlat(flat),
-                          onToggleCompleted: () => _toggleFlatCompleted(flat),
-                          onDelete: () => _deleteFlat(flat),
-                        );
-                      },
-                    ),
+              ),
             ),
           ],
         ),
@@ -713,4 +731,3 @@ class _FlatCard extends StatelessWidget {
     );
   }
 }
-

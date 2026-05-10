@@ -50,7 +50,7 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
   Future<void> _fetchImages() async {
     try {
       final res = await apiClient.get('/projects/${widget.projectId}/images');
-      final images = List<dynamic>.from(res.data as List<dynamic>);
+      final images = res.data is List ? List<dynamic>.from(res.data) : [];
       if (mounted) {
         setState(() {
           _images = images;
@@ -316,26 +316,38 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
 
     Widget buildFeed({required bool desktop}) {
       if (_images.isEmpty) {
-        final emptyBody = Center(
-          child: Text(
-            'No progress images recorded.',
-            style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
-          ),
+        final emptyBody = CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Text(
+                  'No progress images recorded.',
+                  style: AppTheme.body.copyWith(color: AppTheme.textSecondary),
+                ),
+              ),
+            ),
+          ],
         );
-        return desktop ? DesktopSurfaceCard(child: emptyBody) : emptyBody;
+        return desktop
+            ? DesktopSurfaceCard(child: emptyBody)
+            : RefreshIndicator(onRefresh: _fetchImages, child: emptyBody);
       }
 
       return RefreshIndicator(
         onRefresh: _fetchImages,
         child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(16, 16, 16, desktop ? 16 : 80),
           itemCount: posts.length,
           itemBuilder: (context, groupIndex) {
             final groupImages = posts[groupIndex];
             final rawDate = groupImages.first['date'] ?? 'Unknown';
             final dateFormatted = rawDate != 'Unknown' && rawDate.isNotEmpty
-                ? DateFormat('MMM dd, yyyy  h:mm a')
-                    .format(DateTime.parse(rawDate).toLocal())
+                ? DateFormat(
+                    'MMM dd, yyyy  h:mm a',
+                  ).format(DateTime.parse(rawDate).toLocal())
                 : 'Unknown Date';
             final uploaderName =
                 groupImages.first['uploadedBy']?['name'] ?? 'Unknown User';
@@ -387,17 +399,20 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
                             right: imgIndex < groupImages.length - 1 ? 10 : 0,
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(desktop ? 16 : 10),
+                            borderRadius: BorderRadius.circular(
+                              desktop ? 16 : 10,
+                            ),
                             child: Image.network(
                               img['url'],
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                color: Colors.grey[200],
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
-                                ),
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Colors.grey[200],
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                             ),
                           ),
                         ),
@@ -414,9 +429,7 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
                 const SizedBox(height: 4),
                 Text(
                   'By $uploaderName',
-                  style: AppTheme.label.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
+                  style: AppTheme.label.copyWith(color: AppTheme.textSecondary),
                 ),
               ],
             );
