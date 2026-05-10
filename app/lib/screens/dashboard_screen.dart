@@ -51,7 +51,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
 
     try {
-      final res = await apiClient.get('/tasks/all');
+      final res = await apiClient.get('/tasks/global/all');
       final data = res.data;
       if (data is List) {
         _processData(List<Map<String, dynamic>>.from(data));
@@ -208,7 +208,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
             subtitle: Padding(
-              padding: const EdgeInsets.top(6),
+              padding: const EdgeInsets.only(top: 6),
               child: Row(
                 children: [
                   Icon(Icons.apartment_outlined, size: 14, color: AppTheme.textSecondary),
