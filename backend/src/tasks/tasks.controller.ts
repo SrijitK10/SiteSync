@@ -57,6 +57,16 @@ export class TasksController {
     return this.tasksService.findAllByProject(projectId, range, startDate, endDate, flatId);
   }
 
+  @Get('all')
+  @Roles('admin', 'super_admin', 'site_manager')
+  findAllGlobal(
+    @Query('range') range?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.tasksService.findAllGlobal(range, startDate, endDate);
+  }
+
   @Get(':id')
   @Roles('admin', 'super_admin', 'site_manager', 'viewer')
   findOne(@Param('id') id: string) {

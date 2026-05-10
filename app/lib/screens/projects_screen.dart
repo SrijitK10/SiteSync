@@ -520,12 +520,18 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         titleSpacing: isWindowsDesktop ? 24 : null,
         title: Image.asset('assets/images/rppl.png', height: 56),
         actions: [
-          if (canManageProjects)
+          if (canManageProjects) ...[
+            IconButton(
+              icon: const Icon(Icons.analytics_outlined),
+              tooltip: 'Operations Dashboard',
+              onPressed: () => context.push('/dashboard'),
+            ),
             IconButton(
               icon: const Icon(Icons.people),
               tooltip: l.manageUsers,
               onPressed: () => context.push('/users'),
             ),
+          ],
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l.refresh,

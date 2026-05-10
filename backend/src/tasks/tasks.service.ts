@@ -118,6 +118,32 @@ export class TasksService {
     });
   }
 
+  async findAllGlobal(range?: string, startDate?: string, endDate?: string): Promise<Task[]> {
+    const whereClause: any = {};
+
+    if (range) {
+      if (range === 'custom' && startDate && endDate) {
+        whereClause.created_at = Between(startDate, endDate);
+      } else {
+        const now = new Date();
+        const ms = now.getTime();
+        if (range === 'daily') {
+          whereClause.created_at = MoreThanOrEqual(new Date(ms - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        } else if (range === 'weekly') {
+          whereClause.created_at = MoreThanOrEqual(new Date(ms - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        } else if (range === 'monthly') {
+          whereClause.created_at = MoreThanOrEqual(new Date(ms - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        }
+      }
+    }
+
+    return this.tasksRepository.find({
+      where: whereClause,
+      relations: ['project', 'assignee', 'flat', 'createdBy'],
+      order: { created_at: 'DESC' },
+    });
+  }
+
   async findOne(id: string): Promise<Task> {
     const task = await this.tasksRepository.findOne({
       where: { id },

@@ -23,6 +23,7 @@ import 'screens/user_management_screen.dart';
 import 'screens/projects_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/share_to_task_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this.ref) {
@@ -87,6 +88,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/projects',
         builder: (context, state) => const ProjectsScreen(),
+      ),
+      GoRoute(
+        path: '/dashboard',
+        builder: (context, state) => const DashboardScreen(),
+        redirect: (context, state) {
+          final user = ref.read(authProvider).currentUser;
+          if (user == null) return '/login';
+          if (!user.role.canEdit) return '/projects';
+          return null;
+        },
       ),
       GoRoute(
         path: '/settings',
