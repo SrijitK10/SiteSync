@@ -129,18 +129,120 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final difference = now.difference(dt);
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  }
 
-    if (difference.inDays == 0 && now.day == dt.day) {
-      return 'Today, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1 || (difference.inDays == 0 && now.day != dt.day)) {
-      return 'Yesterday, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-    }
+  Widget _buildActivityTile(BuildContext context, ActivityEvent event) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color cardColor = isDark ? const Color(0xFF1E1E2C) : Colors.white;
+    final Color accentColor = event.isCompletion ? AppTheme.success : AppTheme.primary;
+    final String timeStr = '${event.timestamp.hour.toString().padLeft(2, '0')}:${event.timestamp.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon Badge
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                event.isCompletion ? Icons.check_circle_rounded : Icons.add_task_rounded,
+                color: accentColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      style: AppTheme.body.copyWith(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '${event.userName} ',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: event.isCompletion ? 'completed ' : 'added ',
+                        ),
+                        TextSpan(
+                          text: event.taskTitle,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        const WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                        ),
+                        TextSpan(text: ' Flat ${event.flatNumber}  •  '),
+                        const WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Icon(Icons.folder_outlined, size: 14, color: AppTheme.textSecondary),
+                        ),
+                        TextSpan(text: ' ${event.projectName}'),
+                      ],
+                    ),
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Timestamp
+            Text(
+              timeStr,
+              style: AppTheme.body.copyWith(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildActivityLog() {
@@ -148,95 +250,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return const Center(child: Text('No recent activity.'));
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _activityLog.length,
-      itemBuilder: (context, index) {
-        final event = _activityLog[index];
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final Color cardColor = Theme.of(context).colorScheme.surface;
-        final Color accentColor = event.isCompletion ? AppTheme.success : AppTheme.primary;
+    // Group events by formatted date (dd/mm/yyyy)
+    final Map<String, List<ActivityEvent>> groupedEvents = {};
+    for (var event in _activityLog) {
+      final dateStr = _formatDate(event.timestamp);
+      groupedEvents.putIfAbsent(dateStr, () => []).add(event);
+    }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: accentColor.withValues(alpha: 0.2),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: accentColor.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+    final List<Widget> listItems = [];
+    
+    for (final dateStr in groupedEvents.keys) {
+      // Date Header
+      listItems.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 12, left: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                dateStr,
+                style: AppTheme.heading.copyWith(
+                  fontSize: 15,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
               ),
             ],
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: CircleAvatar(
-              backgroundColor: accentColor.withValues(alpha: 0.15),
-              child: Icon(
-                event.isCompletion ? Icons.check_circle_outline : Icons.add_task_outlined,
-                color: accentColor,
-              ),
-            ),
-            title: RichText(
-              text: TextSpan(
-                style: AppTheme.body.copyWith(
-                  color: isDark ? Colors.white : Colors.black87,
-                  fontSize: 15,
-                ),
-                children: [
-                  TextSpan(
-                    text: '${event.userName} ',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  TextSpan(
-                    text: event.isCompletion ? 'completed ' : 'added ',
-                  ),
-                  TextSpan(
-                    text: event.taskTitle,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: accentColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Row(
-                children: [
-                  Icon(Icons.apartment_outlined, size: 14, color: AppTheme.textSecondary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Flat ${event.flatNumber} • ${event.projectName}',
-                      style: AppTheme.body.copyWith(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            trailing: Text(
-              _formatDate(event.timestamp),
-              style: AppTheme.body.copyWith(
-                color: AppTheme.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      );
+      
+      // Events for this date
+      for (final event in groupedEvents[dateStr]!) {
+        listItems.add(_buildActivityTile(context, event));
+      }
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: listItems.length,
+      itemBuilder: (context, index) => listItems[index],
     );
   }
 
@@ -246,6 +308,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     final projectNames = _pendingTasksByProject.keys.toList()..sort();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -260,27 +323,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 8, bottom: 12),
+                padding: const EdgeInsets.only(left: 4, bottom: 16),
                 child: Row(
                   children: [
-                    Icon(Icons.folder_open_rounded, color: AppTheme.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      projectName,
-                      style: AppTheme.heading.copyWith(fontSize: 18),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.business_rounded, color: AppTheme.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        projectName,
+                        style: AppTheme.heading.copyWith(fontSize: 18),
+                      ),
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: AppTheme.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         '${tasks.length} pending',
                         style: TextStyle(
                           color: AppTheme.warning,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -298,36 +369,66 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   } catch (_) {}
                 }
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
+                      width: 1,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.pending_actions_rounded, color: AppTheme.warning, size: 20),
+                    ),
                     title: Text(
                       taskTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                     ),
-                    subtitle: Text(
-                      'Flat $flatNumber${dateStr.isNotEmpty ? ' • Added $dateStr' : ''}',
-                      style: AppTheme.body.copyWith(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            const WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                            ),
+                            TextSpan(text: ' Flat $flatNumber'),
+                            if (dateStr.isNotEmpty) ...[
+                              const TextSpan(text: '  •  '),
+                              const WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textSecondary),
+                              ),
+                              TextSpan(text: ' $dateStr'),
+                            ]
+                          ],
+                        ),
+                        style: AppTheme.body.copyWith(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                    trailing: Icon(
-                      Icons.pending_actions_rounded,
-                      color: AppTheme.warning,
-                      size: 20,
                     ),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         );

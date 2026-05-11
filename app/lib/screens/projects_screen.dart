@@ -506,6 +506,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final projectsAsync = ref.watch(projectsProvider);
     final user = ref.watch(authProvider).currentUser;
     final canManageProjects = user != null && user.role.isAdmin;
+    final canViewDashboard = user != null && user.role.canEdit;
     final l = AppLocalizations.of(context)!;
     final showPasswordActions = usesPasswordAuth;
 
@@ -520,18 +521,18 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         titleSpacing: isWindowsDesktop ? 24 : null,
         title: Image.asset('assets/images/rppl.png', height: 56),
         actions: [
-          if (canManageProjects) ...[
+          if (canViewDashboard)
             IconButton(
               icon: const Icon(Icons.analytics_outlined),
               tooltip: 'Operations Dashboard',
               onPressed: () => context.push('/dashboard'),
             ),
+          if (canManageProjects)
             IconButton(
               icon: const Icon(Icons.people),
               tooltip: l.manageUsers,
               onPressed: () => context.push('/users'),
             ),
-          ],
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l.refresh,
