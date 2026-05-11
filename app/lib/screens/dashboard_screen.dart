@@ -208,12 +208,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Text.rich(
                     TextSpan(
                       children: [
-                        const WidgetSpan(
+                        WidgetSpan(
                           alignment: PlaceholderAlignment.middle,
                           child: Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
                         ),
                         TextSpan(text: ' Flat ${event.flatNumber}  •  '),
-                        const WidgetSpan(
+                        WidgetSpan(
                           alignment: PlaceholderAlignment.middle,
                           child: Icon(Icons.folder_outlined, size: 14, color: AppTheme.textSecondary),
                         ),
@@ -405,14 +405,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: Text.rich(
                         TextSpan(
                           children: [
-                            const WidgetSpan(
+                            WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
                               child: Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
                             ),
                             TextSpan(text: ' Flat $flatNumber'),
                             if (dateStr.isNotEmpty) ...[
                               const TextSpan(text: '  •  '),
-                              const WidgetSpan(
+                              WidgetSpan(
                                 alignment: PlaceholderAlignment.middle,
                                 child: Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textSecondary),
                               ),
