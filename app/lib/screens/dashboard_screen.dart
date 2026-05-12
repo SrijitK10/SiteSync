@@ -77,6 +77,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       final status = task['status']?.toString() ?? 'todo';
       final createdBy = task['createdBy']?['name']?.toString() ?? 'Unknown User';
       final assignee = task['assignee']?['name']?.toString() ?? 'Unknown User';
+      final completedBy = task['completedBy']?['name']?.toString() ?? assignee;
 
       // 1. Created Event
       if (task['created_at'] != null) {
@@ -101,7 +102,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           log.add(ActivityEvent(
             timestamp: completedAt,
             action: 'Task Completed',
-            userName: assignee, // Usually the assignee completes it
+            userName: completedBy,
             taskTitle: taskTitle,
             projectName: projectName,
             flatNumber: flatNumber,

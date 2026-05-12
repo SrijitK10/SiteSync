@@ -1,0 +1,81 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../services/platform_utils.dart';
+import '../state/auth_provider.dart';
+
+class MainShellScreen extends ConsumerWidget {
+  final Widget child;
+
+  const MainShellScreen({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final location = GoRouterState.of(context).uri.path;
+    final int currentIndex = location.startsWith('/dashboard') ? 1 : 0;
+
+    final user = ref.watch(authProvider).currentUser;
+    final canViewDashboard = user != null && user.role.canEdit;
+
+    // If the user doesn't have permission, they only see the projects screen
+    // so we don't need a bottom navigation bar.
+    if (!canViewDashboard) {
+      return child;
+    }
+
+    if (isWindowsDesktop || MediaQuery.of(context).size.width > 800) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) {
+                if (index == 0) context.go('/projects');
+                if (index == 1) context.go('/dashboard');
+              },
+              labelType: NavigationRailLabelType.all,
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.folder_outlined),
+                  selectedIcon: Icon(Icons.folder),
+                  label: Text('Projects'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.dashboard_outlined),
+                  selectedIcon: Icon(Icons.dashboard),
+                  label: Text('Dashboard'),
+                ),
+              ],
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(child: child),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: currentIndex,
+        onTap: (index) {
+          if (index == 0 && currentIndex != 0) context.go('/projects');
+          if (index == 1 && currentIndex != 1) context.go('/dashboard');
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_outlined),
+            activeIcon: Icon(Icons.folder),
+            label: 'Projects',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+        ],
+      ),
+    );
+  }
+}

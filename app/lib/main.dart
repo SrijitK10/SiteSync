@@ -24,6 +24,9 @@ import 'screens/projects_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/share_to_task_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/main_shell_screen.dart';
+
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this.ref) {
@@ -85,19 +88,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           return null;
         },
       ),
-      GoRoute(
-        path: '/projects',
-        builder: (context, state) => const ProjectsScreen(),
-      ),
-      GoRoute(
-        path: '/dashboard',
-        builder: (context, state) => const DashboardScreen(),
-        redirect: (context, state) {
-          final user = ref.read(authProvider).currentUser;
-          if (user == null) return '/login';
-          if (!user.role.canEdit) return '/projects';
-          return null;
-        },
+      ShellRoute(
+        navigatorKey: _shellNavigatorKey,
+        builder: (context, state, child) => MainShellScreen(child: child),
+        routes: [
+          GoRoute(
+            path: '/projects',
+            builder: (context, state) => const ProjectsScreen(),
+          ),
+          GoRoute(
+            path: '/dashboard',
+            builder: (context, state) => const DashboardScreen(),
+            redirect: (context, state) {
+              final user = ref.read(authProvider).currentUser;
+              if (user == null) return '/login';
+              if (!user.role.canEdit) return '/projects';
+              return null;
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/settings',
@@ -162,8 +171,8 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
 
     // Style the system navigation bar to blend with the app
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      systemNavigationBarColor: AppTheme.surface,
-      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarColor: brightness == Brightness.dark ? Colors.black : Colors.white,
+      systemNavigationBarDividerColor: brightness == Brightness.dark ? Colors.black : Colors.white,
       systemNavigationBarIconBrightness:
           brightness == Brightness.dark ? Brightness.light : Brightness.dark,
     ));

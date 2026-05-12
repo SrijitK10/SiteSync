@@ -113,7 +113,7 @@ export class TasksService {
 
     return this.tasksRepository.find({
       where: whereClause,
-      relations: ['assignee', 'flat', 'createdBy'],
+      relations: ['assignee', 'flat', 'createdBy', 'completedBy'],
       order: { created_at: 'DESC' },
     });
   }
@@ -139,7 +139,7 @@ export class TasksService {
 
     return this.tasksRepository.find({
       where: whereClause,
-      relations: ['project', 'assignee', 'flat', 'createdBy'],
+      relations: ['project', 'assignee', 'flat', 'createdBy', 'completedBy'],
       order: { created_at: 'DESC' },
     });
   }
@@ -147,7 +147,7 @@ export class TasksService {
   async findOne(id: string): Promise<Task> {
     const task = await this.tasksRepository.findOne({
       where: { id },
-      relations: ['assignee', 'project', 'flat', 'createdBy'],
+      relations: ['assignee', 'project', 'flat', 'createdBy', 'completedBy'],
     });
     if (!task) throw new NotFoundException('Task not found');
     return task;
@@ -160,8 +160,12 @@ export class TasksService {
     // Natively intercept completion bounds locking the Time securely
     if (updateTaskDto.status === 'completed') {
       task.completed_at = new Date().toISOString().split('T')[0] as any;
+      if (userId) {
+        task.completedBy = { id: userId } as any;
+      }
     } else if (updateTaskDto.status === 'todo' || updateTaskDto.status === 'in_progress') {
       task.completed_at = null as any;
+      task.completedBy = null as any;
     }
 
     if (updateTaskDto.userId) {
