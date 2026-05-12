@@ -190,28 +190,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Flat ${event.flatNumber}  •  ',
+                        style: AppTheme.body.copyWith(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
                         ),
-                        TextSpan(text: ' Flat ${event.flatNumber}  •  '),
-                        WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: Icon(Icons.folder_outlined, size: 14, color: AppTheme.textSecondary),
+                      ),
+                      Icon(Icons.folder_outlined, size: 14, color: AppTheme.textSecondary),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          event.projectName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTheme.body.copyWith(
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
-                        TextSpan(text: ' ${event.projectName}'),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTheme.body.copyWith(
-                      color: AppTheme.textSecondary,
-                      fontSize: 13,
-                      height: 1.5,
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -300,7 +304,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 16),
+                padding: const EdgeInsets.only(left: 16, bottom: 16),
                 child: Row(
                   children: [
                     Expanded(
@@ -355,43 +359,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
                   ),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warning.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.pending_actions_rounded, color: AppTheme.warning, size: 20),
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     title: Text(
                       taskTitle,
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                     ),
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              child: Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Flat $flatNumber',
+                            style: AppTheme.body.copyWith(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
                             ),
-                            TextSpan(text: ' Flat $flatNumber'),
-                            if (dateStr.isNotEmpty) ...[
-                              const TextSpan(text: '  •  '),
-                              WidgetSpan(
-                                alignment: PlaceholderAlignment.middle,
-                                child: Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textSecondary),
+                          ),
+                          if (dateStr.isNotEmpty) ...[
+                            Text(
+                              '  •  ',
+                              style: AppTheme.body.copyWith(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13,
                               ),
-                              TextSpan(text: ' $dateStr'),
-                            ]
+                            ),
+                            Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              dateStr,
+                              style: AppTheme.body.copyWith(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
-                        ),
-                        style: AppTheme.body.copyWith(
-                          color: AppTheme.textSecondary,
-                          fontSize: 13,
-                        ),
+                        ],
                       ),
                     ),
                   ),

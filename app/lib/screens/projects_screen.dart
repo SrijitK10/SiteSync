@@ -523,7 +523,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         actions: [
           if (canViewDashboard)
             IconButton(
-              icon: const Icon(Icons.analytics_outlined),
+              icon: const Icon(Icons.dashboard_outlined),
               tooltip: 'Operations Dashboard',
               onPressed: () => context.push('/dashboard'),
             ),
