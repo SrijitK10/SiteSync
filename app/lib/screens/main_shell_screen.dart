@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../services/platform_utils.dart';
 import '../state/auth_provider.dart';
+import '../theme/app_theme.dart';
 
 class MainShellScreen extends ConsumerWidget {
   final Widget child;
@@ -35,6 +36,11 @@ class MainShellScreen extends ConsumerWidget {
                 if (index == 1) context.go('/dashboard');
               },
               labelType: NavigationRailLabelType.all,
+              backgroundColor: AppTheme.surface,
+              selectedIconTheme: IconThemeData(color: AppTheme.primary),
+              selectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.primary),
+              unselectedIconTheme: IconThemeData(color: AppTheme.textSecondary),
+              unselectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.textSecondary),
               destinations: const [
                 NavigationRailDestination(
                   icon: Icon(Icons.folder_outlined),
@@ -63,6 +69,10 @@ class MainShellScreen extends ConsumerWidget {
           if (index == 0 && currentIndex != 0) context.go('/projects');
           if (index == 1 && currentIndex != 1) context.go('/dashboard');
         },
+        selectedItemColor: AppTheme.primary,
+        unselectedItemColor: AppTheme.textSecondary,
+        backgroundColor: AppTheme.surface,
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.folder_outlined),
