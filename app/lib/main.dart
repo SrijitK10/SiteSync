@@ -162,12 +162,12 @@ class _RupayanAppState extends ConsumerState<RupayanApp>
 
     // Style the system navigation bar to blend with the app
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarColor: AppTheme.surface,
       systemNavigationBarDividerColor: Colors.transparent,
       systemNavigationBarIconBrightness:
           brightness == Brightness.dark ? Brightness.light : Brightness.dark,
     ));
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
 
     return KeyedSubtree(
       key: ValueKey(

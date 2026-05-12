@@ -136,7 +136,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color cardColor = isDark ? const Color(0xFF1E1E2C) : Colors.white;
     final Color accentColor = event.isCompletion ? AppTheme.success : AppTheme.primary;
-    final String timeStr = '${event.timestamp.hour.toString().padLeft(2, '0')}:${event.timestamp.minute.toString().padLeft(2, '0')}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -160,20 +159,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon Badge
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                event.isCompletion ? Icons.check_circle_rounded : Icons.add_task_rounded,
-                color: accentColor,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
             // Content
             Expanded(
               child: Column(
@@ -220,6 +205,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         TextSpan(text: ' ${event.projectName}'),
                       ],
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTheme.body.copyWith(
                       color: AppTheme.textSecondary,
                       fontSize: 13,
@@ -227,16 +214,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Timestamp
-            Text(
-              timeStr,
-              style: AppTheme.body.copyWith(
-                color: AppTheme.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -326,15 +303,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding: const EdgeInsets.only(left: 4, bottom: 16),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.business_rounded, color: AppTheme.primary, size: 20),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         projectName,
@@ -521,7 +489,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Operations Dashboard'),
+        title: Image.asset('assets/images/rppl.png', height: 56),
         backgroundColor: AppTheme.surface,
         centerTitle: true,
         actions: [
