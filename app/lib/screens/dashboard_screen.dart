@@ -194,7 +194,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                      Icon(Icons.apartment, size: 14, color: AppTheme.textSecondary),
                       const SizedBox(width: 4),
                       Text(
                         'Flat ${event.flatNumber}  •  ',
@@ -203,7 +203,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           fontSize: 13,
                         ),
                       ),
-                      Icon(Icons.folder_outlined, size: 14, color: AppTheme.textSecondary),
+                      Icon(Icons.folder_open, size: 14, color: AppTheme.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -370,7 +370,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Icon(Icons.apartment_rounded, size: 14, color: AppTheme.textSecondary),
+                          Icon(Icons.apartment, size: 14, color: AppTheme.textSecondary),
                           const SizedBox(width: 4),
                           Text(
                             'Flat $flatNumber',
@@ -387,7 +387,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 fontSize: 13,
                               ),
                             ),
-                            Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textSecondary),
+                            Icon(Icons.calendar_today, size: 12, color: AppTheme.textSecondary),
                             const SizedBox(width: 4),
                             Text(
                               dateStr,
