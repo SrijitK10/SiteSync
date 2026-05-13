@@ -25,8 +25,7 @@ class MainShellScreen extends ConsumerWidget {
     // Use theme-based colors so they're always correct for the current brightness
     final colorScheme = Theme.of(context).colorScheme;
     final selectedColor = colorScheme.primary;
-    final unselectedColor = Theme.of(context).textTheme.bodySmall?.color ??
-        colorScheme.onSurface.withValues(alpha: 0.6);
+    final unselectedColor = colorScheme.onSurface.withValues(alpha: 0.72);
     final bgColor = colorScheme.surface;
 
     // If the user doesn't have permission, they only see the projects screen
@@ -59,16 +58,25 @@ class MainShellScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w500,
                 fontSize: 12,
               ),
-              destinations: const [
+              destinations: [
                 NavigationRailDestination(
-                  icon: Icon(Icons.folder_outlined),
-                  selectedIcon: Icon(Icons.folder),
-                  label: Text('Projects'),
+                  icon: Icon(Icons.business, color: unselectedColor),
+                  selectedIcon: Icon(
+                    Icons.business,
+                    color: selectedColor,
+                  ),
+                  label: const Text('Projects'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.dashboard_outlined),
-                  selectedIcon: Icon(Icons.dashboard),
-                  label: Text('Dashboard'),
+                  icon: Icon(
+                    Icons.assessment,
+                    color: unselectedColor,
+                  ),
+                  selectedIcon: Icon(
+                    Icons.assessment,
+                    color: selectedColor,
+                  ),
+                  label: const Text('Dashboard'),
                 ),
               ],
             ),
@@ -91,15 +99,21 @@ class MainShellScreen extends ConsumerWidget {
         unselectedItemColor: unselectedColor,
         backgroundColor: bgColor,
         type: BottomNavigationBarType.fixed,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder_outlined),
-            activeIcon: Icon(Icons.folder),
+            icon: Icon(Icons.business, color: unselectedColor),
+            activeIcon: Icon(Icons.business, color: selectedColor),
             label: 'Projects',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
+            icon: Icon(
+              Icons.assessment,
+              color: unselectedColor,
+            ),
+            activeIcon: Icon(
+              Icons.assessment,
+              color: selectedColor,
+            ),
             label: 'Dashboard',
           ),
         ],

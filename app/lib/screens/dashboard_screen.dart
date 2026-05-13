@@ -136,8 +136,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildActivityTile(BuildContext context, ActivityEvent event) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color cardColor = isDark ? const Color(0xFF1E1E2C) : Colors.white;
-    final Color accentColor = event.isCompletion ? AppTheme.success : Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final Color accentColor = event.isCompletion
+        ? AppTheme.success
+        : theme.colorScheme.primary;
     final Color secondaryColor = isDark ? const Color(0xFFA7B5CB) : const Color(0xFF66758B);
+    final Color projectIconColor = theme.colorScheme.primary;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -204,7 +208,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           fontSize: 13,
                         ),
                       ),
-                      Icon(Icons.folder_open, size: 14, color: secondaryColor),
+                      Icon(
+                        Icons.business,
+                        size: 15,
+                        color: projectIconColor,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -241,7 +249,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     final List<Widget> listItems = [];
-    
+
     for (final dateStr in groupedEvents.keys) {
       // Date Header
       listItems.add(
@@ -271,7 +279,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
       );
-      
+
       // Events for this date
       for (final event in groupedEvents[dateStr]!) {
         listItems.add(_buildActivityTile(context, event));
