@@ -13,11 +13,21 @@ class MainShellScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Ensure AppTheme._isDark is in sync with the current brightness
+    AppTheme.syncWithContext(context);
+
     final location = GoRouterState.of(context).uri.path;
     final int currentIndex = location.startsWith('/dashboard') ? 1 : 0;
 
     final user = ref.watch(authProvider).currentUser;
     final canViewDashboard = user != null && user.role.canEdit;
+
+    // Use theme-based colors so they're always correct for the current brightness
+    final colorScheme = Theme.of(context).colorScheme;
+    final selectedColor = colorScheme.primary;
+    final unselectedColor = Theme.of(context).textTheme.bodySmall?.color ??
+        colorScheme.onSurface.withValues(alpha: 0.6);
+    final bgColor = colorScheme.surface;
 
     // If the user doesn't have permission, they only see the projects screen
     // so we don't need a bottom navigation bar.
@@ -36,11 +46,19 @@ class MainShellScreen extends ConsumerWidget {
                 if (index == 1) context.go('/dashboard');
               },
               labelType: NavigationRailLabelType.all,
-              backgroundColor: AppTheme.surface,
-              selectedIconTheme: IconThemeData(color: AppTheme.primary),
-              selectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.primary),
-              unselectedIconTheme: IconThemeData(color: AppTheme.textSecondary),
-              unselectedLabelTextStyle: AppTheme.label.copyWith(color: AppTheme.textSecondary),
+              backgroundColor: bgColor,
+              selectedIconTheme: IconThemeData(color: selectedColor),
+              selectedLabelTextStyle: TextStyle(
+                color: selectedColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+              unselectedIconTheme: IconThemeData(color: unselectedColor),
+              unselectedLabelTextStyle: TextStyle(
+                color: unselectedColor,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
               destinations: const [
                 NavigationRailDestination(
                   icon: Icon(Icons.folder_outlined),
@@ -69,9 +87,9 @@ class MainShellScreen extends ConsumerWidget {
           if (index == 0 && currentIndex != 0) context.go('/projects');
           if (index == 1 && currentIndex != 1) context.go('/dashboard');
         },
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: AppTheme.textSecondary,
-        backgroundColor: AppTheme.surface,
+        selectedItemColor: selectedColor,
+        unselectedItemColor: unselectedColor,
+        backgroundColor: bgColor,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(

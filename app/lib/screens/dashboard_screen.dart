@@ -136,7 +136,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildActivityTile(BuildContext context, ActivityEvent event) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color cardColor = isDark ? const Color(0xFF1E1E2C) : Colors.white;
-    final Color accentColor = event.isCompletion ? AppTheme.success : AppTheme.primary;
+    final Color accentColor = event.isCompletion ? AppTheme.success : Theme.of(context).colorScheme.primary;
+    final Color secondaryColor = isDark ? const Color(0xFFA7B5CB) : const Color(0xFF66758B);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -194,16 +195,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(Icons.apartment, size: 14, color: AppTheme.textSecondary),
+                      Icon(Icons.apartment, size: 14, color: secondaryColor),
                       const SizedBox(width: 4),
                       Text(
                         'Flat ${event.flatNumber}  •  ',
                         style: AppTheme.body.copyWith(
-                          color: AppTheme.textSecondary,
+                          color: secondaryColor,
                           fontSize: 13,
                         ),
                       ),
-                      Icon(Icons.folder_open, size: 14, color: AppTheme.textSecondary),
+                      Icon(Icons.folder_open, size: 14, color: secondaryColor),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -211,7 +212,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTheme.body.copyWith(
-                            color: AppTheme.textSecondary,
+                            color: secondaryColor,
                             fontSize: 13,
                           ),
                         ),
@@ -289,8 +290,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return const Center(child: Text('No pending tasks.'));
     }
 
-    final projectNames = _pendingTasksByProject.keys.toList()..sort();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color secondaryColor = isDark ? const Color(0xFFA7B5CB) : const Color(0xFF66758B);
+    final projectNames = _pendingTasksByProject.keys.toList()..sort();
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -370,12 +372,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Icon(Icons.apartment, size: 14, color: AppTheme.textSecondary),
+                          Icon(Icons.apartment, size: 14, color: secondaryColor),
                           const SizedBox(width: 4),
                           Text(
                             'Flat $flatNumber',
                             style: AppTheme.body.copyWith(
-                              color: AppTheme.textSecondary,
+                              color: secondaryColor,
                               fontSize: 13,
                             ),
                           ),
@@ -383,16 +385,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Text(
                               '  •  ',
                               style: AppTheme.body.copyWith(
-                                color: AppTheme.textSecondary,
+                                color: secondaryColor,
                                 fontSize: 13,
                               ),
                             ),
-                            Icon(Icons.calendar_today, size: 12, color: AppTheme.textSecondary),
+                            Icon(Icons.calendar_today, size: 12, color: secondaryColor),
                             const SizedBox(width: 4),
                             Text(
                               dateStr,
                               style: AppTheme.body.copyWith(
-                                color: AppTheme.textSecondary,
+                                color: secondaryColor,
                                 fontSize: 13,
                               ),
                             ),
@@ -492,6 +494,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Ensure AppTheme._isDark is in sync with the current brightness
+    AppTheme.syncWithContext(context);
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
