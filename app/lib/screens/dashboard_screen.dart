@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/api_client.dart';
 import '../services/platform_utils.dart';
+import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/drawn_app_icon.dart';
 
@@ -58,6 +59,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _processData(List<Map<String, dynamic>>.from(data));
       }
     } catch (e) {
+      if (isUnauthorizedError(e)) {
+        await ref.read(authProvider.notifier).logout();
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Your session has expired. Please sign in again.';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
       if (mounted) {
         setState(() {
           _errorMessage = e.toString();
@@ -72,11 +84,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final Map<String, List<Map<String, dynamic>>> pending = {};
 
     for (var task in tasks) {
-      final projectName = task['project']?['name']?.toString() ?? 'Unknown Project';
+      final projectName =
+          task['project']?['name']?.toString() ?? 'Unknown Project';
       final flatNumber = task['flat']?['flat_number']?.toString() ?? '-';
       final taskTitle = task['title']?.toString() ?? 'Untitled Task';
       final status = task['status']?.toString() ?? 'todo';
-      final createdBy = task['createdBy']?['name']?.toString() ?? 'Unknown User';
+      final createdBy =
+          task['createdBy']?['name']?.toString() ?? 'Unknown User';
       final assignee = task['assignee']?['name']?.toString() ?? 'Unknown User';
       final completedBy = task['completedBy']?['name']?.toString() ?? assignee;
 
@@ -84,15 +98,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (task['created_at'] != null) {
         try {
           final createdAt = DateTime.parse(task['created_at'].toString());
-          log.add(ActivityEvent(
-            timestamp: createdAt,
-            action: 'Task Added',
-            userName: createdBy,
-            taskTitle: taskTitle,
-            projectName: projectName,
-            flatNumber: flatNumber,
-            isCompletion: false,
-          ));
+          log.add(
+            ActivityEvent(
+              timestamp: createdAt,
+              action: 'Task Added',
+              userName: createdBy,
+              taskTitle: taskTitle,
+              projectName: projectName,
+              flatNumber: flatNumber,
+              isCompletion: false,
+            ),
+          );
         } catch (_) {}
       }
 
@@ -100,15 +116,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (status == 'completed' && task['completed_at'] != null) {
         try {
           final completedAt = DateTime.parse(task['completed_at'].toString());
-          log.add(ActivityEvent(
-            timestamp: completedAt,
-            action: 'Task Completed',
-            userName: completedBy,
-            taskTitle: taskTitle,
-            projectName: projectName,
-            flatNumber: flatNumber,
-            isCompletion: true,
-          ));
+          log.add(
+            ActivityEvent(
+              timestamp: completedAt,
+              action: 'Task Completed',
+              userName: completedBy,
+              taskTitle: taskTitle,
+              projectName: projectName,
+              flatNumber: flatNumber,
+              isCompletion: true,
+            ),
+          );
         } catch (_) {}
       }
 
@@ -141,7 +159,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final Color accentColor = event.isCompletion
         ? AppTheme.success
         : theme.colorScheme.primary;
-    final Color secondaryColor = isDark ? const Color(0xFFA7B5CB) : const Color(0xFF66758B);
+    final Color secondaryColor = isDark
+        ? const Color(0xFFA7B5CB)
+        : const Color(0xFF66758B);
     final Color projectIconColor = theme.colorScheme.primary;
 
     return Container(
@@ -300,7 +320,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color secondaryColor = isDark ? const Color(0xFFA7B5CB) : const Color(0xFF66758B);
+    final Color secondaryColor = isDark
+        ? const Color(0xFFA7B5CB)
+        : const Color(0xFF66758B);
     final projectNames = _pendingTasksByProject.keys.toList()..sort();
 
     return ListView.builder(
@@ -326,7 +348,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.warning.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
@@ -345,11 +370,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               ...tasks.map((task) {
                 final taskTitle = task['title']?.toString() ?? 'Untitled';
-                final flatNumber = task['flat']?['flat_number']?.toString() ?? '-';
+                final flatNumber =
+                    task['flat']?['flat_number']?.toString() ?? '-';
                 String dateStr = '';
                 if (task['created_at'] != null) {
                   try {
-                    dateStr = _formatDate(DateTime.parse(task['created_at'].toString()));
+                    dateStr = _formatDate(
+                      DateTime.parse(task['created_at'].toString()),
+                    );
                   } catch (_) {}
                 }
 
@@ -359,7 +387,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
+                      color: isDark
+                          ? Colors.white12
+                          : Colors.black.withValues(alpha: 0.05),
                       width: 1,
                     ),
                     boxShadow: [
@@ -371,17 +401,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
                   ),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     title: Text(
                       taskTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Icon(Icons.apartment, size: 14, color: secondaryColor),
+                          Icon(
+                            Icons.apartment,
+                            size: 14,
+                            color: secondaryColor,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'Flat $flatNumber',
@@ -398,7 +438,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 fontSize: 13,
                               ),
                             ),
-                            Icon(Icons.calendar_today, size: 12, color: secondaryColor),
+                            Icon(
+                              Icons.calendar_today,
+                              size: 12,
+                              color: secondaryColor,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               dateStr,
@@ -530,29 +574,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                        const SizedBox(height: 16),
-                        Text('Failed to load dashboard data:\n$_errorMessage', textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchData,
-                          child: const Text('Retry'),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 48,
                     ),
-                  )
-                : LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth > 800 || isWindowsDesktop) {
-                        return _buildDesktopLayout();
-                      }
-                      return _buildMobileLayout();
-                    },
-                  ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load dashboard data:\n$_errorMessage',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _fetchData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth > 800 || isWindowsDesktop) {
+                    return _buildDesktopLayout();
+                  }
+                  return _buildMobileLayout();
+                },
+              ),
       ),
     );
   }

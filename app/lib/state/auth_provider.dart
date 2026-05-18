@@ -13,7 +13,11 @@ class AuthState {
   final bool isLoading;
   final User? currentUser;
 
-  AuthState({this.isAuthenticated = false, this.isLoading = false, this.currentUser});
+  AuthState({
+    this.isAuthenticated = false,
+    this.isLoading = false,
+    this.currentUser,
+  });
 }
 
 class AuthNotifier extends Notifier<AuthState> {
@@ -51,10 +55,7 @@ class AuthNotifier extends Notifier<AuthState> {
     final refreshed = await _fetchAndApplyCurrentUser();
     if (!refreshed && cachedUser == null) {
       // No cache and validation failed — token is likely invalid.
-      await prefs.remove('jwt');
-      await prefs.remove(_kCachedUserKey);
-      await setJwt(null);
-      state = AuthState();
+      await _clearStoredSession();
     }
 
     if (refreshed) {
@@ -105,8 +106,18 @@ class AuthNotifier extends Notifier<AuthState> {
       return true;
     } catch (e) {
       print('Session validation failed: $e');
+      if (isUnauthorizedError(e)) {
+        await _clearStoredSession();
+      }
       return false;
     }
+  }
+
+  Future<void> _clearStoredSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kCachedUserKey);
+    await setJwt(null);
+    state = AuthState();
   }
 
   User? _loadCachedUser(SharedPreferences prefs) {
@@ -130,22 +141,31 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> _saveCachedUser(SharedPreferences prefs, Map<String, dynamic> userData) async {
-    await prefs.setString(_kCachedUserKey, jsonEncode({
-      'id': userData['id'],
-      'name': userData['name'],
-      'phone': userData['phone'],
-      'email': userData['email'],
-      'role': userData['role'],
-    }));
+  Future<void> _saveCachedUser(
+    SharedPreferences prefs,
+    Map<String, dynamic> userData,
+  ) async {
+    await prefs.setString(
+      _kCachedUserKey,
+      jsonEncode({
+        'id': userData['id'],
+        'name': userData['name'],
+        'phone': userData['phone'],
+        'email': userData['email'],
+        'role': userData['role'],
+      }),
+    );
   }
 
   Future<void> loginWithFirebaseToken(String idToken, {String? name}) async {
     try {
-      final res = await apiClient.post('/auth/firebase-login', data: {
-        'idToken': idToken,
-        if (name != null && name.isNotEmpty) 'name': name,
-      });
+      final res = await apiClient.post(
+        '/auth/firebase-login',
+        data: {
+          'idToken': idToken,
+          if (name != null && name.isNotEmpty) 'name': name,
+        },
+      );
       await _handleAuthResponse(res.data);
     } catch (e) {
       print('Error during Firebase login: $e');
@@ -154,27 +174,30 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> loginWithPassword(String email, String password) async {
-    final res = await apiClient.post('/auth/login', data: {
-      'email': email,
-      'password': password,
-    });
+    final res = await apiClient.post(
+      '/auth/login',
+      data: {'email': email, 'password': password},
+    );
     await _handleAuthResponse(res.data);
   }
 
-  Future<void> registerWithPassword(String email, String password, String name) async {
-    final res = await apiClient.post('/auth/register', data: {
-      'email': email,
-      'password': password,
-      'name': name,
-    });
+  Future<void> registerWithPassword(
+    String email,
+    String password,
+    String name,
+  ) async {
+    final res = await apiClient.post(
+      '/auth/register',
+      data: {'email': email, 'password': password, 'name': name},
+    );
     await _handleAuthResponse(res.data);
   }
 
   Future<void> changePassword(String oldPassword, String newPassword) async {
-    await apiClient.post('/auth/change-password', data: {
-      'oldPassword': oldPassword,
-      'newPassword': newPassword,
-    });
+    await apiClient.post(
+      '/auth/change-password',
+      data: {'oldPassword': oldPassword, 'newPassword': newPassword},
+    );
   }
 
   Future<void> _handleAuthResponse(Map<String, dynamic> data) async {
@@ -205,17 +228,17 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kCachedUserKey);
-    await setJwt(null);
-    state = AuthState();
+    await _clearStoredSession();
   }
 
   Future<void> _updateFcmToken() async {
     try {
       final token = await NotificationService().getToken();
       if (token != null) {
-        await apiClient.patch('/users/me/fcm-token', data: {'fcm_token': token});
+        await apiClient.patch(
+          '/users/me/fcm-token',
+          data: {'fcm_token': token},
+        );
       }
     } catch (e) {
       print('Failed to update FCM token on backend: $e');

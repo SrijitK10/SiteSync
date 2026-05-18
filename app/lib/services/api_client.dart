@@ -21,28 +21,34 @@ Future<void> setJwt(String? token) async {
   }
 }
 
-final Dio apiClient = Dio(
-  BaseOptions(
-    baseUrl: 'https://rupayan.onrender.com',
-    connectTimeout: const Duration(seconds: 60),
-    receiveTimeout: const Duration(seconds: 60),
-  ),
-)..interceptors.add(
-  InterceptorsWrapper(
-    onRequest: (options, handler) async {
-      final token = await _loadJwt();
-      if (token != null) {
-        options.headers['Authorization'] = 'Bearer $token';
-      }
+bool isUnauthorizedError(Object error) {
+  return error is DioException && error.response?.statusCode == 401;
+}
 
-      final prefs = await SharedPreferences.getInstance();
-      final locale = prefs.getString('app_locale') ?? 'en';
-      options.headers['Accept-Language'] = locale;
+final Dio apiClient =
+    Dio(
+        BaseOptions(
+          baseUrl: 'https://rupayan.onrender.com',
+          connectTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+      )
+      ..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            final token = await _loadJwt();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
 
-      return handler.next(options);
-    },
-    onError: (DioException e, handler) async {
-      return handler.next(e);
-    },
-  ),
-);
+            final prefs = await SharedPreferences.getInstance();
+            final locale = prefs.getString('app_locale') ?? 'en';
+            options.headers['Accept-Language'] = locale;
+
+            return handler.next(options);
+          },
+          onError: (DioException e, handler) async {
+            return handler.next(e);
+          },
+        ),
+      );
