@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/api_client.dart';
 import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
+import '../widgets/drawn_app_icon.dart';
 
 class ActivityEvent {
   final DateTime timestamp;
@@ -208,8 +209,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           fontSize: 13,
                         ),
                       ),
-                      Icon(
-                        Icons.business,
+                      DrawnAppIcon(
+                        kind: DrawnAppIconKind.projects,
                         size: 15,
                         color: projectIconColor,
                       ),
@@ -477,8 +478,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             labelColor: AppTheme.primary,
             unselectedLabelColor: AppTheme.textSecondary,
             tabs: const [
-              Tab(text: 'Activity Log', icon: Icon(Icons.history)),
-              Tab(text: 'Pending Tasks', icon: Icon(Icons.pending_actions)),
+              Tab(
+                text: 'Activity Log',
+                icon: DrawnAppIcon(kind: DrawnAppIconKind.activity),
+              ),
+              Tab(
+                text: 'Pending Tasks',
+                icon: DrawnAppIcon(kind: DrawnAppIconKind.pending),
+              ),
             ],
           ),
           Expanded(

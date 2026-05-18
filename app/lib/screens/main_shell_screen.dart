@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../services/platform_utils.dart';
 import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/drawn_app_icon.dart';
 
 class MainShellScreen extends ConsumerWidget {
   final Widget child;
@@ -60,20 +61,23 @@ class MainShellScreen extends ConsumerWidget {
               ),
               destinations: [
                 NavigationRailDestination(
-                  icon: Icon(Icons.business, color: unselectedColor),
-                  selectedIcon: Icon(
-                    Icons.business,
+                  icon: DrawnAppIcon(
+                    kind: DrawnAppIconKind.projects,
+                    color: unselectedColor,
+                  ),
+                  selectedIcon: DrawnAppIcon(
+                    kind: DrawnAppIconKind.projects,
                     color: selectedColor,
                   ),
                   label: const Text('Projects'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(
-                    Icons.assessment,
+                  icon: DrawnAppIcon(
+                    kind: DrawnAppIconKind.dashboard,
                     color: unselectedColor,
                   ),
-                  selectedIcon: Icon(
-                    Icons.assessment,
+                  selectedIcon: DrawnAppIcon(
+                    kind: DrawnAppIconKind.dashboard,
                     color: selectedColor,
                   ),
                   label: const Text('Dashboard'),
@@ -101,17 +105,23 @@ class MainShellScreen extends ConsumerWidget {
         type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.business, color: unselectedColor),
-            activeIcon: Icon(Icons.business, color: selectedColor),
+            icon: DrawnAppIcon(
+              kind: DrawnAppIconKind.projects,
+              color: unselectedColor,
+            ),
+            activeIcon: DrawnAppIcon(
+              kind: DrawnAppIconKind.projects,
+              color: selectedColor,
+            ),
             label: 'Projects',
           ),
           BottomNavigationBarItem(
-            icon: Icon(
-              Icons.assessment,
+            icon: DrawnAppIcon(
+              kind: DrawnAppIconKind.dashboard,
               color: unselectedColor,
             ),
-            activeIcon: Icon(
-              Icons.assessment,
+            activeIcon: DrawnAppIcon(
+              kind: DrawnAppIconKind.dashboard,
               color: selectedColor,
             ),
             label: 'Dashboard',
