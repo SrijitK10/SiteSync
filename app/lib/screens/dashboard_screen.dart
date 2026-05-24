@@ -164,6 +164,91 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         : const Color(0xFF66758B);
     final Color projectIconColor = theme.colorScheme.primary;
 
+    Widget tileContent = Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: AppTheme.body.copyWith(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 15,
+                      height: 1.4,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '${event.userName} ',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text: event.isCompletion ? 'completed ' : 'added ',
+                      ),
+                      TextSpan(
+                        text: event.taskTitle,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: accentColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(Icons.apartment, size: 14, color: secondaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Flat ${event.flatNumber}  •  ',
+                      style: AppTheme.body.copyWith(
+                        color: secondaryColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                    DrawnAppIcon(
+                      kind: DrawnAppIconKind.projects,
+                      size: 15,
+                      color: projectIconColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        event.projectName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTheme.body.copyWith(
+                          color: secondaryColor,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (isWindowsDesktop) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: AppTheme.buildGlassContainer(
+          context,
+          radius: 16,
+          child: tileContent,
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -181,79 +266,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      style: AppTheme.body.copyWith(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 15,
-                        height: 1.4,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: '${event.userName} ',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: event.isCompletion ? 'completed ' : 'added ',
-                        ),
-                        TextSpan(
-                          text: event.taskTitle,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: accentColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Icon(Icons.apartment, size: 14, color: secondaryColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Flat ${event.flatNumber}  •  ',
-                        style: AppTheme.body.copyWith(
-                          color: secondaryColor,
-                          fontSize: 13,
-                        ),
-                      ),
-                      DrawnAppIcon(
-                        kind: DrawnAppIconKind.projects,
-                        size: 15,
-                        color: projectIconColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          event.projectName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTheme.body.copyWith(
-                            color: secondaryColor,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: tileContent,
     );
   }
 
@@ -381,6 +394,74 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   } catch (_) {}
                 }
 
+                Widget tileContent = ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  title: Text(
+                    taskTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.apartment,
+                          size: 14,
+                          color: secondaryColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Flat $flatNumber',
+                          style: AppTheme.body.copyWith(
+                            color: secondaryColor,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (dateStr.isNotEmpty) ...[
+                          Text(
+                            '  •  ',
+                            style: AppTheme.body.copyWith(
+                              color: secondaryColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Icon(
+                            Icons.calendar_today,
+                            size: 12,
+                            color: secondaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            dateStr,
+                            style: AppTheme.body.copyWith(
+                              color: secondaryColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+
+                if (isWindowsDesktop) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: AppTheme.buildGlassContainer(
+                      context,
+                      radius: 16,
+                      child: tileContent,
+                    ),
+                  );
+                }
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
@@ -400,62 +481,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ],
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    title: Text(
-                      taskTitle,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.apartment,
-                            size: 14,
-                            color: secondaryColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Flat $flatNumber',
-                            style: AppTheme.body.copyWith(
-                              color: secondaryColor,
-                              fontSize: 13,
-                            ),
-                          ),
-                          if (dateStr.isNotEmpty) ...[
-                            Text(
-                              '  •  ',
-                              style: AppTheme.body.copyWith(
-                                color: secondaryColor,
-                                fontSize: 13,
-                              ),
-                            ),
-                            Icon(
-                              Icons.calendar_today,
-                              size: 12,
-                              color: secondaryColor,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              dateStr,
-                              style: AppTheme.body.copyWith(
-                                color: secondaryColor,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: tileContent,
                 );
               }),
             ],
@@ -466,49 +492,60 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildDesktopLayout() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                child: Text(
-                  'Activity Log',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 1,
+            child: AppTheme.buildGlassContainer(
+              context,
+              radius: 32,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                    child: Text(
+                      'Activity Log',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
+                    ),
                   ),
-                ),
+                  Expanded(child: _buildActivityLog()),
+                ],
               ),
-              Expanded(child: _buildActivityLog()),
-            ],
+            ),
           ),
-        ),
-        Container(width: 1, color: Theme.of(context).dividerColor),
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                child: Text(
-                  'Pending Tasks',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
+          const SizedBox(width: 24),
+          Expanded(
+            flex: 1,
+            child: AppTheme.buildGlassContainer(
+              context,
+              radius: 32,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                    child: Text(
+                      'Pending Tasks',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
+                    ),
                   ),
-                ),
+                  Expanded(child: _buildPendingTasks()),
+                ],
               ),
-              Expanded(child: _buildPendingTasks()),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -557,10 +594,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     AppTheme.syncWithContext(context);
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.background,
       appBar: AppBar(
         title: Image.asset('assets/images/rppl.png', height: 56),
-        backgroundColor: AppTheme.surface,
+        backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.surface,
         centerTitle: true,
         actions: [
           IconButton(

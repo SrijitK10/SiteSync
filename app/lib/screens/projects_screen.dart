@@ -317,13 +317,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   }) {
     final queryIsActive = _searchQuery.trim().isNotEmpty;
 
-    return Container(
+    return AppTheme.buildGlassContainer(
+      context,
       padding: const EdgeInsets.all(28),
-      decoration: AppTheme.desktopPaneDecoration(
-        context,
-        radius: 32,
-        emphasized: true,
-      ),
+      radius: 32,
+      emphasized: true,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 1080;
@@ -449,11 +447,13 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     required bool searching,
   }) {
     return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 520),
+      child: AppTheme.buildGlassContainer(
+        context,
         padding: const EdgeInsets.all(28),
-        decoration: AppTheme.desktopPaneDecoration(context, radius: 30),
-        child: Column(
+        radius: 30,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -498,7 +498,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   @override
@@ -511,10 +511,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final showPasswordActions = usesPasswordAuth;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.background,
       appBar: AppBar(
         backgroundColor: isWindowsDesktop
-            ? AppTheme.surface.withValues(alpha: 0.76)
+            ? Colors.transparent
             : AppTheme.surface,
         centerTitle: false,
         toolbarHeight: 72,
@@ -948,36 +948,11 @@ class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         transform: Matrix4.translationValues(0, _isHovered ? -6 : 0, 0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(
-                context,
-              ).colorScheme.surface.withValues(alpha: _isHovered ? 0.96 : 0.9),
-              Color.lerp(
-                Theme.of(context).colorScheme.surface,
-                primary,
-                _isHovered ? (isDark ? 0.1 : 0.05) : (isDark ? 0.06 : 0.03),
-              )!,
-            ],
-          ),
-          border: Border.all(
-            color: _isHovered
-                ? primary.withValues(alpha: 0.18)
-                : AppTheme.textSecondary.withValues(alpha: 0.14),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.1),
-              blurRadius: _isHovered ? 28 : 18,
-              offset: Offset(0, _isHovered ? 16 : 10),
-            ),
-          ],
-        ),
-        child: Material(
+        child: AppTheme.buildGlassContainer(
+          context,
+          radius: 28,
+          emphasized: _isHovered,
+          child: Material(
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(28),
@@ -1100,7 +1075,7 @@ class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

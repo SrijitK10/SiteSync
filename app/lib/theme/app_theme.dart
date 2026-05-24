@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,8 +67,8 @@ class AppTheme {
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: isDark
-          ? const [Color(0xFF08111F), Color(0xFF10203A), Color(0xFF192949)]
-          : const [Color(0xFFF6F8FC), Color(0xFFE7EEF7), Color(0xFFDCE6F1)],
+          ? const [Color(0xFF0A101D), Color(0xFF1B2745), Color(0xFF22163A)]
+          : const [Color(0xFFD9E2ED), Color(0xFFF2E6F5), Color(0xFFD3DFEF)],
       stops: const [0.0, 0.52, 1.0],
     );
   }
@@ -105,6 +106,51 @@ class AppTheme {
           offset: Offset(0, emphasized ? 22 : 14),
         ),
       ],
+    );
+  }
+
+  static Widget buildGlassContainer(
+    BuildContext context, {
+    required Widget child,
+    double radius = 28,
+    bool emphasized = false,
+    EdgeInsetsGeometry? padding,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: emphasized ? 40 : 20,
+            offset: Offset(0, emphasized ? 20 : 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? Colors.white.withValues(alpha: 0.06) 
+                  : Colors.white.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.12) 
+                    : Colors.white.withValues(alpha: 0.6),
+                width: 1.2,
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 

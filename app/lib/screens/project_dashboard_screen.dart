@@ -149,10 +149,10 @@ class _ProjectDashboardScreenState
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: isWindows ? Colors.transparent : AppTheme.background,
       appBar: AppBar(
         backgroundColor: isWindows
-            ? AppTheme.surface.withValues(alpha: 0.76)
+            ? Colors.transparent
             : AppTheme.surface,
         titleSpacing: isWindows ? 20 : null,
         centerTitle: false,
@@ -206,11 +206,9 @@ class _ProjectDashboardScreenState
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                 child: Row(
                   children: [
-                    Container(
-                      decoration: AppTheme.desktopPaneDecoration(
-                        context,
-                        radius: 28,
-                      ),
+                    AppTheme.buildGlassContainer(
+                      context,
+                      radius: 28,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: NavigationRail(
                         selectedIndex: _currentIndex,
@@ -274,13 +272,13 @@ class _ProjectDashboardScreenState
                     ),
                     const SizedBox(width: 18),
                     Expanded(
-                      child: Container(
-                        decoration: AppTheme.desktopPaneDecoration(
-                          context,
-                          radius: 28,
+                      child: AppTheme.buildGlassContainer(
+                        context,
+                        radius: 28,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: pages[_currentIndex],
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child: pages[_currentIndex],
                       ),
                     ),
                   ],

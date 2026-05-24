@@ -37,56 +37,113 @@ class MainShellScreen extends ConsumerWidget {
 
     if (isWindowsDesktop || MediaQuery.of(context).size.width > 800) {
       return Scaffold(
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: currentIndex,
-              onDestinationSelected: (index) {
-                if (index == 0) context.go('/projects');
-                if (index == 1) context.go('/dashboard');
-              },
-              labelType: NavigationRailLabelType.all,
-              backgroundColor: bgColor,
-              selectedIconTheme: IconThemeData(color: selectedColor),
-              selectedLabelTextStyle: TextStyle(
-                color: selectedColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-              unselectedIconTheme: IconThemeData(color: unselectedColor),
-              unselectedLabelTextStyle: TextStyle(
-                color: unselectedColor,
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
-              ),
-              destinations: [
-                NavigationRailDestination(
-                  icon: DrawnAppIcon(
-                    kind: DrawnAppIconKind.projects,
-                    color: unselectedColor,
-                  ),
-                  selectedIcon: DrawnAppIcon(
-                    kind: DrawnAppIconKind.projects,
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: isWindowsDesktop 
+              ? AppTheme.windowBackdropGradient(context)
+              : null,
+            color: !isWindowsDesktop ? bgColor : null,
+          ),
+          child: Row(
+            children: [
+              isWindowsDesktop ? AppTheme.buildGlassContainer(
+                context,
+                radius: 0,
+                child: NavigationRail(
+                  selectedIndex: currentIndex,
+                  onDestinationSelected: (index) {
+                    if (index == 0) context.go('/projects');
+                    if (index == 1) context.go('/dashboard');
+                  },
+                  labelType: NavigationRailLabelType.all,
+                  backgroundColor: Colors.transparent,
+                  selectedIconTheme: IconThemeData(color: selectedColor),
+                  selectedLabelTextStyle: TextStyle(
                     color: selectedColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
-                  label: const Text('Projects'),
-                ),
-                NavigationRailDestination(
-                  icon: DrawnAppIcon(
-                    kind: DrawnAppIconKind.dashboard,
+                  unselectedIconTheme: IconThemeData(color: unselectedColor),
+                  unselectedLabelTextStyle: TextStyle(
                     color: unselectedColor,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
                   ),
-                  selectedIcon: DrawnAppIcon(
-                    kind: DrawnAppIconKind.dashboard,
-                    color: selectedColor,
-                  ),
-                  label: const Text('Dashboard'),
+                  destinations: [
+                    NavigationRailDestination(
+                      icon: DrawnAppIcon(
+                        kind: DrawnAppIconKind.projects,
+                        color: unselectedColor,
+                      ),
+                      selectedIcon: DrawnAppIcon(
+                        kind: DrawnAppIconKind.projects,
+                        color: selectedColor,
+                      ),
+                      label: const Text('Projects'),
+                    ),
+                    NavigationRailDestination(
+                      icon: DrawnAppIcon(
+                        kind: DrawnAppIconKind.dashboard,
+                        color: unselectedColor,
+                      ),
+                      selectedIcon: DrawnAppIcon(
+                        kind: DrawnAppIconKind.dashboard,
+                        color: selectedColor,
+                      ),
+                      label: const Text('Dashboard'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const VerticalDivider(thickness: 1, width: 1),
-            Expanded(child: child),
-          ],
+              ) : NavigationRail(
+                selectedIndex: currentIndex,
+                onDestinationSelected: (index) {
+                  if (index == 0) context.go('/projects');
+                  if (index == 1) context.go('/dashboard');
+                },
+                labelType: NavigationRailLabelType.all,
+                backgroundColor: bgColor,
+                selectedIconTheme: IconThemeData(color: selectedColor),
+                selectedLabelTextStyle: TextStyle(
+                  color: selectedColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                unselectedIconTheme: IconThemeData(color: unselectedColor),
+                unselectedLabelTextStyle: TextStyle(
+                  color: unselectedColor,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+                destinations: [
+                  NavigationRailDestination(
+                    icon: DrawnAppIcon(
+                      kind: DrawnAppIconKind.projects,
+                      color: unselectedColor,
+                    ),
+                    selectedIcon: DrawnAppIcon(
+                      kind: DrawnAppIconKind.projects,
+                      color: selectedColor,
+                    ),
+                    label: const Text('Projects'),
+                  ),
+                  NavigationRailDestination(
+                    icon: DrawnAppIcon(
+                      kind: DrawnAppIconKind.dashboard,
+                      color: unselectedColor,
+                    ),
+                    selectedIcon: DrawnAppIcon(
+                      kind: DrawnAppIconKind.dashboard,
+                      color: selectedColor,
+                    ),
+                    label: const Text('Dashboard'),
+                  ),
+                ],
+              ),
+              if (!isWindowsDesktop) const VerticalDivider(thickness: 1, width: 1),
+              Expanded(child: child),
+            ],
+          ),
         ),
       );
     }
