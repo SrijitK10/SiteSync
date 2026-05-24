@@ -160,27 +160,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: DesktopSectionShell(
-          eyebrow: 'Timeline view',
           title: 'Project calendar',
-          subtitle:
-              'Use a wider schedule view to track what is active on any day without compressing the task context into a phone-sized column.',
-          metrics: [
-            DesktopSectionMetric(
-              label: 'Selected day',
-              value: selectedLabel,
-              icon: Icons.today_outlined,
-            ),
-            DesktopSectionMetric(
-              label: 'Active items',
-              value: '${selectedTasks.length}',
-              icon: Icons.assignment_outlined,
-            ),
-            DesktopSectionMetric(
-              label: 'Tracked tasks',
-              value: '${_rawTasks.length}',
-              icon: Icons.calendar_month_outlined,
-            ),
-          ],
           child: LayoutBuilder(
             builder: (context, constraints) {
               return Row(
@@ -233,13 +213,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           Text(
                             'Assignments for $selectedLabel',
                             style: AppTheme.heading.copyWith(fontSize: 20),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Open, completed, and rolling tasks stay visible for the selected day.',
-                            style: AppTheme.body.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
                           ),
                           const SizedBox(height: 18),
                           Expanded(child: buildTaskList()),

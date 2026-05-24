@@ -21,7 +21,7 @@ class DesktopSectionShell extends StatelessWidget {
   const DesktopSectionShell({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.child,
     this.eyebrow,
     this.actions,
@@ -31,7 +31,7 @@ class DesktopSectionShell extends StatelessWidget {
 
   final String? eyebrow;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget child;
   final List<Widget>? actions;
   final List<DesktopSectionMetric> metrics;
@@ -81,6 +81,7 @@ class DesktopSurfaceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: padding,
+      clipBehavior: Clip.antiAlias,
       decoration: AppTheme.desktopPaneDecoration(context, radius: radius),
       child: child,
     );
@@ -91,14 +92,14 @@ class _DesktopSectionHeader extends StatelessWidget {
   const _DesktopSectionHeader({
     this.eyebrow,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.metrics,
     this.actions,
   });
 
   final String? eyebrow;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final List<DesktopSectionMetric> metrics;
   final List<Widget>? actions;
 
@@ -133,15 +134,17 @@ class _DesktopSectionHeader extends StatelessWidget {
                   height: 1.12,
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                subtitle,
-                style: AppTheme.body.copyWith(
-                  color: AppTheme.textSecondary,
-                  fontSize: 15,
-                  height: 1.55,
+              if (subtitle != null && subtitle!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  subtitle!,
+                  style: AppTheme.body.copyWith(
+                    color: AppTheme.textSecondary,
+                    fontSize: 15,
+                    height: 1.55,
+                  ),
                 ),
-              ),
+              ],
             ],
           );
 

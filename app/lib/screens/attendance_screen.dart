@@ -942,10 +942,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
         body: _isLoadingProject
             ? const Center(child: CircularProgressIndicator())
             : DesktopSectionShell(
-                eyebrow: 'Attendance studio',
-                title: 'Capture labour rosters with a calmer desktop workflow',
-                subtitle:
-                    'Keep contractor inputs, temporary roster edits, and final sync actions visible together on the Windows layout instead of stacking them into one mobile column.',
+                title: 'Attendance Roster',
                 actions: [
                   OutlinedButton.icon(
                     onPressed: () => _showManageContractorsDialog(context),
@@ -956,25 +953,6 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen>
                     onPressed: () => _showExportOptions(context),
                     icon: const Icon(Icons.download_rounded),
                     label: const Text('Reports'),
-                  ),
-                ],
-                metrics: [
-                  DesktopSectionMetric(
-                    label: 'Project',
-                    value: _projectName,
-                    icon: Icons.business_outlined,
-                  ),
-                  DesktopSectionMetric(
-                    label: 'Pending sync',
-                    value: _records.length.toString(),
-                    icon: Icons.cloud_upload_outlined,
-                    accent: AppTheme.warning,
-                  ),
-                  DesktopSectionMetric(
-                    label: 'Contractors',
-                    value: _contractors.length.toString(),
-                    icon: Icons.groups_rounded,
-                    accent: AppTheme.success,
                   ),
                 ],
                 child: Row(

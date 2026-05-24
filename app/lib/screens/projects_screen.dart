@@ -966,18 +966,7 @@ class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            if (location.isNotEmpty)
-                              _DesktopMetricPill(
-                                icon: Icons.location_on_outlined,
-                                label: location,
-                              ),
-                            _DesktopUnreadPill(unreadCountAsync: unreadCountAsync),
-                          ],
-                        ),
+                        child: const SizedBox(),
                       ),
                       Row(
                         mainAxisSize: MainAxisSize.min,

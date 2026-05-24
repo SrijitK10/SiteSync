@@ -384,10 +384,7 @@ class _TasksTabState extends ConsumerState<TasksTab> {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: DesktopSectionShell(
-          eyebrow: 'Flat execution',
           title: 'Flat workspaces',
-          subtitle:
-              'Jump into flat-level task lists, export reports, and manage delivery progress through a denser Windows layout.',
           actions: [
             if (!isViewer)
               OutlinedButton.icon(
@@ -403,25 +400,6 @@ class _TasksTabState extends ConsumerState<TasksTab> {
                 icon: const Icon(Icons.add_rounded),
                 label: Text(l.addFlat),
               ),
-          ],
-          metrics: [
-            DesktopSectionMetric(
-              label: 'Total flats',
-              value: '${_flats.length}',
-              icon: Icons.apartment_rounded,
-            ),
-            DesktopSectionMetric(
-              label: 'Completed',
-              value: '$completedFlats',
-              icon: Icons.task_alt_rounded,
-              accent: AppTheme.success,
-            ),
-            DesktopSectionMetric(
-              label: 'Pending',
-              value: '$pendingFlats',
-              icon: Icons.pending_actions_rounded,
-              accent: AppTheme.warning,
-            ),
           ],
           child: _flats.isEmpty
               ? DesktopSurfaceCard(

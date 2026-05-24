@@ -148,8 +148,14 @@ class _ProjectDashboardScreenState
       _currentIndex = 0;
     }
 
-    return Scaffold(
-      backgroundColor: isWindows ? Colors.transparent : AppTheme.background,
+    return Container(
+      decoration: BoxDecoration(
+        gradient: isWindows
+            ? AppTheme.windowBackdropGradient(context)
+            : null,
+      ),
+      child: Scaffold(
+        backgroundColor: isWindows ? Colors.transparent : AppTheme.background,
       appBar: AppBar(
         backgroundColor: isWindows
             ? Colors.transparent
@@ -380,7 +386,7 @@ class _ProjectDashboardScreenState
               ],
             )
           : null,
-    );
+    ));
   }
 }
 
