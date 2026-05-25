@@ -113,42 +113,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         _selectedDay!.toIso8601String().split('T')[0];
 
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    tileColor: AppTheme.surface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(isWindows ? 18 : 8),
-                    ),
-                    leading: CircleAvatar(
-                      backgroundColor: isDone
-
-                          ? AppTheme.success.withAlpha(50)
-                          : AppTheme.accent.withAlpha(50),
-                      child: Icon(
-                        isDone ? Icons.check : Icons.local_fire_department,
-                        color: isDone ? AppTheme.success : AppTheme.accent,
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: AppTheme.buildGlassContainer(
+                    context,
+                    radius: isWindows ? 16 : 8,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: isDone
+                            ? AppTheme.success.withAlpha(50)
+                            : AppTheme.accent.withAlpha(50),
+                        child: Icon(
+                          isDone ? Icons.check : Icons.local_fire_department,
+                          color: isDone ? AppTheme.success : AppTheme.accent,
+                        ),
                       ),
-                    ),
-                    title: Text(
-                      () {
-                        final title = t['title'] ?? 'Untitled';
-                        final flatNumber = t['flat']?['flat_number']?.toString();
-                        return flatNumber != null && flatNumber.isNotEmpty
-                            ? '$flatNumber: $title'
-                            : title;
-                      }(),
-                      style: AppTheme.body.copyWith(
-                        fontWeight: FontWeight.w600,
-                        decoration: isDone ? TextDecoration.lineThrough : null,
+                      title: Text(
+                        () {
+                          final title = t['title'] ?? 'Untitled';
+                          final flatNumber = t['flat']?['flat_number']?.toString();
+                          return flatNumber != null && flatNumber.isNotEmpty
+                              ? '$flatNumber: $title'
+                              : title;
+                        }(),
+                        style: AppTheme.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          decoration: isDone ? TextDecoration.lineThrough : null,
+                        ),
                       ),
-                    ),
-                    subtitle: Text(
-                      completedToday
-                          ? 'Checked off today'
-                          : (isDone
-                              ? 'Completed earlier'
-                              : 'Still active for this date'),
-                      style: AppTheme.label,
+                      subtitle: Text(
+                        completedToday
+                            ? 'Checked off today'
+                            : (isDone
+                                ? 'Completed earlier'
+                                : 'Still active for this date'),
+                        style: AppTheme.label,
+                      ),
                     ),
                   ),
                 );

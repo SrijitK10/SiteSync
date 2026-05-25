@@ -387,24 +387,20 @@ class _TasksTabState extends ConsumerState<TasksTab> {
           title: 'Flat workspaces',
           actions: [
             if (!isViewer)
-              SizedBox(
-                height: 42,
-                child: OutlinedButton.icon(
-                  onPressed: _isExporting
-                      ? null
-                      : () => _showExportOptions(context),
-                  icon: const Icon(Icons.download_rounded),
-                  label: Text(l.downloadReports),
-                ),
+              OutlinedButton.icon(
+                onPressed: _isExporting
+                    ? null
+                    : () => _showExportOptions(context),
+                icon: const Icon(Icons.download_rounded),
+                label: Text(l.downloadReports),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
               ),
             if (canEdit)
-              SizedBox(
-                height: 42,
-                child: FilledButton.icon(
-                  onPressed: _showAddFlatSheet,
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(l.addFlat),
-                ),
+              FilledButton.icon(
+                onPressed: _showAddFlatSheet,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l.addFlat),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
               ),
           ],
           child: _flats.isEmpty

@@ -451,21 +451,17 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
         body: DesktopSectionShell(
           title: 'Project gallery',
           actions: [
-            SizedBox(
-              height: 42,
-              child: OutlinedButton.icon(
-                onPressed: _fetchImages,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Refresh feed'),
-              ),
+            OutlinedButton.icon(
+              onPressed: _fetchImages,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Refresh feed'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
             ),
-            SizedBox(
-              height: 42,
-              child: FilledButton.icon(
-                onPressed: _isUploading ? null : _pickAndUploadImage,
-                icon: const Icon(Icons.add_a_photo_rounded),
-                label: Text(_isUploading ? 'Uploading...' : 'Add photos'),
-              ),
+            FilledButton.icon(
+              onPressed: _isUploading ? null : _pickAndUploadImage,
+              icon: const Icon(Icons.add_a_photo_rounded),
+              label: Text(_isUploading ? 'Uploading...' : 'Add photos'),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
             ),
           ],
           child: buildFeed(desktop: true),
