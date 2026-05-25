@@ -128,7 +128,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
+class _CloudinaryHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) {
+        return host.contains('cloudinary.com');
+      };
+  }
+}
+
 void main() async {
+  HttpOverrides.global = _CloudinaryHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
   if (!isWindowsDesktop) {
     try {

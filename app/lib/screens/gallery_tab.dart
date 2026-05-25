@@ -449,39 +449,23 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: DesktopSectionShell(
-          eyebrow: 'Visual progress',
           title: 'Project gallery',
-          subtitle:
-              'Review grouped image updates, verify upload cadence, and share progress without compressing the visual history into a narrow feed.',
           actions: [
-            OutlinedButton.icon(
-              onPressed: _fetchImages,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Refresh feed'),
+            SizedBox(
+              height: 42,
+              child: OutlinedButton.icon(
+                onPressed: _fetchImages,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Refresh feed'),
+              ),
             ),
-            FilledButton.icon(
-              onPressed: _isUploading ? null : _pickAndUploadImage,
-              icon: const Icon(Icons.add_a_photo_rounded),
-              label: Text(_isUploading ? 'Uploading...' : 'Add photos'),
-            ),
-          ],
-          metrics: [
-            DesktopSectionMetric(
-              label: 'Posts',
-              value: '${posts.length}',
-              icon: Icons.view_stream_outlined,
-            ),
-            DesktopSectionMetric(
-              label: 'Images',
-              value: '${_images.length}',
-              icon: Icons.photo_library_outlined,
-              accent: Theme.of(context).colorScheme.secondary,
-            ),
-            DesktopSectionMetric(
-              label: 'Project',
-              value: widget.projectName,
-              icon: Icons.workspaces_outline,
-              accent: AppTheme.success,
+            SizedBox(
+              height: 42,
+              child: FilledButton.icon(
+                onPressed: _isUploading ? null : _pickAndUploadImage,
+                icon: const Icon(Icons.add_a_photo_rounded),
+                label: Text(_isUploading ? 'Uploading...' : 'Add photos'),
+              ),
             ),
           ],
           child: buildFeed(desktop: true),

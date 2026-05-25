@@ -966,44 +966,38 @@ class _DesktopProjectCardState extends ConsumerState<_DesktopProjectCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: const SizedBox(),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (unreadCount > 0) ...[
-                            _DesktopUnreadBadge(count: unreadCount),
-                            const SizedBox(width: 8),
-                          ],
-                          if (widget.canManageProjects)
-                            IconButton(
-                              tooltip: 'Delete project',
-                              onPressed: widget.onDelete,
-                              icon: const Icon(Icons.delete_outline_rounded),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
                             ),
-                        ],
+                            const SizedBox(height: 8),
+                            Text(
+                              location.isEmpty ? 'Location not added yet' : location,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTheme.body.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      if (widget.canManageProjects)
+                        IconButton(
+                          tooltip: 'Delete project',
+                          onPressed: widget.onDelete,
+                          icon: const Icon(Icons.delete_outline_rounded),
+                        ),
                     ],
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    location.isEmpty ? 'Location not added yet' : location,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTheme.body.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
                   ),
                   const Spacer(),
                   Row(

@@ -163,12 +163,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           title: 'Project calendar',
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 7,
-                    child: DesktopSurfaceCard(
+              return DesktopSurfaceCard(
+                padding: const EdgeInsets.all(32),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 7,
                       child: TableCalendar(
                         firstDay: DateTime.utc(2020, 1, 1),
                         lastDay: DateTime.utc(2030, 12, 31),
@@ -202,11 +203,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    flex: 5,
-                    child: DesktopSurfaceCard(
+                    Container(
+                      width: 1,
+                      margin: const EdgeInsets.symmetric(horizontal: 32),
+                      color: Theme.of(context).dividerColor,
+                    ),
+                    Expanded(
+                      flex: 5,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -219,8 +222,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               );
             },
           ),
