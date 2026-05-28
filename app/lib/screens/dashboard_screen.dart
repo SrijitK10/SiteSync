@@ -5,6 +5,7 @@ import '../services/platform_utils.dart';
 import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/drawn_app_icon.dart';
+import 'flat_tasks_screen.dart';
 
 class ActivityEvent {
   final DateTime timestamp;
@@ -14,6 +15,8 @@ class ActivityEvent {
   final String projectName;
   final String flatNumber;
   final bool isCompletion;
+  final String projectId;
+  final String flatId;
 
   ActivityEvent({
     required this.timestamp,
@@ -23,6 +26,8 @@ class ActivityEvent {
     required this.projectName,
     required this.flatNumber,
     required this.isCompletion,
+    required this.projectId,
+    required this.flatId,
   });
 }
 
@@ -38,6 +43,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String? _errorMessage;
   List<ActivityEvent> _activityLog = [];
   Map<String, List<Map<String, dynamic>>> _pendingTasksByProject = {};
+
+  void _navigateToFlatTasks(String projectId, String flatId, String flatNumber) {
+    if (projectId.isEmpty || flatId.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FlatTasksScreen(
+          projectId: projectId,
+          flatId: flatId,
+          flatNumber: flatNumber,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -87,6 +105,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       final projectName =
           task['project']?['name']?.toString() ?? 'Unknown Project';
       final flatNumber = task['flat']?['flat_number']?.toString() ?? '-';
+      final projectId = task['project']?['id']?.toString() ?? '';
+      final flatId = task['flat']?['id']?.toString() ?? '';
       final taskTitle = task['title']?.toString() ?? 'Untitled Task';
       final status = task['status']?.toString() ?? 'todo';
       final createdBy =
@@ -107,6 +127,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               projectName: projectName,
               flatNumber: flatNumber,
               isCompletion: false,
+              projectId: projectId,
+              flatId: flatId,
             ),
           );
         } catch (_) {}
@@ -125,6 +147,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               projectName: projectName,
               flatNumber: flatNumber,
               isCompletion: true,
+              projectId: projectId,
+              flatId: flatId,
             ),
           );
         } catch (_) {}
@@ -244,7 +268,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: AppTheme.buildGlassContainer(
           context,
           radius: 16,
-          child: tileContent,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _navigateToFlatTasks(event.projectId, event.flatId, event.flatNumber),
+              child: tileContent,
+            ),
+          ),
         ),
       );
     }
@@ -266,7 +297,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-      child: tileContent,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _navigateToFlatTasks(event.projectId, event.flatId, event.flatNumber),
+          child: tileContent,
+        ),
+      ),
     );
   }
 
@@ -385,6 +423,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final taskTitle = task['title']?.toString() ?? 'Untitled';
                 final flatNumber =
                     task['flat']?['flat_number']?.toString() ?? '-';
+                final projectId = task['project']?['id']?.toString() ?? '';
+                final flatId = task['flat']?['id']?.toString() ?? '';
                 String dateStr = '';
                 if (task['created_at'] != null) {
                   try {
@@ -457,7 +497,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: AppTheme.buildGlassContainer(
                       context,
                       radius: 16,
-                      child: tileContent,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _navigateToFlatTasks(projectId, flatId, flatNumber),
+                          child: tileContent,
+                        ),
+                      ),
                     ),
                   );
                 }
@@ -481,7 +528,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ],
                   ),
-                  child: tileContent,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _navigateToFlatTasks(projectId, flatId, flatNumber),
+                      child: tileContent,
+                    ),
+                  ),
                 );
               }),
             ],
