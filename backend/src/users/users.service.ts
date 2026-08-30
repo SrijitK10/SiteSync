@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -9,6 +13,24 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
+
+  private isUniqueViolation(error: unknown): boolean {
+    return (error as { code?: string })?.code === '23505';
+  }
+
+  private uniqueViolationConflict(error: unknown): ConflictException {
+    const detail = String((error as { detail?: string })?.detail || '');
+    if (detail.includes('phone')) {
+      return new ConflictException('Phone number already registered');
+    }
+    if (detail.includes('email')) {
+      return new ConflictException('Email already registered');
+    }
+    if (detail.includes('firebase_uid')) {
+      return new ConflictException('Firebase account already linked');
+    }
+    return new ConflictException('User already exists');
+  }
 
   normalizePhone(phone?: string | null): string | undefined {
     if (!phone) return undefined;
@@ -49,22 +71,36 @@ export class UsersService {
       }
     }
     if (userData.email) {
-      const existing = await this.usersRepository.findOne({ where: { email: userData.email } });
+      const existing = await this.usersRepository.findOne({
+        where: { email: userData.email },
+      });
       if (existing) {
         throw new ConflictException('Email already registered');
       }
     }
 
     const newUser = this.usersRepository.create(userData);
-    return this.usersRepository.save(newUser);
+    try {
+      return await this.usersRepository.save(newUser);
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw this.uniqueViolationConflict(error);
+      }
+      throw error;
+    }
   }
 
   async findAll(): Promise<User[]> {
-    return this.usersRepository.find({ select: ['id', 'name', 'phone', 'email', 'role', 'created_at'] });
+    return this.usersRepository.find({
+      select: ['id', 'name', 'phone', 'email', 'role', 'created_at'],
+    });
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id }, select: ['id', 'name', 'phone', 'email', 'role', 'created_at'] });
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'name', 'phone', 'email', 'role', 'created_at'],
+    });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
@@ -106,14 +142,30 @@ export class UsersService {
   async findByEmailWithPassword(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { email },
-      select: ['id', 'name', 'phone', 'email', 'role', 'password_hash', 'firebase_uid'],
+      select: [
+        'id',
+        'name',
+        'phone',
+        'email',
+        'role',
+        'password_hash',
+        'firebase_uid',
+      ],
     });
   }
 
   async findByIdWithPassword(id: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { id },
-      select: ['id', 'name', 'phone', 'email', 'role', 'password_hash', 'firebase_uid'],
+      select: [
+        'id',
+        'name',
+        'phone',
+        'email',
+        'role',
+        'password_hash',
+        'firebase_uid',
+      ],
     });
   }
 
@@ -132,10 +184,29 @@ export class UsersService {
         }
       }
     }
+    if (updateData.email !== undefined && updateData.email) {
+      const existing = await this.findByEmail(updateData.email);
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Email already registered');
+      }
+    }
+    if (updateData.firebase_uid !== undefined && updateData.firebase_uid) {
+      const existing = await this.findByFirebaseUid(updateData.firebase_uid);
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Firebase account already linked');
+      }
+    }
 
     const user = await this.findOne(id);
     Object.assign(user, updateData);
-    return this.usersRepository.save(user);
+    try {
+      return await this.usersRepository.save(user);
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw this.uniqueViolationConflict(error);
+      }
+      throw error;
+    }
   }
 
   async updateFcmToken(id: string, fcm_token: string): Promise<User> {
@@ -151,8 +222,13 @@ export class UsersService {
     }
   }
 
-  async findTokensByRoles(roles: string[], excludeUserId?: string, projectId?: string): Promise<string[]> {
-    const queryBuilder = this.usersRepository.createQueryBuilder('user')
+  async findTokensByRoles(
+    roles: string[],
+    excludeUserId?: string,
+    projectId?: string,
+  ): Promise<string[]> {
+    const queryBuilder = this.usersRepository
+      .createQueryBuilder('user')
       .where('user.role IN (:...roles)', { roles })
       .andWhere('user.fcm_token IS NOT NULL');
 
@@ -161,17 +237,20 @@ export class UsersService {
     }
 
     if (projectId) {
-      queryBuilder.andWhere((qb) => {
-        const subQuery = qb.subQuery()
-          .select('pm.user_id')
-          .from('project_members', 'pm')
-          .where('pm.project_id = :projectId')
-          .getQuery();
-        return `(user.role IN ('super_admin', 'admin') OR user.id IN ${subQuery})`;
-      }).setParameter('projectId', projectId);
+      queryBuilder
+        .andWhere((qb) => {
+          const subQuery = qb
+            .subQuery()
+            .select('pm.user_id')
+            .from('project_members', 'pm')
+            .where('pm.project_id = :projectId')
+            .getQuery();
+          return `(user.role IN ('super_admin', 'admin') OR user.id IN ${subQuery})`;
+        })
+        .setParameter('projectId', projectId);
     }
 
     const users = await queryBuilder.select(['user.fcm_token']).getMany();
-    return users.map(u => u.fcm_token);
+    return users.map((u) => u.fcm_token);
   }
 }
