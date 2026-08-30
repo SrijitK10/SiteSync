@@ -158,19 +158,14 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> loginWithFirebaseToken(String idToken, {String? name}) async {
-    try {
-      final res = await apiClient.post(
-        '/auth/firebase-login',
-        data: {
-          'idToken': idToken,
-          if (name != null && name.isNotEmpty) 'name': name,
-        },
-      );
-      await _handleAuthResponse(res.data);
-    } catch (e) {
-      print('Error during Firebase login: $e');
-      throw Exception('Login Error: $e');
-    }
+    final res = await apiClient.post(
+      '/auth/firebase-login',
+      data: {
+        'idToken': idToken,
+        if (name != null && name.isNotEmpty) 'name': name,
+      },
+    );
+    await _handleAuthResponse(res.data);
   }
 
   Future<void> loginWithPassword(String email, String password) async {

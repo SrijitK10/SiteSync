@@ -63,13 +63,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               if (mounted) {
                 setState(() => _isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      usedRecaptchaFallback
-                          ? 'Verification failed even after retrying with browser verification: ${e.message}'
-                          : 'Verification failed: ${e.message}',
-                    ),
-                  ),
+                  SnackBar(content: Text(extractErrorMessage(e))),
                 );
               }
             },
@@ -83,6 +77,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               _resendCountdown = 30;
             });
             _startResendTimer();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('OTP sent. Please check your messages.')),
+            );
           }
         },
         codeAutoRetrievalTimeout: (String verificationId) {
@@ -102,7 +99,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     }
   }
@@ -140,7 +137,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Invalid OTP: $e')));
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     }
   }
@@ -163,7 +160,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Verification failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     }
   }
