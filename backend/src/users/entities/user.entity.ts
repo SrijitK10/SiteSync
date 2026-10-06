@@ -1,32 +1,31 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
-@Entity('users')
+export type UserDocument = User & Document;
+
+@Schema({ timestamps: { createdAt: 'created_at', updatedAt: false }, collection: 'users' })
 export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
+  id?: string;
+  @Prop()
   name: string;
 
-  @Column({ unique: true, nullable: true })
+  @Prop({ unique: true, sparse: true })
   phone: string; // E.164 format: +919876543210 (Android users)
 
-  @Index()
-  @Column({ unique: true, nullable: true })
+  @Prop({ unique: true, sparse: true, index: true })
   email: string; // For iOS email-link auth users
 
-  @Column({ unique: true, nullable: true })
+  @Prop({ unique: true, sparse: true })
   firebase_uid: string;
 
-  @Column({ nullable: true, select: false })
+  @Prop({ select: false })
   password_hash: string;
 
-  @Column({ nullable: true })
+  @Prop()
   fcm_token: string;
 
-  @Column({ default: 'viewer' })
+  @Prop({ default: 'viewer' })
   role: string; // super_admin, admin, site_manager, viewer
-
-  @CreateDateColumn()
-  created_at: Date;
 }
+
+export const UserSchema = SchemaFactory.createForClass(User);

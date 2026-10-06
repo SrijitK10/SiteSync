@@ -1,23 +1,27 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, Index, Unique } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
+
+export type FlatDocument = Flat & Document;
 import { Project } from '../../projects/entities/project.entity';
 
-@Entity('flats')
-@Unique(['project', 'flat_number'])
+@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'flats' })
 export class Flat {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
+  // id is natively handled by Mongoose as _id (ObjectId)
 
-  @Column()
+  @Prop()
   flat_number: string;
 
-  @Column({ default: false })
+  @Prop({ default: false })
   is_completed: boolean;
 
-  @Index()
-  @ManyToOne(() => Project, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
+  // // @Index - handled in @Prop
+  // @ManyToOne => Project, { onDelete: 'CASCADE' })
+  // @JoinColumn
   project: Project;
 
-  @CreateDateColumn()
+  // // @CreateDateColumn
   created_at: Date;
 }
+
+export const FlatSchema = SchemaFactory.createForClass(Flat);

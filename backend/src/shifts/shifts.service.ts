@@ -1,21 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Shift } from './entities/shift.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { ShiftDocument,  Shift } from './entities/shift.entity';
 
 @Injectable()
 export class ShiftsService {
   constructor(
-    @InjectRepository(Shift)
-    private shiftsRepository: Repository<Shift>,
+    @InjectModel(Shift.name)
+    private shiftsRepository: Model<ShiftDocument>,
   ) {}
 
   async create(createShiftDto: any): Promise<Shift> {
-    const shift = this.shiftsRepository.create();
+    const shift = new this.shiftsRepository();
     Object.assign(shift, createShiftDto);
     shift.user = { id: createShiftDto.userId } as any;
     shift.project = { id: createShiftDto.projectId } as any;
-    return this.shiftsRepository.save(shift);
+    return new this.shiftsRepository(shift).save() as any;
   }
 
   async findAllByUser(userId: string): Promise<Shift[]> {
@@ -43,11 +43,11 @@ export class ShiftsService {
   async update(id: string, updateShiftDto: any): Promise<Shift> {
     const shift = await this.findOne(id);
     Object.assign(shift, updateShiftDto);
-    return this.shiftsRepository.save(shift);
+    return new this.shiftsRepository(shift).save() as any;
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.shiftsRepository.delete(id);
-    if (result.affected === 0) throw new NotFoundException();
+    const result = await this.shiftsRepository.findByIdAndDelete(id);
+    if (!result) throw new NotFoundException();
   }
 }

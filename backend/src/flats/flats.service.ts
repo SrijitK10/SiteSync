@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Flat } from './entities/flat.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { FlatDocument,  Flat } from './entities/flat.entity';
 
 @Injectable()
 export class FlatsService {
   constructor(
-    @InjectRepository(Flat)
-    private flatsRepo: Repository<Flat>,
+    @InjectModel(Flat.name)
+    private flatsRepo: Model<FlatDocument>,
   ) {}
 
   async findAllByProject(projectId: string): Promise<Flat[]> {
@@ -26,22 +26,22 @@ export class FlatsService {
     });
     if (existing) throw new ConflictException('Flat already exists in this project');
 
-    const flat = this.flatsRepo.create({
+    const flat = new this.flatsRepo({
       flat_number: trimmed,
       project: { id: projectId } as any,
     });
-    return this.flatsRepo.save(flat);
+    return new this.flatsRepo(flat).save() as any;
   }
 
   async toggleCompleted(id: string, isCompleted: boolean): Promise<Flat> {
     const flat = await this.flatsRepo.findOne({ where: { id } });
     if (!flat) throw new NotFoundException('Flat not found');
     flat.is_completed = isCompleted;
-    return this.flatsRepo.save(flat);
+    return new this.flatsRepo(flat).save() as any;
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.flatsRepo.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Flat not found');
+    const result = await this.flatsRepo.findByIdAndDelete(id);
+    if (!result) throw new NotFoundException('Flat not found');
   }
 }

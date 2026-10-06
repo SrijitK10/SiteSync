@@ -1,18 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, Between, In } from 'typeorm';
-import { Task } from './entities/task.entity';
-import { TaskAttachment } from './entities/task-attachment.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+
+import { TaskDocument,  Task } from './entities/task.entity';
+import { TaskAttachmentDocument,  TaskAttachment } from './entities/task-attachment.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TranslationService } from '../translation/translation.service';
 
 @Injectable()
 export class TasksService {
   constructor(
-    @InjectRepository(Task)
-    private tasksRepository: Repository<Task>,
-    @InjectRepository(TaskAttachment)
-    private attachmentsRepository: Repository<TaskAttachment>,
+    @InjectModel(Task.name)
+    private tasksRepository: Model<TaskDocument>,
+    @InjectModel(TaskAttachment.name)
+    private attachmentsRepository: Model<TaskAttachmentDocument>,
     private readonly notificationsService: NotificationsService,
     private readonly translationService: TranslationService,
   ) {}
@@ -49,14 +50,14 @@ export class TasksService {
         const descTranslations = await this.translationService.translateText(description, targetLangs);
         task.description_translations = { ...task.description_translations, ...descTranslations };
       }
-      await this.tasksRepository.save(task);
+      await new this.tasksRepository(task).save() as any;
     } catch (e) {
       console.error('Background translation failed', e);
     }
   }
 
   async create(createTaskDto: any, userId?: string): Promise<Task> {
-    const task = this.tasksRepository.create();
+    const task = new this.tasksRepository();
     Object.assign(task, createTaskDto);
     task.project = { id: createTaskDto.projectId } as any;
     if (createTaskDto.flatId) {
@@ -68,7 +69,7 @@ export class TasksService {
     if (userId) {
       task.createdBy = { id: userId } as any;
     }
-    const savedTask = await this.tasksRepository.save(task);
+    const savedTask = await new this.tasksRepository(task).save() as any;
 
     // Asynchronously update translations
     this.translateTaskAndSave(savedTask, createTaskDto.title, createTaskDto.description);
@@ -97,16 +98,16 @@ export class TasksService {
 
     if (range) {
       if (range === 'custom' && startDate && endDate) {
-        whereClause.created_at = Between(startDate, endDate);
+        whereClause.created_at = { $gte: startDate, $lte: endDate };
       } else {
         const now = new Date();
         const ms = now.getTime();
         if (range === 'daily') {
-          whereClause.created_at = MoreThanOrEqual(new Date(ms - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.created_at = { $gte: new Date(ms - 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         } else if (range === 'weekly') {
-          whereClause.created_at = MoreThanOrEqual(new Date(ms - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.created_at = { $gte: new Date(ms - 7 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         } else if (range === 'monthly') {
-          whereClause.created_at = MoreThanOrEqual(new Date(ms - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.created_at = { $gte: new Date(ms - 30 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         }
       }
     }
@@ -123,16 +124,16 @@ export class TasksService {
 
     if (range) {
       if (range === 'custom' && startDate && endDate) {
-        whereClause.created_at = Between(startDate, endDate);
+        whereClause.created_at = { $gte: startDate, $lte: endDate };
       } else {
         const now = new Date();
         const ms = now.getTime();
         if (range === 'daily') {
-          whereClause.created_at = MoreThanOrEqual(new Date(ms - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.created_at = { $gte: new Date(ms - 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         } else if (range === 'weekly') {
-          whereClause.created_at = MoreThanOrEqual(new Date(ms - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.created_at = { $gte: new Date(ms - 7 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         } else if (range === 'monthly') {
-          whereClause.created_at = MoreThanOrEqual(new Date(ms - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.created_at = { $gte: new Date(ms - 30 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         }
       }
     }
@@ -171,7 +172,7 @@ export class TasksService {
     if (updateTaskDto.userId) {
       task.assignee = { id: updateTaskDto.userId } as any;
     }
-    const savedTask = await this.tasksRepository.save(task);
+    const savedTask = await new this.tasksRepository(task).save() as any;
 
     if (updateTaskDto.title !== undefined || updateTaskDto.description !== undefined) {
       this.translateTaskAndSave(savedTask, updateTaskDto.title, updateTaskDto.description);
@@ -203,7 +204,7 @@ export class TasksService {
   async copyTasks(taskIds: string[], targetFlatId: string, projectId: string, userId?: string): Promise<Task[]> {
     const sourceTasks = await this.tasksRepository.find({
       where: {
-        id: In(taskIds),
+        id: { $in: taskIds },
         project: { id: projectId },
       },
     });
@@ -212,7 +213,7 @@ export class TasksService {
 
     const newTasks: Task[] = [];
     for (const source of sourceTasks) {
-      const task = this.tasksRepository.create({
+      const task = new this.tasksRepository({
         title: source.title,
         // Only copy the task itself. Notes stay blank on imported tasks.
         description: null as any,
@@ -226,12 +227,12 @@ export class TasksService {
       newTasks.push(task);
     }
 
-    return this.tasksRepository.save(newTasks);
+    return new this.tasksRepository(newTasks).save() as any;
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.tasksRepository.delete(id);
-    if (result.affected === 0) throw new NotFoundException();
+    const result = await this.tasksRepository.findByIdAndDelete(id);
+    if (!result) throw new NotFoundException();
   }
 
   // ── Task Attachments ──
@@ -240,7 +241,7 @@ export class TasksService {
     const task = await this.tasksRepository.findOne({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Task not found');
 
-    const attachment = this.attachmentsRepository.create({
+    const attachment = new this.attachmentsRepository({
       url: data.url,
       storage_provider: data.storageProvider || 'external',
       display_name: data.displayName || data.originalName,
@@ -253,7 +254,7 @@ export class TasksService {
       uploadedBy: userId ? ({ id: userId } as any) : null,
     });
 
-    return this.attachmentsRepository.save(attachment);
+    return new this.attachmentsRepository(attachment).save() as any;
   }
 
   async addUploadedAttachment(
@@ -268,7 +269,7 @@ export class TasksService {
       throw new NotFoundException('Attachment file is missing');
     }
 
-    const attachment = this.attachmentsRepository.create({
+    const attachment = new this.attachmentsRepository({
       url: '',
       storage_provider: 'database',
       display_name: displayName?.trim() || file.originalname,
@@ -281,9 +282,9 @@ export class TasksService {
       uploadedBy: userId ? ({ id: userId } as any) : null,
     });
 
-    const savedAttachment = await this.attachmentsRepository.save(attachment);
+    const savedAttachment = await new this.attachmentsRepository(attachment).save() as any;
     savedAttachment.url = `/tasks/attachments/${savedAttachment.id}/file`;
-    return this.attachmentsRepository.save(savedAttachment);
+    return new this.attachmentsRepository(savedAttachment).save() as any;
   }
 
   async getAttachments(taskId: string): Promise<TaskAttachment[]> {
@@ -298,15 +299,11 @@ export class TasksService {
     const attachment = await this.attachmentsRepository.findOne({ where: { id: attachmentId } });
     if (!attachment) throw new NotFoundException('Attachment not found');
     attachment.display_name = displayName;
-    return this.attachmentsRepository.save(attachment);
+    return new this.attachmentsRepository(attachment).save() as any;
   }
 
   async getAttachmentFile(attachmentId: string): Promise<TaskAttachment> {
-    const attachment = await this.attachmentsRepository
-      .createQueryBuilder('attachment')
-      .addSelect('attachment.file_data')
-      .where('attachment.id = :attachmentId', { attachmentId })
-      .getOne();
+    const attachment = await this.attachmentsRepository.findById(attachmentId).select('+file_data').exec();
 
     if (!attachment) {
       throw new NotFoundException('Attachment not found');
@@ -320,7 +317,7 @@ export class TasksService {
   }
 
   async removeAttachment(attachmentId: string): Promise<void> {
-    const result = await this.attachmentsRepository.delete(attachmentId);
-    if (result.affected === 0) throw new NotFoundException('Attachment not found');
+    const result = await this.attachmentsRepository.findByIdAndDelete(attachmentId);
+    if (!result) throw new NotFoundException('Attachment not found');
   }
 }

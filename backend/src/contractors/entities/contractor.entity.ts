@@ -1,10 +1,15 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
 
-@Entity('contractors')
+export type ContractorDocument = Contractor & Document;
+
+@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'contractors' })
 export class Contractor {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
+  // id is natively handled by Mongoose as _id (ObjectId)
 
-  @Column({ unique: true })
+  @Prop({ unique: true })
   name: string;
 }
+
+export const ContractorSchema = SchemaFactory.createForClass(Contractor);

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ShiftsService } from './shifts.service';
 import { ShiftsController } from './shifts.controller';
-import { Shift } from './entities/shift.entity';
+import { ShiftSchema,  Shift } from './entities/shift.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Shift])],
+  imports: [MongooseModule.forFeature([{ name: Shift.name, schema: ShiftSchema }])],
   controllers: [ShiftsController],
   providers: [ShiftsService],
 })

@@ -1,18 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Contractor } from './entities/contractor.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { ContractorDocument,  Contractor } from './entities/contractor.entity';
 
 @Injectable()
 export class ContractorsService {
   constructor(
-    @InjectRepository(Contractor)
-    private contractorsRepo: Repository<Contractor>,
+    @InjectModel(Contractor.name)
+    private contractorsRepo: Model<ContractorDocument>,
   ) {}
 
   async create(name: string): Promise<Contractor> {
-    const contractor = this.contractorsRepo.create({ name });
-    return this.contractorsRepo.save(contractor);
+    const contractor = new this.contractorsRepo({ name });
+    return new this.contractorsRepo(contractor).save() as any;
   }
 
   async findAll(): Promise<Contractor[]> {
@@ -20,7 +20,7 @@ export class ContractorsService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.contractorsRepo.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Contractor not found');
+    const result = await this.contractorsRepo.findByIdAndDelete(id);
+    if (!result) throw new NotFoundException('Contractor not found');
   }
 }

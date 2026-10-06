@@ -1,28 +1,29 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { Project } from './entities/project.entity';
-import { ProjectMember } from './entities/project-member.entity';
-import { ProjectImage } from './entities/project-image.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+
+import { ProjectDocument,  Project } from './entities/project.entity';
+import { ProjectMemberDocument,  ProjectMember } from './entities/project-member.entity';
+import { ProjectImageDocument,  ProjectImage } from './entities/project-image.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ProjectsService {
   constructor(
-    @InjectRepository(Project)
-    private projectsRepository: Repository<Project>,
-    @InjectRepository(ProjectMember)
-    private membersRepository: Repository<ProjectMember>,
-    @InjectRepository(ProjectImage)
-    private imagesRepository: Repository<ProjectImage>,
+    @InjectModel(Project.name)
+    private projectsRepository: Model<ProjectDocument>,
+    @InjectModel(ProjectMember.name)
+    private membersRepository: Model<ProjectMemberDocument>,
+    @InjectModel(ProjectImage.name)
+    private imagesRepository: Model<ProjectImageDocument>,
     private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(createProjectDto: any, userId: string): Promise<Project> {
-    const project = this.projectsRepository.create();
+    const project = new this.projectsRepository();
     Object.assign(project, createProjectDto);
     project.createdBy = { id: userId } as any;
-    const savedProject = await this.projectsRepository.save(project);
+    const savedProject = await new this.projectsRepository(project).save() as any;
     
     // Fire and forget notification
     this.notificationsService.sendNotification(
@@ -53,7 +54,7 @@ export class ProjectsService {
 
     const projectIds = memberships.map(m => m.project.id);
     return this.projectsRepository.find({
-      where: { id: In(projectIds) },
+      where: { id: { $in: projectIds } },
       order: { created_at: 'DESC' },
     });
   }
@@ -67,12 +68,12 @@ export class ProjectsService {
   async update(id: string, updateProjectDto: any): Promise<Project> {
     const project = await this.findOne(id);
     Object.assign(project, updateProjectDto);
-    return this.projectsRepository.save(project);
+    return new this.projectsRepository(project).save() as any;
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.projectsRepository.delete(id);
-    if (result.affected === 0) throw new NotFoundException();
+    const result = await this.projectsRepository.findByIdAndDelete(id);
+    if (!result) throw new NotFoundException();
   }
 
   // ── Project Member Management ───────────────────────────────────
@@ -86,16 +87,16 @@ export class ProjectsService {
       return existing; // Already assigned, no-op
     }
 
-    const member = this.membersRepository.create({
+    const member = new this.membersRepository({
       project: { id: projectId },
       user: { id: userId },
       role_in_project: roleInProject,
     });
-    return this.membersRepository.save(member);
+    return new this.membersRepository(member).save() as any;
   }
 
   async removeMember(projectId: string, userId: string): Promise<void> {
-    const result = await this.membersRepository.delete({
+    const result = await this.membersRepository.findByIdAndDelete({
       project: { id: projectId },
       user: { id: userId },
     } as any);
@@ -116,7 +117,7 @@ export class ProjectsService {
       where: { user: { id: userId } },
       relations: ['project'],
     });
-    return memberships.map(m => m.project.id);
+    return memberships.map(m => (m.project as any).id || m.project);
   }
 
   /** Assign a user to multiple projects at once (idempotent). */
@@ -138,8 +139,8 @@ export class ProjectsService {
 
     // Remove revoked assignments
     for (const m of current) {
-      if (!targetIds.has(m.project.id)) {
-        await this.membersRepository.delete(m.id);
+      if (!targetIds.has((m.project as any).id || m.project)) {
+        await this.membersRepository.findByIdAndDelete(m.id);
       }
     }
   }
@@ -163,13 +164,13 @@ export class ProjectsService {
   // ── Images ──────────────────────────────────────────────────────
 
   async addImage(projectId: string, userId: string, url: string, caption?: string) {
-    const image = this.imagesRepository.create({
+    const image = new this.imagesRepository({
       url,
       caption,
       project: { id: projectId },
       uploadedBy: { id: userId },
     });
-    const savedImage = await this.imagesRepository.save(image);
+    const savedImage = await new this.imagesRepository(image).save() as any;
 
     this.notificationsService.sendNotification(
       'Progress Image Added',

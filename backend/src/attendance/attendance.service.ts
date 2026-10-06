@@ -1,13 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual, Between } from 'typeorm';
-import { Attendance } from './entities/attendance.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+
+import { AttendanceDocument,  Attendance } from './entities/attendance.entity';
 
 @Injectable()
 export class AttendanceService {
   constructor(
-    @InjectRepository(Attendance)
-    private attendanceRepository: Repository<Attendance>,
+    @InjectModel(Attendance.name)
+    private attendanceRepository: Model<AttendanceDocument>,
   ) {}
 
   async createBulk(createDto: { siteAddress: string, projectId: string, records: any[] }, recorderId: string): Promise<void> {
@@ -23,7 +24,7 @@ export class AttendanceService {
       recorder: { id: recorderId } as any,
     }));
     
-    await this.attendanceRepository.insert(formattedRecords);
+    await this.attendanceRepository.insertMany(formattedRecords);
   }
 
   async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string, contractorName?: string): Promise<Attendance[]> {
@@ -35,16 +36,16 @@ export class AttendanceService {
 
     if (range && range !== 'all') {
       if (range === 'custom' && startDate && endDate) {
-        whereClause.date = Between(startDate, endDate);
+        whereClause.date = { $gte: startDate, $lte: endDate };
       } else {
         const now = new Date();
         const ms = now.getTime();
         if (range === 'daily') {
-          whereClause.date = MoreThanOrEqual(new Date(ms - 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.date = { $gte: new Date(ms - 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         } else if (range === 'weekly') {
-          whereClause.date = MoreThanOrEqual(new Date(ms - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.date = { $gte: new Date(ms - 7 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         } else if (range === 'monthly') {
-          whereClause.date = MoreThanOrEqual(new Date(ms - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          whereClause.date = { $gte: new Date(ms - 30 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
         }
       }
     }
@@ -57,7 +58,7 @@ export class AttendanceService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.attendanceRepository.delete(id);
-    if (result.affected === 0) throw new NotFoundException('Attendance record not found');
+    const result = await this.attendanceRepository.findByIdAndDelete(id);
+    if (!result) throw new NotFoundException('Attendance record not found');
   }
 }

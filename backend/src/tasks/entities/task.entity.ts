@@ -1,4 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
+
+export type TaskDocument = Task & Document;
 import { User } from '../../users/entities/user.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { Flat } from '../../flats/entities/flat.entity';
@@ -9,65 +12,67 @@ export enum TaskStatus {
   COMPLETED = 'completed',
 }
 
-@Entity('tasks')
+@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'tasks' })
 export class Task {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
+  // id is natively handled by Mongoose as _id (ObjectId)
 
-  @Column()
+  @Prop()
   title: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Prop({ type: String, nullable: true })
   description: string;
 
-  @Column({ type: 'jsonb', nullable: true, default: {} })
+  @Prop({ type: Object })
   title_translations: any;
 
-  @Column({ type: 'jsonb', nullable: true, default: {} })
+  @Prop({ type: Object })
   description_translations: any;
 
-  @Column({
-    type: 'enum',
+  @Prop({
+    type: String,
     enum: TaskStatus,
     default: TaskStatus.TODO,
   })
   status: TaskStatus;
 
-  @Column({ type: 'date', nullable: true })
+  @Prop({ type: Date, nullable: true })
   due_date: string;
 
-  @Index()
-  @ManyToOne(() => Project, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
+  // // @Index - handled in @Prop
+  // @ManyToOne => Project, { onDelete: 'CASCADE' })
+  // @JoinColumn
   project: Project;
 
-  @Index()
-  @ManyToOne(() => Flat, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'flat_id' })
+  // // @Index - handled in @Prop
+  // @ManyToOne => Flat, { nullable: true, onDelete: 'SET NULL' })
+  // @JoinColumn
   flat: Flat;
 
-  @Index()
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'assigned_to' })
+  // // @Index - handled in @Prop
+  // @ManyToOne => User, { nullable: true, onDelete: 'SET NULL' })
+  // @JoinColumn
   assignee: User;
 
-  @Index()
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'created_by' })
+  // // @Index - handled in @Prop
+  // @ManyToOne => User, { nullable: true, onDelete: 'SET NULL' })
+  // @JoinColumn
   createdBy: User;
 
-  @Index()
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'completed_by' })
+  // // @Index - handled in @Prop
+  // @ManyToOne => User, { nullable: true, onDelete: 'SET NULL' })
+  // @JoinColumn
   completedBy: User;
 
-  @Index()
-  @CreateDateColumn({ type: 'date' })
+  // // @Index - handled in @Prop
+  // @CreateDateColumn
   created_at: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Prop({ type: Date, nullable: true })
   completed_at: Date;
 
-  @UpdateDateColumn()
+  // // @UpdateDateColumn
   updated_at: Date;
 }
+
+export const TaskSchema = SchemaFactory.createForClass(Task);

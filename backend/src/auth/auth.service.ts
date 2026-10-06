@@ -87,7 +87,7 @@ export class AuthService {
       }
 
       if (Object.keys(updates).length > 0) {
-        user = await this.usersService.update(user.id, updates as any);
+        user = await this.usersService.update(user.id!, updates as any);
       }
     }
 
@@ -107,8 +107,8 @@ export class AuthService {
       }
       // Pre-created user without password — let them claim the account
       const hash = await bcrypt.hash(password, 10);
-      await this.usersService.update(existing.id, { password_hash: hash, name } as any);
-      const updated = await this.usersService.findOne(existing.id);
+      await this.usersService.update(existing.id!, { password_hash: hash, name } as any);
+      const updated = await this.usersService.findOne(existing.id!);
       return this.issueToken(updated);
     }
 
@@ -162,7 +162,7 @@ export class AuthService {
       throw new UnauthorizedException('No account found with this phone number');
     }
     const hash = await bcrypt.hash(newPassword, 10);
-    await this.usersService.update(user.id, { password_hash: hash } as any);
+    await this.usersService.update(user.id!, { password_hash: hash } as any);
     return { message: 'Password reset successfully' };
   }
 
@@ -172,13 +172,13 @@ export class AuthService {
     const payload = {
       phone: user.phone,
       email: user.email,
-      sub: user.id,
+      sub: user.id!,
       role: user.role,
     };
     return {
       accessToken: this.jwtService.sign(payload),
       user: {
-        id: user.id,
+        id: user.id!,
         phone: user.phone,
         email: user.email,
         name: user.name,

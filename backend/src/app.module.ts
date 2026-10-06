@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -15,34 +15,25 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TranslationModule } from './translation/translation.module';
 
-function parseDatabaseSsl(configService: ConfigService) {
-  const explicit = configService.get<string>('DATABASE_SSL');
-  if (explicit !== undefined) {
-    return ['1', 'true', 'yes', 'require'].includes(explicit.toLowerCase())
-      ? { rejectUnauthorized: false }
-      : false;
-  }
-
-  const databaseUrl = configService.get<string>('DATABASE_URL') || '';
-  if (/localhost|127\.0\.0\.1|::1/i.test(databaseUrl)) {
-    return false;
-  }
-
-  return { rejectUnauthorized: false };
+// Security configuration for MongoDB connection
+function parseMongoOptions(configService: ConfigService) {
+  return {
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+    minPoolSize: 5,
+    maxPoolSize: 50,
+  };
 }
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     CacheModule.register({ isGlobal: true, ttl: 5000 }),
-    TypeOrmModule.forRootAsync({
+    MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        url: configService.get<string>('DATABASE_URL'),
-        autoLoadEntities: true,
-        synchronize: true, // For dev only
-        ssl: parseDatabaseSsl(configService),
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+        ...parseMongoOptions(configService),
       }),
       inject: [ConfigService],
     }),

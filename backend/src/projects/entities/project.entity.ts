@@ -1,37 +1,42 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
+
+export type ProjectDocument = Project & Document;
 import { User } from '../../users/entities/user.entity';
 
-@Entity('projects')
+@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'projects' })
 export class Project {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
+  // id is natively handled by Mongoose as _id (ObjectId)
 
-  @Column()
+  @Prop()
   name: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Prop({ type: String, nullable: true })
   description: string;
 
-  @Column()
+  @Prop()
   location: string;
 
-  @Index()
-  @Column({ default: 'active' }) // active, archived, completed
+  // // @Index - handled in @Prop
+  @Prop({ default: 'active' }) // active, archived, completed
   status: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Prop({ type: Date, nullable: true })
   start_date: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Prop({ type: Date, nullable: true })
   end_date: string;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'created_by' })
+  // @ManyToOne => User)
+  // @JoinColumn
   createdBy: User;
 
-  @CreateDateColumn()
+  // // @CreateDateColumn
   created_at: Date;
 
-  @UpdateDateColumn()
+  // // @UpdateDateColumn
   updated_at: Date;
 }
+
+export const ProjectSchema = SchemaFactory.createForClass(Project);

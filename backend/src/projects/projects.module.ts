@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
-import { Project } from './entities/project.entity';
-import { ProjectMember } from './entities/project-member.entity';
-import { ProjectImage } from './entities/project-image.entity';
+import { ProjectSchema,  Project } from './entities/project.entity';
+import { ProjectMemberSchema,  ProjectMember } from './entities/project-member.entity';
+import { ProjectImageSchema,  ProjectImage } from './entities/project-image.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, ProjectMember, ProjectImage]),
+    MongooseModule.forFeature([{ name: Project.name, schema: ProjectSchema }, { name: ProjectMember.name, schema: ProjectMemberSchema }, { name: ProjectImage.name, schema: ProjectImageSchema }]),
     NotificationsModule,
   ],
   controllers: [ProjectsController],
