@@ -1,28 +1,49 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type ProjectMemberDocument = ProjectMember & Document;
-import { User } from '../../users/entities/user.entity';
-import { Project } from './project.entity';
 
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'project_members' })
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: 'project_members',
+  toJSON: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+  toObject: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+})
 export class ProjectMember {
-  id?: string;
-  // id is natively handled by Mongoose as _id (ObjectId)
+  @Prop({ type: String, default: () => randomUUID(), index: true })
+  id: string;
 
-  // @ManyToOne => Project, { onDelete: 'CASCADE' })
-  // @JoinColumn
-  project: Project;
+  @Prop({ type: String, required: true, index: true })
+  project_id: string;
 
-  // @ManyToOne => User, { onDelete: 'CASCADE', eager: true })
-  // @JoinColumn
-  user: User;
+  @Prop({ type: String, required: true, index: true })
+  user_id: string;
 
   @Prop({ default: 'member' })
-  role_in_project: string; // member (access granted)
+  role_in_project: string;
 
-  // // @CreateDateColumn
+  @Prop({ type: Date, default: Date.now })
   assigned_at: Date;
+
+  // Populated relations (virtuals / attached in service)
+  user?: any;
+  project?: any;
 }
 
 export const ProjectMemberSchema = SchemaFactory.createForClass(ProjectMember);
+ProjectMemberSchema.index({ project_id: 1, user_id: 1 }, { unique: true });

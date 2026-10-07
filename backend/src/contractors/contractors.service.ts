@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ContractorDocument,  Contractor } from './entities/contractor.entity';
+import { randomUUID } from 'crypto';
+import { ContractorDocument, Contractor } from './entities/contractor.entity';
+import { buildIdFilter, toCleanObject, toCleanObjects } from '../common/mongo-id.util';
 
 @Injectable()
 export class ContractorsService {
@@ -11,16 +13,21 @@ export class ContractorsService {
   ) {}
 
   async create(name: string): Promise<Contractor> {
-    const contractor = new this.contractorsRepo({ name });
-    return new this.contractorsRepo(contractor).save() as any;
+    const contractor = new this.contractorsRepo({
+      id: randomUUID(),
+      name,
+    });
+    const saved = await contractor.save();
+    return toCleanObject<Contractor>(saved);
   }
 
   async findAll(): Promise<Contractor[]> {
-    return this.contractorsRepo.find({ order: { name: 'ASC' } });
+    const contractors = await this.contractorsRepo.find().sort({ name: 1 }).lean().exec();
+    return toCleanObjects<Contractor>(contractors);
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.contractorsRepo.findByIdAndDelete(id);
+    const result = await this.contractorsRepo.findOneAndDelete(buildIdFilter(id)).exec();
     if (!result) throw new NotFoundException('Contractor not found');
   }
 }

@@ -1,41 +1,55 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type ProjectDocument = Project & Document;
-import { User } from '../../users/entities/user.entity';
 
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'projects' })
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: 'projects',
+  toJSON: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+  toObject: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+})
 export class Project {
-  id?: string;
-  // id is natively handled by Mongoose as _id (ObjectId)
+  @Prop({ type: String, default: () => randomUUID(), index: true })
+  id: string;
 
-  @Prop()
+  @Prop({ required: true })
   name: string;
 
-  @Prop({ type: String, nullable: true })
+  @Prop({ type: String, default: null })
   description: string;
 
-  @Prop()
+  @Prop({ default: '' })
   location: string;
 
-  // // @Index - handled in @Prop
   @Prop({ default: 'active' }) // active, archived, completed
   status: string;
 
-  @Prop({ type: Date, nullable: true })
-  start_date: string;
+  @Prop({ type: Date, default: null })
+  start_date: Date;
 
-  @Prop({ type: Date, nullable: true })
-  end_date: string;
+  @Prop({ type: Date, default: null })
+  end_date: Date;
 
-  // @ManyToOne => User)
-  // @JoinColumn
-  createdBy: User;
+  @Prop({ type: String, index: true, default: null })
+  created_by: string;
 
-  // // @CreateDateColumn
   created_at: Date;
-
-  // // @UpdateDateColumn
   updated_at: Date;
 }
 

@@ -1,27 +1,45 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type FlatDocument = Flat & Document;
-import { Project } from '../../projects/entities/project.entity';
 
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'flats' })
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: 'flats',
+  toJSON: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+  toObject: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+})
 export class Flat {
-  id?: string;
-  // id is natively handled by Mongoose as _id (ObjectId)
+  @Prop({ type: String, default: () => randomUUID(), index: true })
+  id: string;
 
-  @Prop()
+  @Prop({ required: true })
   flat_number: string;
 
   @Prop({ default: false })
   is_completed: boolean;
 
-  // // @Index - handled in @Prop
-  // @ManyToOne => Project, { onDelete: 'CASCADE' })
-  // @JoinColumn
-  project: Project;
+  @Prop({ type: String, required: true, index: true })
+  project_id: string;
 
-  // // @CreateDateColumn
   created_at: Date;
+  updated_at: Date;
 }
 
 export const FlatSchema = SchemaFactory.createForClass(Flat);
+FlatSchema.index({ project_id: 1, flat_number: 1 }, { unique: true });

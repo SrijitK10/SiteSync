@@ -32,7 +32,8 @@ function parseMongoOptions(configService: ConfigService) {
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI'),
+        uri: (configService.get<string>('MONGO_URI') || process.env.MONGO_URI || '').trim(),
+        dbName: configService.get<string>('MONGO_DB_NAME') || 'test',
         ...parseMongoOptions(configService),
       }),
       inject: [ConfigService],

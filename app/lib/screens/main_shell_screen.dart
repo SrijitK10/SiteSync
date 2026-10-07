@@ -6,6 +6,7 @@ import '../services/platform_utils.dart';
 import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/drawn_app_icon.dart';
+import '../widgets/quick_action_sheet.dart';
 
 class MainShellScreen extends ConsumerWidget {
   final Widget child;
@@ -38,6 +39,11 @@ class MainShellScreen extends ConsumerWidget {
     if (isWindowsDesktop || MediaQuery.of(context).size.width > 800) {
       return Scaffold(
         backgroundColor: Colors.transparent,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => QuickActionSheet.show(context),
+          backgroundColor: selectedColor,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
         body: Container(
           decoration: BoxDecoration(
             gradient: isWindowsDesktop 
@@ -150,6 +156,11 @@ class MainShellScreen extends ConsumerWidget {
 
     return Scaffold(
       body: child,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => QuickActionSheet.show(context),
+        backgroundColor: selectedColor,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (index) {

@@ -83,6 +83,9 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!@nestjs/mongoose)"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

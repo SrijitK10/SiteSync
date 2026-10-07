@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { randomUUID } from 'crypto';
 
-import { TaskDocument,  Task } from './entities/task.entity';
-import { TaskAttachmentDocument,  TaskAttachment } from './entities/task-attachment.entity';
+import { TaskDocument, Task, TaskStatus } from './entities/task.entity';
+import { TaskAttachmentDocument, TaskAttachment } from './entities/task-attachment.entity';
+import { ProjectDocument, Project } from '../projects/entities/project.entity';
+import { FlatDocument, Flat } from '../flats/entities/flat.entity';
+import { UserDocument, User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TranslationService } from '../translation/translation.service';
+import { buildIdFilter, buildIdsFilter, toCleanObject, toCleanObjects } from '../common/mongo-id.util';
 
 @Injectable()
 export class TasksService {
@@ -14,6 +19,12 @@ export class TasksService {
     private tasksRepository: Model<TaskDocument>,
     @InjectModel(TaskAttachment.name)
     private attachmentsRepository: Model<TaskAttachmentDocument>,
+    @InjectModel(Project.name)
+    private projectsRepository: Model<ProjectDocument>,
+    @InjectModel(Flat.name)
+    private flatsRepository: Model<FlatDocument>,
+    @InjectModel(User.name)
+    private usersRepository: Model<UserDocument>,
     private readonly notificationsService: NotificationsService,
     private readonly translationService: TranslationService,
   ) {}
@@ -36,156 +47,238 @@ export class TasksService {
     return 'document';
   }
 
-  private async translateTaskAndSave(task: Task, title?: string, description?: string) {
+  private async translateTaskAndSave(taskId: string, title?: string, description?: string) {
     const targetLangs = ['en', 'hi', 'bn'];
-    task.title_translations = task.title_translations || {};
-    task.description_translations = task.description_translations || {};
-
     try {
+      const updates: any = {};
       if (title) {
-        const titleTranslations = await this.translationService.translateText(title, targetLangs);
-        task.title_translations = { ...task.title_translations, ...titleTranslations };
+        updates.title_translations = await this.translationService.translateText(title, targetLangs);
       }
       if (description) {
-        const descTranslations = await this.translationService.translateText(description, targetLangs);
-        task.description_translations = { ...task.description_translations, ...descTranslations };
+        updates.description_translations = await this.translationService.translateText(description, targetLangs);
       }
-      await new this.tasksRepository(task).save() as any;
+      if (Object.keys(updates).length > 0) {
+        await this.tasksRepository.findOneAndUpdate(
+          buildIdFilter(taskId),
+          { $set: updates },
+        ).exec();
+      }
     } catch (e) {
       console.error('Background translation failed', e);
     }
   }
 
+  private async populateTasks(tasks: any[]): Promise<any[]> {
+    if (!tasks || !tasks.length) return [];
+
+    const projectIds = new Set<string>();
+    const flatIds = new Set<string>();
+    const userIds = new Set<string>();
+
+    for (const t of tasks) {
+      if (t.project_id) projectIds.add(t.project_id);
+      if (t.flat_id) flatIds.add(t.flat_id);
+      if (t.assigned_to) userIds.add(t.assigned_to);
+      if (t.created_by) userIds.add(t.created_by);
+      if (t.completed_by) userIds.add(t.completed_by);
+    }
+
+    const [projects, flats, users] = await Promise.all([
+      projectIds.size > 0
+        ? this.projectsRepository.find(buildIdsFilter(Array.from(projectIds))).select('id name location').lean().exec()
+        : [],
+      flatIds.size > 0
+        ? this.flatsRepository.find(buildIdsFilter(Array.from(flatIds))).select('id flat_number is_completed').lean().exec()
+        : [],
+      userIds.size > 0
+        ? this.usersRepository.find(buildIdsFilter(Array.from(userIds))).select('id name phone role').lean().exec()
+        : [],
+    ]);
+
+    const projectMap = new Map<string, any>();
+    for (const p of projects) {
+      const cleanP = toCleanObject(p);
+      projectMap.set(cleanP.id, cleanP);
+      if (p._id) projectMap.set(p._id.toString(), cleanP);
+    }
+
+    const flatMap = new Map<string, any>();
+    for (const f of flats) {
+      const cleanF = toCleanObject(f);
+      flatMap.set(cleanF.id, cleanF);
+      if (f._id) flatMap.set(f._id.toString(), cleanF);
+    }
+
+    const userMap = new Map<string, any>();
+    for (const u of users) {
+      const cleanU = toCleanObject(u);
+      userMap.set(cleanU.id, cleanU);
+      if (u._id) userMap.set(u._id.toString(), cleanU);
+    }
+
+    return tasks.map(t => {
+      const cleanT = toCleanObject<any>(t);
+      cleanT.project = projectMap.get(t.project_id) || (t.project_id ? { id: t.project_id, name: '' } : null);
+      cleanT.flat = flatMap.get(t.flat_id) || (t.flat_id ? { id: t.flat_id, flat_number: '' } : null);
+      cleanT.assignee = userMap.get(t.assigned_to) || null;
+      cleanT.createdBy = userMap.get(t.created_by) || null;
+      cleanT.completedBy = userMap.get(t.completed_by) || null;
+      return cleanT;
+    });
+  }
+
   async create(createTaskDto: any, userId?: string): Promise<Task> {
-    const task = new this.tasksRepository();
-    Object.assign(task, createTaskDto);
-    task.project = { id: createTaskDto.projectId } as any;
-    if (createTaskDto.flatId) {
-      task.flat = { id: createTaskDto.flatId } as any;
-    }
-    if (createTaskDto.userId) {
-      task.assignee = { id: createTaskDto.userId } as any;
-    }
-    if (userId) {
-      task.createdBy = { id: userId } as any;
-    }
-    const savedTask = await new this.tasksRepository(task).save() as any;
+    const taskId = randomUUID();
+    const projectId = createTaskDto.projectId || createTaskDto.project?.id;
+    const flatId = createTaskDto.flatId || createTaskDto.flat?.id || null;
+    const assignedTo = createTaskDto.userId || createTaskDto.assignedTo || createTaskDto.assignee?.id || null;
+
+    const task = new this.tasksRepository({
+      id: taskId,
+      title: createTaskDto.title,
+      description: createTaskDto.description || null,
+      status: createTaskDto.status || TaskStatus.TODO,
+      due_date: createTaskDto.dueDate || createTaskDto.due_date || null,
+      project_id: projectId,
+      flat_id: flatId,
+      assigned_to: assignedTo,
+      created_by: userId || null,
+      completed_by: null,
+      completed_at: null,
+      title_translations: {},
+      description_translations: {},
+    });
+
+    const savedTask = await task.save();
+    const result = toCleanObject<Task>(savedTask);
 
     // Asynchronously update translations
-    this.translateTaskAndSave(savedTask, createTaskDto.title, createTaskDto.description);
+    this.translateTaskAndSave(taskId, createTaskDto.title, createTaskDto.description);
 
     // Fire and forget notification
     if (userId) {
       this.notificationsService.sendNotification(
         'New Task Created',
-        `${savedTask.title || 'A new task'} has been assigned.`,
+        `${result.title || 'A new task'} has been assigned.`,
         ['super_admin', 'admin', 'site_manager', 'viewer'],
         userId,
-        { route: `/projects/${savedTask.project?.id || createTaskDto?.projectId || ''}` },
-        savedTask.project?.id || createTaskDto?.projectId,
+        { route: `/projects/${projectId || ''}` },
+        projectId,
       );
     }
 
-    return savedTask;
+    return (await this.populateTasks([result]))[0];
   }
 
   async findAllByProject(projectId: string, range?: string, startDate?: string, endDate?: string, flatId?: string): Promise<Task[]> {
-    const whereClause: any = { project: { id: projectId } };
+    const filter: any = { project_id: projectId };
 
     if (flatId) {
-      whereClause.flat = { id: flatId };
+      filter.flat_id = flatId;
     }
 
-    if (range) {
+    if (range && range !== 'all') {
       if (range === 'custom' && startDate && endDate) {
-        whereClause.created_at = { $gte: startDate, $lte: endDate };
+        filter.created_at = { $gte: new Date(startDate), $lte: new Date(endDate) };
       } else {
         const now = new Date();
         const ms = now.getTime();
         if (range === 'daily') {
-          whereClause.created_at = { $gte: new Date(ms - 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
+          filter.created_at = { $gte: new Date(ms - 24 * 60 * 60 * 1000) };
         } else if (range === 'weekly') {
-          whereClause.created_at = { $gte: new Date(ms - 7 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
+          filter.created_at = { $gte: new Date(ms - 7 * 24 * 60 * 60 * 1000) };
         } else if (range === 'monthly') {
-          whereClause.created_at = { $gte: new Date(ms - 30 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
+          filter.created_at = { $gte: new Date(ms - 30 * 24 * 60 * 60 * 1000) };
         }
       }
     }
 
-    return this.tasksRepository.find({
-      where: whereClause,
-      relations: ['assignee', 'flat', 'createdBy', 'completedBy'],
-      order: { created_at: 'DESC' },
-    });
+    const tasks = await this.tasksRepository.find(filter).sort({ created_at: -1 }).lean().exec();
+    return this.populateTasks(tasks);
   }
 
   async findAllGlobal(range?: string, startDate?: string, endDate?: string): Promise<Task[]> {
-    const whereClause: any = {};
+    const filter: any = {};
 
-    if (range) {
+    if (range && range !== 'all') {
       if (range === 'custom' && startDate && endDate) {
-        whereClause.created_at = { $gte: startDate, $lte: endDate };
+        filter.created_at = { $gte: new Date(startDate), $lte: new Date(endDate) };
       } else {
         const now = new Date();
         const ms = now.getTime();
         if (range === 'daily') {
-          whereClause.created_at = { $gte: new Date(ms - 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
+          filter.created_at = { $gte: new Date(ms - 24 * 60 * 60 * 1000) };
         } else if (range === 'weekly') {
-          whereClause.created_at = { $gte: new Date(ms - 7 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
+          filter.created_at = { $gte: new Date(ms - 7 * 24 * 60 * 60 * 1000) };
         } else if (range === 'monthly') {
-          whereClause.created_at = { $gte: new Date(ms - 30 * 24 * 60 * 60 * 1000 ).toISOString().split('T')[0] };
+          filter.created_at = { $gte: new Date(ms - 30 * 24 * 60 * 60 * 1000) };
         }
       }
     }
 
-    return this.tasksRepository.find({
-      where: whereClause,
-      relations: ['project', 'assignee', 'flat', 'createdBy', 'completedBy'],
-      order: { created_at: 'DESC' },
-    });
+    const tasks = await this.tasksRepository.find(filter).sort({ created_at: -1 }).lean().exec();
+    return this.populateTasks(tasks);
   }
 
   async findOne(id: string): Promise<Task> {
-    const task = await this.tasksRepository.findOne({
-      where: { id },
-      relations: ['assignee', 'project', 'flat', 'createdBy', 'completedBy'],
-    });
+    const task = await this.tasksRepository.findOne(buildIdFilter(id)).lean().exec();
     if (!task) throw new NotFoundException('Task not found');
-    return task;
+    const [populated] = await this.populateTasks([task]);
+    return populated;
   }
 
   async update(id: string, updateTaskDto: any, userId?: string): Promise<Task> {
-    const task = await this.findOne(id);
-    Object.assign(task, updateTaskDto);
-    
+    const updateFields: any = { ...updateTaskDto };
+
+    if (updateTaskDto.projectId) {
+      updateFields.project_id = updateTaskDto.projectId;
+      delete updateFields.projectId;
+    }
+    if (updateTaskDto.flatId !== undefined) {
+      updateFields.flat_id = updateTaskDto.flatId;
+      delete updateFields.flatId;
+    }
+    if (updateTaskDto.userId !== undefined) {
+      updateFields.assigned_to = updateTaskDto.userId;
+      delete updateFields.userId;
+    }
+
     // Natively intercept completion bounds locking the Time securely
     if (updateTaskDto.status === 'completed') {
-      task.completed_at = new Date().toISOString().split('T')[0] as any;
+      updateFields.completed_at = new Date();
       if (userId) {
-        task.completedBy = { id: userId } as any;
+        updateFields.completed_by = userId;
       }
     } else if (updateTaskDto.status === 'todo' || updateTaskDto.status === 'in_progress') {
-      task.completed_at = null as any;
-      task.completedBy = null as any;
+      updateFields.completed_at = null;
+      updateFields.completed_by = null;
     }
 
-    if (updateTaskDto.userId) {
-      task.assignee = { id: updateTaskDto.userId } as any;
-    }
-    const savedTask = await new this.tasksRepository(task).save() as any;
+    const updatedTask = await this.tasksRepository
+      .findOneAndUpdate(
+        buildIdFilter(id),
+        { $set: updateFields },
+        { returnDocument: 'after' },
+      )
+      .lean()
+      .exec();
+
+    if (!updatedTask) throw new NotFoundException('Task not found');
 
     if (updateTaskDto.title !== undefined || updateTaskDto.description !== undefined) {
-      this.translateTaskAndSave(savedTask, updateTaskDto.title, updateTaskDto.description);
+      this.translateTaskAndSave(id, updateTaskDto.title, updateTaskDto.description);
     }
 
+    const [populated] = await this.populateTasks([updatedTask]);
+
     if (updateTaskDto.status === 'completed' && userId) {
-      const taskTitle = savedTask.title || 'A task';
+      const taskTitle = populated.title || 'A task';
       let message = `${taskTitle} has been marked as completed.`;
-      
-      if (savedTask.project && savedTask.flat) {
-        message = `${taskTitle} has been completed for flat ${savedTask.flat.flat_number} in project ${savedTask.project.name}.`;
-      } else if (savedTask.project) {
-        message = `${taskTitle} has been completed in project ${savedTask.project.name}.`;
+
+      if (populated.project && populated.flat) {
+        message = `${taskTitle} has been completed for flat ${populated.flat.flat_number} in project ${populated.project.name}.`;
+      } else if (populated.project) {
+        message = `${taskTitle} has been completed in project ${populated.project.name}.`;
       }
 
       this.notificationsService.sendNotification(
@@ -193,55 +286,61 @@ export class TasksService {
         message,
         ['super_admin', 'admin', 'site_manager', 'viewer'],
         userId,
-        { route: `/projects/${savedTask.project?.id || updateTaskDto?.projectId || ''}` },
-        savedTask.project?.id || updateTaskDto?.projectId
+        { route: `/projects/${populated.project_id || ''}` },
+        populated.project_id,
       );
     }
 
-    return savedTask;
+    return populated;
   }
 
   async copyTasks(taskIds: string[], targetFlatId: string, projectId: string, userId?: string): Promise<Task[]> {
-    const sourceTasks = await this.tasksRepository.find({
-      where: {
-        id: { $in: taskIds },
-        project: { id: projectId },
-      },
-    });
+    const sourceTasks = await this.tasksRepository
+      .find({
+        ...buildIdsFilter(taskIds),
+        project_id: projectId,
+      })
+      .lean()
+      .exec();
 
     if (!sourceTasks.length) throw new NotFoundException('No source tasks found');
 
-    const newTasks: Task[] = [];
+    const newTasks: any[] = [];
     for (const source of sourceTasks) {
-      const task = new this.tasksRepository({
+      newTasks.push({
+        id: randomUUID(),
         title: source.title,
-        // Only copy the task itself. Notes stay blank on imported tasks.
-        description: null as any,
+        description: null,
         title_translations: source.title_translations || {},
         description_translations: {},
-        status: 'todo' as any,
-        project: { id: projectId } as any,
-        flat: { id: targetFlatId } as any,
-        createdBy: userId ? ({ id: userId } as any) : null,
+        status: TaskStatus.TODO,
+        project_id: projectId,
+        flat_id: targetFlatId,
+        assigned_to: null,
+        created_by: userId || null,
+        completed_by: null,
+        completed_at: null,
       });
-      newTasks.push(task);
     }
 
-    return new this.tasksRepository(newTasks).save() as any;
+    const savedTasks = await this.tasksRepository.insertMany(newTasks);
+    return this.populateTasks(savedTasks);
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.tasksRepository.findByIdAndDelete(id);
-    if (!result) throw new NotFoundException();
+    const result = await this.tasksRepository.findOneAndDelete(buildIdFilter(id)).exec();
+    if (!result) throw new NotFoundException('Task not found');
   }
 
   // ── Task Attachments ──
 
   async addAttachment(taskId: string, data: any, userId?: string): Promise<TaskAttachment> {
-    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    const task = await this.tasksRepository.findOne(buildIdFilter(taskId)).lean().exec();
     if (!task) throw new NotFoundException('Task not found');
 
+    const attachmentId = randomUUID();
     const attachment = new this.attachmentsRepository({
+      id: attachmentId,
       url: data.url,
       storage_provider: data.storageProvider || 'external',
       display_name: data.displayName || data.originalName,
@@ -250,11 +349,12 @@ export class TasksService {
       mime_type: data.mimeType || null,
       file_size: data.fileSize || null,
       file_data: null,
-      task: { id: taskId } as any,
-      uploadedBy: userId ? ({ id: userId } as any) : null,
+      task_id: taskId,
+      uploaded_by: userId || null,
     });
 
-    return new this.attachmentsRepository(attachment).save() as any;
+    const saved = await attachment.save();
+    return toCleanObject<TaskAttachment>(saved);
   }
 
   async addUploadedAttachment(
@@ -263,13 +363,15 @@ export class TasksService {
     displayName?: string,
     userId?: string,
   ): Promise<TaskAttachment> {
-    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    const task = await this.tasksRepository.findOne(buildIdFilter(taskId)).lean().exec();
     if (!task) throw new NotFoundException('Task not found');
     if (!file?.buffer?.length) {
       throw new NotFoundException('Attachment file is missing');
     }
 
+    const attachmentId = randomUUID();
     const attachment = new this.attachmentsRepository({
+      id: attachmentId,
       url: '',
       storage_provider: 'database',
       display_name: displayName?.trim() || file.originalname,
@@ -278,32 +380,73 @@ export class TasksService {
       mime_type: file.mimetype || null,
       file_size: file.size || null,
       file_data: file.buffer,
-      task: { id: taskId } as any,
-      uploadedBy: userId ? ({ id: userId } as any) : null,
+      task_id: taskId,
+      uploaded_by: userId || null,
     });
 
-    const savedAttachment = await new this.attachmentsRepository(attachment).save() as any;
-    savedAttachment.url = `/tasks/attachments/${savedAttachment.id}/file`;
-    return new this.attachmentsRepository(savedAttachment).save() as any;
+    const saved = await attachment.save();
+    const updated = await this.attachmentsRepository
+      .findOneAndUpdate(
+        buildIdFilter(attachmentId),
+        { $set: { url: `/tasks/attachments/${saved.id}/file` } },
+        { returnDocument: 'after' },
+      )
+      .lean()
+      .exec();
+
+    return toCleanObject<TaskAttachment>(updated || saved);
   }
 
   async getAttachments(taskId: string): Promise<TaskAttachment[]> {
-    return this.attachmentsRepository.find({
-      where: { task: { id: taskId } },
-      relations: ['uploadedBy'],
-      order: { created_at: 'DESC' },
+    const attachments = await this.attachmentsRepository
+      .find({ task_id: taskId })
+      .sort({ created_at: -1 })
+      .lean()
+      .exec();
+
+    if (!attachments.length) return [];
+
+    const userIds = attachments.map(a => a.uploaded_by).filter(Boolean);
+    const users = await this.usersRepository
+      .find(buildIdsFilter(userIds))
+      .select('id name phone email')
+      .lean()
+      .exec();
+
+    const userMap = new Map<string, any>();
+    for (const u of users) {
+      const cleanU = toCleanObject(u);
+      userMap.set(cleanU.id, cleanU);
+      if (u._id) userMap.set(u._id.toString(), cleanU);
+    }
+
+    return attachments.map(a => {
+      const cleanA = toCleanObject<any>(a);
+      cleanA.uploadedBy = userMap.get(a.uploaded_by) || null;
+      return cleanA;
     });
   }
 
   async renameAttachment(attachmentId: string, displayName: string): Promise<TaskAttachment> {
-    const attachment = await this.attachmentsRepository.findOne({ where: { id: attachmentId } });
-    if (!attachment) throw new NotFoundException('Attachment not found');
-    attachment.display_name = displayName;
-    return new this.attachmentsRepository(attachment).save() as any;
+    const updated = await this.attachmentsRepository
+      .findOneAndUpdate(
+        buildIdFilter(attachmentId),
+        { $set: { display_name: displayName } },
+        { returnDocument: 'after' },
+      )
+      .lean()
+      .exec();
+
+    if (!updated) throw new NotFoundException('Attachment not found');
+    return toCleanObject<TaskAttachment>(updated);
   }
 
   async getAttachmentFile(attachmentId: string): Promise<TaskAttachment> {
-    const attachment = await this.attachmentsRepository.findById(attachmentId).select('+file_data').exec();
+    const attachment = await this.attachmentsRepository
+      .findOne(buildIdFilter(attachmentId))
+      .select('+file_data')
+      .lean()
+      .exec();
 
     if (!attachment) {
       throw new NotFoundException('Attachment not found');
@@ -313,11 +456,13 @@ export class TasksService {
       throw new NotFoundException('Attachment file not stored on server');
     }
 
-    return attachment;
+    return toCleanObject<TaskAttachment>(attachment);
   }
 
   async removeAttachment(attachmentId: string): Promise<void> {
-    const result = await this.attachmentsRepository.findByIdAndDelete(attachmentId);
+    const result = await this.attachmentsRepository
+      .findOneAndDelete(buildIdFilter(attachmentId))
+      .exec();
     if (!result) throw new NotFoundException('Attachment not found');
   }
 }

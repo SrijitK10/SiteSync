@@ -4,8 +4,10 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { randomUUID } from 'crypto';
 import { User, UserDocument } from './entities/user.entity';
+import { buildIdFilter, toCleanObject, toCleanObjects } from '../common/mongo-id.util';
 
 @Injectable()
 export class UsersService {
@@ -77,13 +79,15 @@ export class UsersService {
       }
     }
 
-    const newUser = new this.userModel(userData);
+    const userToSave = {
+      ...userData,
+      id: userData.id || randomUUID(),
+    };
+
+    const newUser = new this.userModel(userToSave);
     try {
       const savedUser = await newUser.save();
-      // Map _id to id for backwards compatibility
-      const result = savedUser.toObject();
-      result.id = result._id.toString();
-      return result;
+      return toCleanObject<User>(savedUser);
     } catch (error) {
       if (this.isUniqueViolation(error)) {
         throw this.uniqueViolationConflict(error);
@@ -93,20 +97,23 @@ export class UsersService {
   }
 
   async findAll(): Promise<User[]> {
-    const users = await this.userModel.find().select('name phone email role created_at').exec();
-    return users.map(u => {
-      const obj = u.toObject();
-      obj.id = obj._id.toString();
-      return obj;
-    });
+    const users = await this.userModel
+      .find()
+      .select('id name phone email role created_at')
+      .sort({ name: 1 })
+      .lean()
+      .exec();
+    return toCleanObjects<User>(users);
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.userModel.findById(id).select('name phone email role created_at').exec();
+    const user = await this.userModel
+      .findOne(buildIdFilter(id))
+      .select('id name phone email role created_at')
+      .lean()
+      .exec();
     if (!user) throw new NotFoundException('User not found');
-    const obj = user.toObject();
-    obj.id = obj._id.toString();
-    return obj;
+    return toCleanObject<User>(user);
   }
 
   async findByPhone(phone: string): Promise<User | null> {
@@ -116,22 +123,21 @@ export class UsersService {
     if (!normalizedPhone) return null;
 
     // Exact match first
-    const exactMatch = await this.userModel.findOne({ phone: normalizedPhone }).exec();
+    const exactMatch = await this.userModel.findOne({ phone: normalizedPhone }).lean().exec();
     if (exactMatch) {
-      const obj = exactMatch.toObject();
-      obj.id = obj._id.toString();
-      return obj;
+      return toCleanObject<User>(exactMatch);
     }
 
     // Fuzzy match based on last 10 digits
     const cleanPhone = normalizedPhone.replace(/\D/g, '');
     if (cleanPhone.length >= 10) {
       const last10 = cleanPhone.slice(-10);
-      const fuzzyMatch = await this.userModel.findOne({ phone: { $regex: new RegExp(last10 + '$') } }).exec();
+      const fuzzyMatch = await this.userModel
+        .findOne({ phone: { $regex: new RegExp(last10 + '$') } })
+        .lean()
+        .exec();
       if (fuzzyMatch) {
-        const obj = fuzzyMatch.toObject();
-        obj.id = obj._id.toString();
-        return obj;
+        return toCleanObject<User>(fuzzyMatch);
       }
     }
 
@@ -139,35 +145,27 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const user = await this.userModel.findOne({ email }).exec();
+    const user = await this.userModel.findOne({ email }).lean().exec();
     if (!user) return null;
-    const obj = user.toObject();
-    obj.id = obj._id.toString();
-    return obj;
+    return toCleanObject<User>(user);
   }
 
   async findByEmailWithPassword(email: string): Promise<User | null> {
-    const user = await this.userModel.findOne({ email }).select('+password_hash').exec();
+    const user = await this.userModel.findOne({ email }).select('+password_hash').lean().exec();
     if (!user) return null;
-    const obj = user.toObject();
-    obj.id = obj._id.toString();
-    return obj;
+    return toCleanObject<User>(user);
   }
 
   async findByIdWithPassword(id: string): Promise<User | null> {
-    const user = await this.userModel.findById(id).select('+password_hash').exec();
+    const user = await this.userModel.findOne(buildIdFilter(id)).select('+password_hash').lean().exec();
     if (!user) return null;
-    const obj = user.toObject();
-    obj.id = obj._id.toString();
-    return obj;
+    return toCleanObject<User>(user);
   }
 
   async findByFirebaseUid(uid: string): Promise<User | null> {
-    const user = await this.userModel.findOne({ firebase_uid: uid }).exec();
+    const user = await this.userModel.findOne({ firebase_uid: uid }).lean().exec();
     if (!user) return null;
-    const obj = user.toObject();
-    obj.id = obj._id.toString();
-    return obj;
+    return toCleanObject<User>(user);
   }
 
   async update(id: string, updateData: Partial<User>): Promise<User> {
@@ -194,11 +192,16 @@ export class UsersService {
     }
 
     try {
-      const updatedUser = await this.userModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+      const updatedUser = await this.userModel
+        .findOneAndUpdate(
+          buildIdFilter(id),
+          { $set: updateData },
+          { returnDocument: 'after' },
+        )
+        .lean()
+        .exec();
       if (!updatedUser) throw new NotFoundException('User not found');
-      const obj = updatedUser.toObject();
-      obj.id = obj._id.toString();
-      return obj;
+      return toCleanObject<User>(updatedUser);
     } catch (error) {
       if (this.isUniqueViolation(error)) {
         throw this.uniqueViolationConflict(error);
@@ -208,15 +211,20 @@ export class UsersService {
   }
 
   async updateFcmToken(id: string, fcm_token: string): Promise<User> {
-    const user = await this.userModel.findByIdAndUpdate(id, { fcm_token }, { new: true }).exec();
+    const user = await this.userModel
+      .findOneAndUpdate(
+        buildIdFilter(id),
+        { $set: { fcm_token } },
+        { returnDocument: 'after' },
+      )
+      .lean()
+      .exec();
     if (!user) throw new NotFoundException('User not found');
-    const obj = user.toObject();
-    obj.id = obj._id.toString();
-    return obj;
+    return toCleanObject<User>(user);
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.userModel.findByIdAndDelete(id).exec();
+    const result = await this.userModel.findOneAndDelete(buildIdFilter(id)).exec();
     if (!result) {
       throw new NotFoundException('User not found');
     }
@@ -227,22 +235,19 @@ export class UsersService {
     excludeUserId?: string,
     projectId?: string,
   ): Promise<string[]> {
-    // For Mongoose, we build the query filter
     const query: any = {
       role: { $in: roles },
       fcm_token: { $ne: null },
     };
 
     if (excludeUserId) {
-      query._id = { $ne: excludeUserId };
+      query.id = { $ne: excludeUserId };
+      if (Types.ObjectId.isValid(excludeUserId)) {
+        query._id = { $ne: new Types.ObjectId(excludeUserId) };
+      }
     }
-    
-    // Note: ProjectMember check requires complex aggregation or a separate query
-    // To maintain compatibility without injecting ProjectMemberModel here,
-    // we fetch tokens for matching roles directly. If projectId is provided,
-    // you might need a secondary check or to aggregate in another service.
-    
-    const users = await this.userModel.find(query).select('fcm_token').exec();
-    return users.map(u => u.fcm_token);
+
+    const users = await this.userModel.find(query).select('fcm_token').lean().exec();
+    return users.map(u => u.fcm_token).filter(Boolean);
   }
 }

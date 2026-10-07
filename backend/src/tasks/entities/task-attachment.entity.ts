@@ -1,49 +1,68 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type TaskAttachmentDocument = TaskAttachment & Document;
-import { Task } from './task.entity';
-import { User } from '../../users/entities/user.entity';
 
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'task_attachments' })
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: 'task_attachments',
+  toJSON: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+  toObject: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+})
 export class TaskAttachment {
-  id?: string;
-  // id is natively handled by Mongoose as _id (ObjectId)
+  @Prop({ type: String, default: () => randomUUID(), index: true })
+  id: string;
 
-  @Prop({ type: String })
+  @Prop({ type: String, default: '' })
   url: string;
 
   @Prop({ type: String, default: 'external' })
   storage_provider: string;
 
-  @Prop({ type: String })
+  @Prop({ type: String, required: true })
   display_name: string;
 
-  @Prop({ type: String })
+  @Prop({ type: String, required: true })
   original_name: string;
 
-  @Prop({ type: String })
+  @Prop({ type: String, default: 'document' })
   file_type: string; // 'image', 'pdf', 'document'
 
-  @Prop({ type: String, nullable: true })
+  @Prop({ type: String, default: null })
   mime_type: string;
 
-  @Prop({ type: Number, nullable: true })
-  file_size: number;
+  @Prop({ type: String, default: null })
+  file_size: string;
 
-  @Prop({ type: Buffer, nullable: true, select: false })
+  @Prop({ type: Buffer, default: null, select: false })
   file_data: Buffer | null;
 
-  // @ManyToOne => Task, { onDelete: 'CASCADE' })
-  // @JoinColumn
-  task: Task;
+  @Prop({ type: String, required: true, index: true })
+  task_id: string;
 
-  // @ManyToOne => User, { nullable: true, onDelete: 'SET NULL' })
-  // @JoinColumn
-  uploadedBy: User;
+  @Prop({ type: String, default: null, index: true })
+  uploaded_by: string;
 
-  // // @CreateDateColumn
   created_at: Date;
+  updated_at: Date;
+
+  // Attached for frontend
+  uploadedBy?: any;
 }
 
 export const TaskAttachmentSchema = SchemaFactory.createForClass(TaskAttachment);

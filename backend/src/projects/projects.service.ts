@@ -1,11 +1,14 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { randomUUID } from 'crypto';
 
-import { ProjectDocument,  Project } from './entities/project.entity';
-import { ProjectMemberDocument,  ProjectMember } from './entities/project-member.entity';
-import { ProjectImageDocument,  ProjectImage } from './entities/project-image.entity';
+import { ProjectDocument, Project } from './entities/project.entity';
+import { ProjectMemberDocument, ProjectMember } from './entities/project-member.entity';
+import { ProjectImageDocument, ProjectImage } from './entities/project-image.entity';
+import { UserDocument, User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { buildIdFilter, buildIdsFilter, toCleanObject, toCleanObjects } from '../common/mongo-id.util';
 
 @Injectable()
 export class ProjectsService {
@@ -16,118 +19,170 @@ export class ProjectsService {
     private membersRepository: Model<ProjectMemberDocument>,
     @InjectModel(ProjectImage.name)
     private imagesRepository: Model<ProjectImageDocument>,
+    @InjectModel(User.name)
+    private usersRepository: Model<UserDocument>,
     private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(createProjectDto: any, userId: string): Promise<Project> {
-    const project = new this.projectsRepository();
-    Object.assign(project, createProjectDto);
-    project.createdBy = { id: userId } as any;
-    const savedProject = await new this.projectsRepository(project).save() as any;
-    
+    const projectId = randomUUID();
+    const project = new this.projectsRepository({
+      ...createProjectDto,
+      id: projectId,
+      created_by: userId,
+    });
+    const savedProject = await project.save();
+    const result = toCleanObject<Project>(savedProject);
+
     // Fire and forget notification
     this.notificationsService.sendNotification(
       'New Project Added',
-      `${savedProject.name || 'A new project'} has been added.`,
+      `${result.name || 'A new project'} has been added.`,
       ['super_admin', 'admin'],
       userId,
-      { route: `/projects/${savedProject.id}` }
+      { route: `/projects/${result.id}` },
     );
 
-    return savedProject;
+    return result;
   }
 
   // ── Project Listing (role-filtered) ─────────────────────────────
   async findAll(userId: string, role: string): Promise<Project[]> {
     // Admins see everything
     if (role === 'super_admin' || role === 'admin') {
-      return this.projectsRepository.find({ order: { created_at: 'DESC' } });
+      const projects = await this.projectsRepository.find().sort({ created_at: -1 }).lean().exec();
+      return toCleanObjects<Project>(projects);
     }
 
     // Non-admins only see projects they are assigned to
-    const memberships = await this.membersRepository.find({
-      where: { user: { id: userId } },
-      relations: ['project'],
-    });
+    const userFilter = buildIdFilter(userId);
+    const userIdConditions: any[] = [{ user_id: userId }];
+    if (userFilter.$or && userFilter.$or[1]?._id) {
+      userIdConditions.push({ user_id: userFilter.$or[1]._id.toString() });
+    }
 
-    if (memberships.length === 0) return [];
+    const memberships = await this.membersRepository
+      .find({ $or: userIdConditions })
+      .lean()
+      .exec();
 
-    const projectIds = memberships.map(m => m.project.id);
-    return this.projectsRepository.find({
-      where: { id: { $in: projectIds } },
-      order: { created_at: 'DESC' },
-    });
+    if (!memberships || memberships.length === 0) return [];
+
+    const projectIds = memberships.map(m => m.project_id).filter(Boolean);
+    if (projectIds.length === 0) return [];
+
+    const projects = await this.projectsRepository
+      .find(buildIdsFilter(projectIds))
+      .sort({ created_at: -1 })
+      .lean()
+      .exec();
+
+    return toCleanObjects<Project>(projects);
   }
 
   async findOne(id: string): Promise<Project> {
-    const project = await this.projectsRepository.findOne({ where: { id } });
+    const project = await this.projectsRepository.findOne(buildIdFilter(id)).lean().exec();
     if (!project) throw new NotFoundException('Project not found');
-    return project;
+    return toCleanObject<Project>(project);
   }
 
   async update(id: string, updateProjectDto: any): Promise<Project> {
-    const project = await this.findOne(id);
-    Object.assign(project, updateProjectDto);
-    return new this.projectsRepository(project).save() as any;
+    const project = await this.projectsRepository
+      .findOneAndUpdate(
+        buildIdFilter(id),
+        { $set: updateProjectDto },
+        { returnDocument: 'after' },
+      )
+      .lean()
+      .exec();
+    if (!project) throw new NotFoundException('Project not found');
+    return toCleanObject<Project>(project);
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.projectsRepository.findByIdAndDelete(id);
-    if (!result) throw new NotFoundException();
+    const result = await this.projectsRepository.findOneAndDelete(buildIdFilter(id)).exec();
+    if (!result) throw new NotFoundException('Project not found');
   }
 
   // ── Project Member Management ───────────────────────────────────
 
   async addMember(projectId: string, userId: string, roleInProject: string = 'member') {
     // Check for existing assignment to avoid duplicate errors
-    const existing = await this.membersRepository.findOne({
-      where: { project: { id: projectId }, user: { id: userId } },
-    });
+    const existing = await this.membersRepository
+      .findOne({ project_id: projectId, user_id: userId })
+      .lean()
+      .exec();
     if (existing) {
-      return existing; // Already assigned, no-op
+      return toCleanObject(existing);
     }
 
     const member = new this.membersRepository({
-      project: { id: projectId },
-      user: { id: userId },
+      id: randomUUID(),
+      project_id: projectId,
+      user_id: userId,
       role_in_project: roleInProject,
+      assigned_at: new Date(),
     });
-    return new this.membersRepository(member).save() as any;
+    const saved = await member.save();
+    return toCleanObject(saved);
   }
 
   async removeMember(projectId: string, userId: string): Promise<void> {
-    const result = await this.membersRepository.findByIdAndDelete({
-      project: { id: projectId },
-      user: { id: userId },
-    } as any);
-    // Silently succeed even if nothing was deleted
+    await this.membersRepository
+      .findOneAndDelete({ project_id: projectId, user_id: userId })
+      .exec();
   }
 
   async getMembers(projectId: string): Promise<ProjectMember[]> {
-    return this.membersRepository.find({
-      where: { project: { id: projectId } },
-      relations: ['user'],
-      order: { assigned_at: 'DESC' },
+    const members = await this.membersRepository
+      .find({ project_id: projectId })
+      .sort({ assigned_at: -1 })
+      .lean()
+      .exec();
+
+    if (!members.length) return [];
+
+    const userIds = members.map(m => m.user_id).filter(Boolean);
+    const users = await this.usersRepository
+      .find(buildIdsFilter(userIds))
+      .select('id name phone email role')
+      .lean()
+      .exec();
+
+    const userMap = new Map<string, any>();
+    for (const u of users) {
+      const cleanU = toCleanObject(u);
+      userMap.set(cleanU.id, cleanU);
+      if (u._id) userMap.set(u._id.toString(), cleanU);
+    }
+
+    return members.map(m => {
+      const cleanM = toCleanObject<any>(m);
+      cleanM.user = userMap.get(m.user_id) || { id: m.user_id, name: 'Unknown User' };
+      return cleanM;
     });
   }
 
   /** Get all project IDs a specific user is assigned to. */
   async getProjectIdsForUser(userId: string): Promise<string[]> {
-    const memberships = await this.membersRepository.find({
-      where: { user: { id: userId } },
-      relations: ['project'],
-    });
-    return memberships.map(m => (m.project as any).id || m.project);
+    const userFilter = buildIdFilter(userId);
+    const userIdConditions: any[] = [{ user_id: userId }];
+    if (userFilter.$or && userFilter.$or[1]?._id) {
+      userIdConditions.push({ user_id: userFilter.$or[1]._id.toString() });
+    }
+
+    const memberships = await this.membersRepository
+      .find({ $or: userIdConditions })
+      .lean()
+      .exec();
+
+    return memberships.map(m => m.project_id).filter(Boolean);
   }
 
   /** Assign a user to multiple projects at once (idempotent). */
   async setProjectsForUser(userId: string, projectIds: string[]): Promise<void> {
-    // Get current assignments
-    const current = await this.membersRepository.find({
-      where: { user: { id: userId } },
-      relations: ['project'],
-    });
-    const currentIds = new Set(current.map(m => m.project.id));
+    const current = await this.membersRepository.find({ user_id: userId }).lean().exec();
+    const currentIds = new Set(current.map(m => m.project_id));
     const targetIds = new Set(projectIds);
 
     // Add new assignments
@@ -139,22 +194,21 @@ export class ProjectsService {
 
     // Remove revoked assignments
     for (const m of current) {
-      if (!targetIds.has((m.project as any).id || m.project)) {
-        await this.membersRepository.findByIdAndDelete(m.id);
+      if (!targetIds.has(m.project_id)) {
+        await this.membersRepository.findOneAndDelete(buildIdFilter(m.id || m._id?.toString())).exec();
       }
     }
   }
 
   /** Assign ALL existing projects to a user (for migration). */
   async assignAllProjectsToUser(userId: string): Promise<number> {
-    const allProjects = await this.projectsRepository.find({ select: ['id'] });
+    const allProjects = await this.projectsRepository.find().select('id').lean().exec();
     let count = 0;
     for (const p of allProjects) {
-      const existing = await this.membersRepository.findOne({
-        where: { project: { id: p.id }, user: { id: userId } },
-      });
+      const pId = p.id || p._id?.toString();
+      const existing = await this.membersRepository.findOne({ project_id: pId, user_id: userId }).exec();
       if (!existing) {
-        await this.addMember(p.id, userId);
+        await this.addMember(pId, userId);
         count++;
       }
     }
@@ -165,12 +219,15 @@ export class ProjectsService {
 
   async addImage(projectId: string, userId: string, url: string, caption?: string) {
     const image = new this.imagesRepository({
+      id: randomUUID(),
       url,
-      caption,
-      project: { id: projectId },
-      uploadedBy: { id: userId },
+      caption: caption || null,
+      project_id: projectId,
+      uploaded_by: userId,
+      date: new Date(),
     });
-    const savedImage = await new this.imagesRepository(image).save() as any;
+    const savedImage = await image.save();
+    const result = toCleanObject<ProjectImage>(savedImage);
 
     this.notificationsService.sendNotification(
       'Progress Image Added',
@@ -178,16 +235,38 @@ export class ProjectsService {
       ['super_admin', 'admin', 'site_manager'],
       userId,
       { route: `/projects/${projectId}` },
-      projectId
+      projectId,
     );
-    return savedImage;
+    return result;
   }
 
   async getImages(projectId: string): Promise<ProjectImage[]> {
-    return this.imagesRepository.find({
-      where: { project: { id: projectId } },
-      relations: ['uploadedBy'],
-      order: { date: 'DESC' },
+    const images = await this.imagesRepository
+      .find({ project_id: projectId })
+      .sort({ date: -1 })
+      .lean()
+      .exec();
+
+    if (!images.length) return [];
+
+    const userIds = images.map(img => img.uploaded_by).filter(Boolean);
+    const users = await this.usersRepository
+      .find(buildIdsFilter(userIds))
+      .select('id name phone email')
+      .lean()
+      .exec();
+
+    const userMap = new Map<string, any>();
+    for (const u of users) {
+      const cleanU = toCleanObject(u);
+      userMap.set(cleanU.id, cleanU);
+      if (u._id) userMap.set(u._id.toString(), cleanU);
+    }
+
+    return images.map(img => {
+      const cleanImg = toCleanObject<any>(img);
+      cleanImg.uploadedBy = userMap.get(img.uploaded_by) || null;
+      return cleanImg;
     });
   }
 }

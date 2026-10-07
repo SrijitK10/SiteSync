@@ -1,10 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type TaskDocument = Task & Document;
-import { User } from '../../users/entities/user.entity';
-import { Project } from '../../projects/entities/project.entity';
-import { Flat } from '../../flats/entities/flat.entity';
 
 export enum TaskStatus {
   TODO = 'todo',
@@ -12,21 +10,40 @@ export enum TaskStatus {
   COMPLETED = 'completed',
 }
 
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, collection: 'tasks' })
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: 'tasks',
+  toJSON: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+  toObject: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+})
 export class Task {
-  id?: string;
-  // id is natively handled by Mongoose as _id (ObjectId)
+  @Prop({ type: String, default: () => randomUUID(), index: true })
+  id: string;
 
-  @Prop()
+  @Prop({ required: true })
   title: string;
 
-  @Prop({ type: String, nullable: true })
+  @Prop({ type: String, default: null })
   description: string;
 
-  @Prop({ type: Object })
+  @Prop({ type: Object, default: {} })
   title_translations: any;
 
-  @Prop({ type: Object })
+  @Prop({ type: Object, default: {} })
   description_translations: any;
 
   @Prop({
@@ -36,43 +53,38 @@ export class Task {
   })
   status: TaskStatus;
 
-  @Prop({ type: Date, nullable: true })
-  due_date: string;
+  @Prop({ type: Date, default: null })
+  due_date: Date;
 
-  // // @Index - handled in @Prop
-  // @ManyToOne => Project, { onDelete: 'CASCADE' })
-  // @JoinColumn
-  project: Project;
+  @Prop({ type: String, required: true, index: true })
+  project_id: string;
 
-  // // @Index - handled in @Prop
-  // @ManyToOne => Flat, { nullable: true, onDelete: 'SET NULL' })
-  // @JoinColumn
-  flat: Flat;
+  @Prop({ type: String, default: null, index: true })
+  flat_id: string;
 
-  // // @Index - handled in @Prop
-  // @ManyToOne => User, { nullable: true, onDelete: 'SET NULL' })
-  // @JoinColumn
-  assignee: User;
+  @Prop({ type: String, default: null, index: true })
+  assigned_to: string;
 
-  // // @Index - handled in @Prop
-  // @ManyToOne => User, { nullable: true, onDelete: 'SET NULL' })
-  // @JoinColumn
-  createdBy: User;
+  @Prop({ type: String, default: null, index: true })
+  created_by: string;
 
-  // // @Index - handled in @Prop
-  // @ManyToOne => User, { nullable: true, onDelete: 'SET NULL' })
-  // @JoinColumn
-  completedBy: User;
+  @Prop({ type: String, default: null, index: true })
+  completed_by: string;
 
-  // // @Index - handled in @Prop
-  // @CreateDateColumn
-  created_at: Date;
-
-  @Prop({ type: Date, nullable: true })
+  @Prop({ type: Date, default: null })
   completed_at: Date;
 
-  // // @UpdateDateColumn
+  created_at: Date;
   updated_at: Date;
+
+  // Virtual relation holders attached by service for frontend
+  project?: any;
+  flat?: any;
+  assignee?: any;
+  createdBy?: any;
+  completedBy?: any;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);
+TaskSchema.index({ project_id: 1, created_at: -1 });
+TaskSchema.index({ project_id: 1, flat_id: 1 });

@@ -1,11 +1,33 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { randomUUID } from 'crypto';
 
 export type UserDocument = User & Document;
 
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: false }, collection: 'users' })
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: false },
+  collection: 'users',
+  toJSON: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+  toObject: {
+    virtuals: true,
+    transform: (_doc, ret: any) => {
+      ret.id = ret.id || ret._id?.toString();
+      delete ret.__v;
+      return ret;
+    },
+  },
+})
 export class User {
-  id?: string;
+  @Prop({ type: String, default: () => randomUUID(), index: true })
+  id: string;
+
   @Prop()
   name: string;
 
@@ -26,6 +48,8 @@ export class User {
 
   @Prop({ default: 'viewer' })
   role: string; // super_admin, admin, site_manager, viewer
+
+  created_at: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
