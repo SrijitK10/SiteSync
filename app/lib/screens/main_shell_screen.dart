@@ -19,10 +19,14 @@ class MainShellScreen extends ConsumerWidget {
     AppTheme.syncWithContext(context);
 
     final location = GoRouterState.of(context).uri.path;
-    final int currentIndex = location.startsWith('/dashboard') ? 1 : 0;
+    int currentIndex = 0;
+    if (location.startsWith('/dashboard')) {
+      currentIndex = 1;
+    } else if (location.startsWith('/assistant')) {
+      currentIndex = 2;
+    }
 
     final user = ref.watch(authProvider).currentUser;
-    final canViewDashboard = user != null && user.role.canEdit;
 
     // Use theme-based colors so they're always correct for the current brightness
     final colorScheme = Theme.of(context).colorScheme;
@@ -30,9 +34,7 @@ class MainShellScreen extends ConsumerWidget {
     final unselectedColor = colorScheme.onSurface.withValues(alpha: 0.72);
     final bgColor = colorScheme.surface;
 
-    // If the user doesn't have permission, they only see the projects screen
-    // so we don't need a bottom navigation bar.
-    if (!canViewDashboard) {
+    if (user == null) {
       return child;
     }
 
@@ -61,6 +63,7 @@ class MainShellScreen extends ConsumerWidget {
                   onDestinationSelected: (index) {
                     if (index == 0) context.go('/projects');
                     if (index == 1) context.go('/dashboard');
+                    if (index == 2) context.go('/assistant');
                   },
                   labelType: NavigationRailLabelType.all,
                   backgroundColor: Colors.transparent,
@@ -99,6 +102,17 @@ class MainShellScreen extends ConsumerWidget {
                       ),
                       label: const Text('Dashboard'),
                     ),
+                    NavigationRailDestination(
+                      icon: DrawnAppIcon(
+                        kind: DrawnAppIconKind.assistant,
+                        color: unselectedColor,
+                      ),
+                      selectedIcon: DrawnAppIcon(
+                        kind: DrawnAppIconKind.assistant,
+                        color: selectedColor,
+                      ),
+                      label: const Text('Assistant'),
+                    ),
                   ],
                 ),
               ) : NavigationRail(
@@ -106,6 +120,7 @@ class MainShellScreen extends ConsumerWidget {
                 onDestinationSelected: (index) {
                   if (index == 0) context.go('/projects');
                   if (index == 1) context.go('/dashboard');
+                  if (index == 2) context.go('/assistant');
                 },
                 labelType: NavigationRailLabelType.all,
                 backgroundColor: bgColor,
@@ -144,6 +159,17 @@ class MainShellScreen extends ConsumerWidget {
                     ),
                     label: const Text('Dashboard'),
                   ),
+                  NavigationRailDestination(
+                    icon: DrawnAppIcon(
+                      kind: DrawnAppIconKind.assistant,
+                      color: unselectedColor,
+                    ),
+                    selectedIcon: DrawnAppIcon(
+                      kind: DrawnAppIconKind.assistant,
+                      color: selectedColor,
+                    ),
+                    label: const Text('Assistant'),
+                  ),
                 ],
               ),
               if (!isWindowsDesktop) const VerticalDivider(thickness: 1, width: 1),
@@ -166,6 +192,7 @@ class MainShellScreen extends ConsumerWidget {
         onTap: (index) {
           if (index == 0 && currentIndex != 0) context.go('/projects');
           if (index == 1 && currentIndex != 1) context.go('/dashboard');
+          if (index == 2 && currentIndex != 2) context.go('/assistant');
         },
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
@@ -193,6 +220,17 @@ class MainShellScreen extends ConsumerWidget {
               color: selectedColor,
             ),
             label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: DrawnAppIcon(
+              kind: DrawnAppIconKind.assistant,
+              color: unselectedColor,
+            ),
+            activeIcon: DrawnAppIcon(
+              kind: DrawnAppIconKind.assistant,
+              color: selectedColor,
+            ),
+            label: 'Assistant',
           ),
         ],
       ),

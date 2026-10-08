@@ -25,6 +25,7 @@ import 'screens/settings_screen.dart';
 import 'screens/share_to_task_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/main_shell_screen.dart';
+import 'screens/assistant_screen.dart';
 
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -105,6 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               if (!user.role.canEdit) return '/projects';
               return null;
             },
+          ),
+          GoRoute(
+            path: '/assistant',
+            builder: (context, state) => const AssistantScreen(),
           ),
         ],
       ),

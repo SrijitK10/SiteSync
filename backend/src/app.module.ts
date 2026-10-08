@@ -14,6 +14,7 @@ import { FlatsModule } from './flats/flats.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { NotificationsModule } from './notifications/notifications.module';
 import { TranslationModule } from './translation/translation.module';
+import { AssistantModule } from './assistant/assistant.module';
 
 // Security configuration for MongoDB connection
 function parseMongoOptions(configService: ConfigService) {
@@ -48,6 +49,7 @@ function parseMongoOptions(configService: ConfigService) {
     FlatsModule,
     NotificationsModule,
     TranslationModule,
+    AssistantModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -523,6 +523,12 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         actions: [
           if (canManageProjects)
             IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: l.createProject,
+              onPressed: () => _showAddProjectBottomSheet(context, ref),
+            ),
+          if (canManageProjects)
+            IconButton(
               icon: const Icon(Icons.people),
               tooltip: l.manageUsers,
               onPressed: () => context.push('/users'),
@@ -581,13 +587,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           ),
         ],
       ),
-      floatingActionButton: canManageProjects && !isWindowsDesktop
-          ? FloatingActionButton(
-              backgroundColor: AppTheme.primary,
-              onPressed: () => _showAddProjectBottomSheet(context, ref),
-              child: Icon(Icons.add, color: AppTheme.surface),
-            )
-          : null,
       body: projectsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(

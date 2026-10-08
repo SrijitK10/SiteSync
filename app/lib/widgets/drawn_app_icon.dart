@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum DrawnAppIconKind { projects, dashboard, activity, pending }
+enum DrawnAppIconKind { projects, dashboard, activity, pending, assistant }
 
 class DrawnAppIcon extends StatelessWidget {
   final DrawnAppIconKind kind;
@@ -45,6 +45,9 @@ class _DrawnAppIconPainter extends CustomPainter {
         return;
       case DrawnAppIconKind.pending:
         _paintPending(canvas, size);
+        return;
+      case DrawnAppIconKind.assistant:
+        _paintAssistant(canvas, size);
         return;
     }
   }
@@ -136,6 +139,40 @@ class _DrawnAppIconPainter extends CustomPainter {
     );
     canvas.drawCircle(Offset(w * 0.27, h * 0.5), w * 0.03, stroke);
     canvas.drawCircle(Offset(w * 0.27, h * 0.72), w * 0.03, stroke);
+  }
+
+  void _paintAssistant(Canvas canvas, Size size) {
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.09
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final w = size.width;
+    final h = size.height;
+
+    // Chat bubble with rounded corners
+    final bubbleRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * 0.14, h * 0.15, w * 0.72, h * 0.54),
+      Radius.circular(w * 0.16),
+    );
+    canvas.drawRRect(bubbleRect, stroke);
+
+    // Speech tail
+    final path = Path()
+      ..moveTo(w * 0.32, h * 0.69)
+      ..lineTo(w * 0.22, h * 0.85)
+      ..lineTo(w * 0.44, h * 0.69);
+    canvas.drawPath(path, stroke);
+
+    // 3 smart dots inside bubble
+    final dotRadius = w * 0.045;
+    canvas.drawCircle(Offset(w * 0.35, h * 0.42), dotRadius, fill);
+    canvas.drawCircle(Offset(w * 0.50, h * 0.42), dotRadius, fill);
+    canvas.drawCircle(Offset(w * 0.65, h * 0.42), dotRadius, fill);
   }
 
   @override
