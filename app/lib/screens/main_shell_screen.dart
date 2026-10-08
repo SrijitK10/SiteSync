@@ -27,6 +27,7 @@ class MainShellScreen extends ConsumerWidget {
     }
 
     final user = ref.watch(authProvider).currentUser;
+    final showQuickAdd = !location.startsWith('/assistant');
 
     // Use theme-based colors so they're always correct for the current brightness
     final colorScheme = Theme.of(context).colorScheme;
@@ -41,11 +42,13 @@ class MainShellScreen extends ConsumerWidget {
     if (isWindowsDesktop || MediaQuery.of(context).size.width > 800) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => QuickActionSheet.show(context),
-          backgroundColor: selectedColor,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
+        floatingActionButton: showQuickAdd
+            ? FloatingActionButton(
+                onPressed: () => QuickActionSheet.show(context),
+                backgroundColor: selectedColor,
+                child: const Icon(Icons.add, color: Colors.white),
+              )
+            : null,
         body: Container(
           decoration: BoxDecoration(
             gradient: isWindowsDesktop 
@@ -182,11 +185,13 @@ class MainShellScreen extends ConsumerWidget {
 
     return Scaffold(
       body: child,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => QuickActionSheet.show(context),
-        backgroundColor: selectedColor,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: showQuickAdd
+          ? FloatingActionButton(
+              onPressed: () => QuickActionSheet.show(context),
+              backgroundColor: selectedColor,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (index) {
