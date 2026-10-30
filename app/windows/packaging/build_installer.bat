@@ -36,6 +36,8 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo [3/4] Building Windows Release binary...
+if not exist "build\windows\x64" mkdir "build\windows\x64"
+echo CMAKE_POLICY_VERSION_MINIMUM:STRING=3.5> "build\windows\x64\CMakeCache.txt"
 call flutter build windows --release
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] 'flutter build windows --release' failed.

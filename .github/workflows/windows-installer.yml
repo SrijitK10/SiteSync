@@ -72,6 +72,8 @@ jobs:
       - name: Build Windows release
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force -Path "build/windows/x64" | Out-Null
+          Set-Content -Path "build/windows/x64/CMakeCache.txt" -Value "CMAKE_POLICY_VERSION_MINIMUM:STRING=3.5`r`n"
           flutter build windows --release --build-name=$env:APP_VERSION --build-number=$env:BUILD_NUMBER
 
       - name: Verify Windows release output

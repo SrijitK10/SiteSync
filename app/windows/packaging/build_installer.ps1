@@ -48,6 +48,8 @@ Write-Host "`n[2/4] Getting dependencies..." -ForegroundColor Yellow
 flutter pub get
 
 Write-Host "`n[3/4] Compiling Windows release binary..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Force -Path "build\windows\x64" | Out-Null
+Set-Content -Path "build\windows\x64\CMakeCache.txt" -Value "CMAKE_POLICY_VERSION_MINIMUM:STRING=3.5`r`n"
 flutter build windows --release --build-name=$Version
 
 $exePath = "build\windows\x64\runner\Release\rupayan.exe"

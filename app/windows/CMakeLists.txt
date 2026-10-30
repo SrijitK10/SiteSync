@@ -1,5 +1,9 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
+
+# Support older third-party subprojects (such as firebase_cpp_sdk_windows) with CMake >= 3.30
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum policy version for subprojects" FORCE)
+
 project(rupayan_sitesync LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
