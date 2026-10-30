@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
 import '../state/projects_provider.dart';
 import '../services/api_client.dart';
@@ -13,7 +14,14 @@ class QuickActionSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const QuickActionSheet(),
+      builder: (ctx) => isWindowsDesktop
+          ? Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: const QuickActionSheet(),
+              ),
+            )
+          : const QuickActionSheet(),
     );
   }
 
@@ -26,26 +34,44 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isWindows = isWindowsDesktop;
 
     return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      decoration: isWindows
+          ? AppTheme.desktopPaneDecoration(context, radius: 24)
+          : BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white24 : Colors.black12,
-              borderRadius: BorderRadius.circular(2),
+          if (!isWindows)
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text('Quick Actions', style: AppTheme.heading.copyWith(fontSize: 20)),
+          if (isWindows)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Quick Actions', style: AppTheme.heading.copyWith(fontSize: 20)),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Close',
+                ),
+              ],
+            )
+          else ...[
+            const SizedBox(height: 24),
+            Text('Quick Actions', style: AppTheme.heading.copyWith(fontSize: 20)),
+          ],
           const SizedBox(height: 24),
           _buildActionCard(
             context: context,
@@ -146,7 +172,14 @@ class _QuickActionSheetState extends ConsumerState<QuickActionSheet> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const ProjectSelectionSheet(actionType: 'attendance'),
+      builder: (ctx) => isWindowsDesktop
+          ? Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: const ProjectSelectionSheet(actionType: 'attendance'),
+              ),
+            )
+          : const ProjectSelectionSheet(actionType: 'attendance'),
     );
   }
 }
@@ -159,13 +192,16 @@ class ProjectSelectionSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isWindows = isWindowsDesktop;
     final projectsAsync = ref.watch(projectsProvider);
 
     return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      decoration: isWindows
+          ? AppTheme.desktopPaneDecoration(context, radius: 24)
+          : BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
       padding: const EdgeInsets.all(24),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.7,
@@ -173,19 +209,37 @@ class ProjectSelectionSheet extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white24 : Colors.black12,
-              borderRadius: BorderRadius.circular(2),
+          if (!isWindows)
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Select Property',
-            style: AppTheme.heading.copyWith(fontSize: 20),
-          ),
+          if (isWindows)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Select Property',
+                  style: AppTheme.heading.copyWith(fontSize: 20),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Close',
+                ),
+              ],
+            )
+          else ...[
+            const SizedBox(height: 24),
+            Text(
+              'Select Property',
+              style: AppTheme.heading.copyWith(fontSize: 20),
+            ),
+          ],
           const SizedBox(height: 16),
           Expanded(
             child: projectsAsync.when(
@@ -245,7 +299,14 @@ class GlobalTaskEntryModal extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const GlobalTaskEntryModal(),
+      builder: (ctx) => isWindowsDesktop
+          ? Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: const GlobalTaskEntryModal(),
+              ),
+            )
+          : const GlobalTaskEntryModal(),
     );
   }
 
@@ -328,13 +389,16 @@ class _GlobalTaskEntryModalState extends ConsumerState<GlobalTaskEntryModal> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isWindows = isWindowsDesktop;
     final projectsAsync = ref.watch(projectsProvider);
 
     return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      decoration: isWindows
+          ? AppTheme.desktopPaneDecoration(context, radius: 24)
+          : BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
         left: 24,
@@ -349,22 +413,40 @@ class _GlobalTaskEntryModalState extends ConsumerState<GlobalTaskEntryModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
+            if (!isWindows)
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Add New Task',
-              style: AppTheme.heading.copyWith(fontSize: 20),
-              textAlign: TextAlign.center,
-            ),
+            if (isWindows)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Add New Task',
+                    style: AppTheme.heading.copyWith(fontSize: 20),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: 'Close',
+                  ),
+                ],
+              )
+            else ...[
+              const SizedBox(height: 24),
+              Text(
+                'Add New Task',
+                style: AppTheme.heading.copyWith(fontSize: 20),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 24),
 
             // Project Selection

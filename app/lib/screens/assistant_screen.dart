@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/assistant_message.dart';
+import '../services/platform_utils.dart';
 import '../state/assistant_provider.dart';
 import '../state/auth_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/desktop_section_shell.dart';
 import '../widgets/drawn_app_icon.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
@@ -69,8 +71,134 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     final isAdmin = user != null && user.role.isAdmin;
     final state = ref.watch(assistantProvider);
 
+    if (isWindowsDesktop) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: DesktopSectionShell(
+          eyebrow: 'AI SITESYNC',
+          title: 'Site Assistant',
+          subtitle: 'Natural language task logging & site supervision in Bengali, Banglish, and English',
+          metrics: [
+            DesktopSectionMetric(
+              label: 'My Logs',
+              value: '${state.myMessages.length}',
+              icon: Icons.chat_bubble_outline_rounded,
+            ),
+            if (isAdmin)
+              DesktopSectionMetric(
+                label: 'Supervision Logs',
+                value: '${state.supervisionMessages.length}',
+                icon: Icons.shield_outlined,
+              ),
+            if (isAdmin)
+              DesktopSectionMetric(
+                label: 'Pending Action',
+                value: '${state.supervisionMessages.where((m) => m.isPending).length}',
+                icon: Icons.pending_actions_outlined,
+                accent: AppTheme.warning,
+              ),
+          ],
+          actions: [
+            if (isAdmin)
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => setState(() => _selectedTab = 0),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _selectedTab == 0 ? theme.colorScheme.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              size: 15,
+                              color: _selectedTab == 0 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'My Assistant',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _selectedTab == 0 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    InkWell(
+                      onTap: () {
+                        setState(() => _selectedTab = 1);
+                        _refreshSupervision();
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _selectedTab == 1 ? theme.colorScheme.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.remove_red_eye_outlined,
+                              size: 15,
+                              color: _selectedTab == 1 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Supervision Feed',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _selectedTab == 1 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh',
+              onPressed: () {
+                ref.read(assistantProvider.notifier).loadMyMessages();
+                if (isAdmin) {
+                  _refreshSupervision();
+                }
+              },
+            ),
+          ],
+          child: DesktopSurfaceCard(
+            padding: EdgeInsets.zero,
+            child: _selectedTab == 0
+                ? _buildChatView(context, state, isDark)
+                : _buildSupervisionView(context, state, isDark),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.background,
       appBar: AppBar(
+        backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.surface,
         title: Row(
           children: [
             Container(
@@ -252,68 +380,115 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context, bool isDark) {
+    final isWindows = isWindowsDesktop;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: DrawnAppIcon(
-              kind: DrawnAppIconKind.assistant,
-              color: Theme.of(context).colorScheme.primary,
-              size: 48,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Smart Site Assistant',
-            style: AppTheme.heading.copyWith(fontSize: 20),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Write or speak tasks and attendance in simple words. Bengali, Banglish, and English are all supported!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isDark ? Colors.white60 : Colors.black54,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 28),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Quick Examples (Tap to try):',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: isDark ? Colors.white70 : Colors.black87,
+      padding: EdgeInsets.all(isWindows ? 32 : 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: Column(
+            children: [
+              SizedBox(height: isWindows ? 12 : 32),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: DrawnAppIcon(
+                  kind: DrawnAppIconKind.assistant,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 48,
+                ),
               ),
-            ),
+              const SizedBox(height: 18),
+              Text(
+                'Smart Site Assistant',
+                style: AppTheme.heading.copyWith(fontSize: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Write or speak tasks and attendance in simple words. Bengali, Banglish, and English are all supported!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  isWindows ? 'Quick Examples (Click to try):' : 'Quick Examples (Tap to try):',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (isWindows)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: 390,
+                      child: _buildPromptChip(
+                        context,
+                        '👷 Attendance',
+                        'rupayan aster harkash 4 labour 5 mistri',
+                      ),
+                    ),
+                    SizedBox(
+                      width: 390,
+                      child: _buildPromptChip(
+                        context,
+                        '📋 Task Entry',
+                        'rupayan dahlia 403 cement pending',
+                      ),
+                    ),
+                    SizedBox(
+                      width: 390,
+                      child: _buildPromptChip(
+                        context,
+                        'বাংলা ইনপুট (Bengali)',
+                        'রূপায়ণ অ্যাস্টার ২০১ পুট্টি কাজ শেষ',
+                      ),
+                    ),
+                    SizedBox(
+                      width: 390,
+                      child: _buildPromptChip(
+                        context,
+                        '⚡ Multiple Teams',
+                        'rupayan aster joy 2 labour 3 mistri 1 santras',
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                _buildPromptChip(
+                  context,
+                  '👷 Attendance',
+                  'rupayan aster harkash 4 labour 5 mistri',
+                ),
+                const SizedBox(height: 8),
+                _buildPromptChip(
+                  context,
+                  '📋 Task',
+                  'rupayan dahlia 403 cement pending',
+                ),
+                const SizedBox(height: 8),
+                _buildPromptChip(
+                  context,
+                  'বাংলা ইনপুট',
+                  'রূপায়ণ অ্যাস্টার ২০১ পুট্টি কাজ শেষ',
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 12),
-          _buildPromptChip(
-            context,
-            '👷 Attendance',
-            'rupayan aster harkash 4 labour 5 mistri',
-          ),
-          const SizedBox(height: 8),
-          _buildPromptChip(
-            context,
-            '📋 Task',
-            'rupayan dahlia 403 cement pending',
-          ),
-          const SizedBox(height: 8),
-          _buildPromptChip(
-            context,
-            'বাংলা ইনপুট',
-            'রূপায়ণ অ্যাস্টার ২০১ পুট্টি কাজ শেষ',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -405,19 +580,25 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         ? Colors.green.shade600
         : (isTask ? Colors.blue.shade600 : Colors.grey.shade600);
 
+    final isWindows = isWindowsDesktop;
+
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
+        color: isDark
+            ? (isWindows ? const Color(0xFF182238) : const Color(0xFF1E1E2C))
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: msg.isExecuted
               ? Colors.green.withValues(alpha: 0.5)
-              : (isDark ? Colors.white12 : Colors.black12),
+              : (isDark
+                  ? Colors.white.withValues(alpha: isWindows ? 0.08 : 0.12)
+                  : Colors.black.withValues(alpha: isWindows ? 0.08 : 0.12)),
           width: msg.isExecuted ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -633,22 +814,35 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
 
   Widget _buildInputBar(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
+    final isWindows = isWindowsDesktop;
+
     return Container(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 10,
-        bottom: MediaQuery.of(context).padding.bottom + 10,
+        left: isWindows ? 20 : 16,
+        right: isWindows ? 20 : 16,
+        top: isWindows ? 12 : 10,
+        bottom: isWindows ? 16 : (MediaQuery.of(context).padding.bottom + 10),
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: isWindows
+            ? (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.6))
+            : (isDark ? const Color(0xFF1E1E2C) : Colors.white),
+        border: isWindows
+            ? Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                ),
+              )
+            : null,
+        boxShadow: isWindows
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
       ),
       child: Row(
         children: [
@@ -658,14 +852,21 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF28283E) : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(24),
+                border: isWindows
+                    ? Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.08),
+                      )
+                    : null,
               ),
               child: TextField(
                 controller: _textController,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendMessage(),
-                decoration: const InputDecoration(
-                  hintText: 'Type tasks or attendance...',
-                  hintStyle: TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: isWindows
+                      ? 'Type tasks or attendance in Bengali, Banglish, or English (Press Enter to send)...'
+                      : 'Type tasks or attendance...',
+                  hintStyle: const TextStyle(fontSize: 13),
                   border: InputBorder.none,
                 ),
               ),
@@ -676,6 +877,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             style: IconButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
             ),
+            tooltip: 'Send message (Enter)',
             icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
             onPressed: _sendMessage,
           ),
@@ -774,17 +976,31 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   }
 
   Widget _buildSupervisionCard(BuildContext context, AssistantMessage msg, bool isDark) {
+    final isWindows = isWindowsDesktop;
     final statusColor = msg.isExecuted
         ? Colors.green
         : (msg.isCancelled ? Colors.grey : Colors.orange);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(isWindows ? 16 : 14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E2C) : Colors.white,
+        color: isDark
+            ? (isWindows ? const Color(0xFF182238) : const Color(0xFF1E1E2C))
+            : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: isWindows ? 0.08 : 0.12)
+              : Colors.black.withValues(alpha: isWindows ? 0.08 : 0.12),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

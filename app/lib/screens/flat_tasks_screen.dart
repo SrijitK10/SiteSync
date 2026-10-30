@@ -2,9 +2,11 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/platform_utils.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_text_field.dart';
+import '../widgets/desktop_section_shell.dart';
 import '../widgets/task_attachments_widget.dart';
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
@@ -150,10 +152,10 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.background,
+      backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.background,
       builder: (bottomSheetContext) {
-        return FractionallySizedBox(
-          heightFactor: 0.9,
+        final content = FractionallySizedBox(
+          heightFactor: isWindowsDesktop ? 0.8 : 0.9,
           child: StatefulBuilder(
             builder: (context, setStateLocal) {
               Future<void> loadSourceTasks(String flatId) async {
@@ -383,6 +385,19 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
             },
           ),
         );
+
+        if (isWindowsDesktop) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Container(
+                decoration: AppTheme.desktopPaneDecoration(context, radius: 24),
+                child: content,
+              ),
+            ),
+          );
+        }
+        return content;
       },
     );
   }
@@ -484,9 +499,9 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.background,
+      backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.background,
       builder: (bottomSheetContext) {
-        return StatefulBuilder(
+        final content = StatefulBuilder(
           builder: (context, setStateLocal) {
             return Padding(
               padding: EdgeInsets.only(
@@ -534,6 +549,19 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
             );
           },
         );
+
+        if (isWindowsDesktop) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: Container(
+                decoration: AppTheme.desktopPaneDecoration(context, radius: 24),
+                child: content,
+              ),
+            ),
+          );
+        }
+        return content;
       },
     );
   }
@@ -578,9 +606,9 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.background,
+      backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.background,
       builder: (bottomSheetContext) {
-        return StatefulBuilder(
+        final content = StatefulBuilder(
           builder: (context, setStateLocal) {
             return Padding(
               padding: EdgeInsets.only(
@@ -640,6 +668,19 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
             );
           },
         );
+
+        if (isWindowsDesktop) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: Container(
+                decoration: AppTheme.desktopPaneDecoration(context, radius: 24),
+                child: content,
+              ),
+            ),
+          );
+        }
+        return content;
       },
     );
   }
@@ -650,9 +691,268 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
     final canEdit = currentUser?.role.canEdit ?? false;
     final l = AppLocalizations.of(context)!;
 
+    if (isWindowsDesktop) {
+      final totalTasks = _tasks.length;
+      final completedTasks =
+          _tasks.where((t) => t['status'] == 'completed').length;
+      final pendingTasks = totalTasks - completedTasks;
+
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: Text(
+            '${l.flat} ${widget.flatNumber}',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: l.refresh,
+              onPressed: _fetchTasks,
+            ),
+          ],
+        ),
+        body: DesktopSectionShell(
+          eyebrow: 'FLAT WORKSPACE',
+          title: '${l.flat} ${widget.flatNumber}',
+          subtitle:
+              'Task checklist, status tracking, notes, and photo attachments',
+          metrics: [
+            DesktopSectionMetric(
+              label: 'Total Tasks',
+              value: '$totalTasks',
+              icon: Icons.assignment_outlined,
+            ),
+            DesktopSectionMetric(
+              label: 'Completed',
+              value: '$completedTasks',
+              icon: Icons.check_circle_outline,
+              accent: AppTheme.success,
+            ),
+            DesktopSectionMetric(
+              label: 'Pending',
+              value: '$pendingTasks',
+              icon: Icons.pending_actions_outlined,
+              accent: AppTheme.warning,
+            ),
+          ],
+          actions: [
+            if (canEdit)
+              OutlinedButton.icon(
+                tooltip: l.importTasks,
+                onPressed: _showImportTasksSheet,
+                icon: const Icon(Icons.file_download_outlined),
+                label: Text(l.importTasks),
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+              ),
+            if (canEdit)
+              FilledButton.icon(
+                onPressed: _showAddTaskSheet,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l.addTask),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+              ),
+          ],
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _tasks.isEmpty
+              ? DesktopSurfaceCard(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.assignment_turned_in_outlined,
+                          size: 56,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          l.noTasksYet,
+                          style: AppTheme.heading.copyWith(fontSize: 18),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create a new task or import existing tasks from another flat.',
+                          style: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        if (canEdit) ...[
+                          const SizedBox(height: 20),
+                          FilledButton.icon(
+                            onPressed: _showAddTaskSheet,
+                            icon: const Icon(Icons.add_rounded),
+                            label: Text(l.addTask),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                )
+              : DesktopSurfaceCard(
+                  padding: const EdgeInsets.all(16),
+                  child: ListView.builder(
+                    itemCount: _tasks.length,
+                    itemBuilder: (context, index) {
+                      final t = _tasks[index];
+                      final bool isDone = t['status'] == 'completed';
+                      final creatorName = _creatorName(
+                        Map<String, dynamic>.from(t),
+                        l,
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: AppTheme.buildGlassContainer(
+                          context,
+                          radius: 18,
+                          child: ExpansionTile(
+                            leading: Checkbox(
+                              value: isDone,
+                              activeColor: AppTheme.success,
+                              onChanged: (val) =>
+                                  _toggleTaskStatus(t['id'], t['status']),
+                            ),
+                            title: Text(
+                              t['title'] ?? l.untitled,
+                              style: AppTheme.body.copyWith(
+                                fontWeight: FontWeight.bold,
+                                decoration: isDone
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isDone
+                                      ? l.finished(t['completed_at'] ?? '')
+                                      : l.added(t['created_at'] ?? ''),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  l.addedBy(creatorName),
+                                  style: AppTheme.body.copyWith(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      l.addedBy(creatorName),
+                                      style: AppTheme.body.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildNotesBullets(t['description']),
+                                    const SizedBox(height: 12),
+                                    TaskAttachmentsWidget(
+                                      taskId: t['id']?.toString() ?? '',
+                                      canEdit: canEdit,
+                                    ),
+                                    if (canEdit) ...[
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          TextButton.icon(
+                                            onPressed: () =>
+                                                _showEditNotesSheet(
+                                                  Map<String, dynamic>.from(t),
+                                                ),
+                                            icon: Icon(
+                                              Icons.edit_outlined,
+                                              size: 16,
+                                              color: AppTheme.primary,
+                                            ),
+                                            label: Text(
+                                              l.editNotes,
+                                              style: TextStyle(
+                                                color: AppTheme.primary,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          TextButton.icon(
+                                            onPressed: () =>
+                                                _deleteTask(t['id']),
+                                            icon: const Icon(
+                                              Icons.delete_outline,
+                                              size: 16,
+                                              color: Colors.red,
+                                            ),
+                                            label: Text(
+                                              l.delete,
+                                              style: const TextStyle(
+                                                color: Colors.red,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.background,
       appBar: AppBar(
+        backgroundColor: isWindowsDesktop ? Colors.transparent : AppTheme.surface,
         title: Text(
           '${l.flat} ${widget.flatNumber}',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
