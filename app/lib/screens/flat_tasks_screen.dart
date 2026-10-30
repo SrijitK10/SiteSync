@@ -745,7 +745,6 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
           actions: [
             if (canEdit)
               OutlinedButton.icon(
-                tooltip: l.importTasks,
                 onPressed: _showImportTasksSheet,
                 icon: const Icon(Icons.file_download_outlined),
                 label: Text(l.importTasks),
@@ -755,7 +754,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
               FilledButton.icon(
                 onPressed: _showAddTaskSheet,
                 icon: const Icon(Icons.add_rounded),
-                label: Text(l.addTask),
+                label: const Text('Add Task'),
                 style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
               ),
           ],
@@ -787,7 +786,7 @@ class _FlatTasksScreenState extends ConsumerState<FlatTasksScreen> {
                           FilledButton.icon(
                             onPressed: _showAddTaskSheet,
                             icon: const Icon(Icons.add_rounded),
-                            label: Text(l.addTask),
+                            label: const Text('Add Task'),
                           ),
                         ],
                       ],
